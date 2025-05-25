@@ -13,7 +13,7 @@
 - Optional metadata: permissions, mod time, checksums, etc.
 - Verbose and minimal modes
 - Works with stdout for scripting and piping
-- Tiny single binary — no dependencies
+- Single binary — no dependencies
 
 ---
 
@@ -83,21 +83,3 @@ git clone https://github.com/Distortions81/goXA.git
 cd goXA
 go build -o goxa
 ```
-
----
-
-## 📚 Project Status
-
-This project is in early development. Contributions, issues, and testing feedback are welcome! Expect improvements and refactors as it evolves.
-
----
-
-## 📜 License
-
-MIT License — see [LICENSE](LICENSE) for details.
-
----
-
-## 🔗 Links
-
-- GitHub: [https://github.com/Distortions81/goXA](https://github.com/Distortions81/goXA)
