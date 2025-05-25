@@ -17,7 +17,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v5
       with:
-        go-version: '1.22'  # Change to match your Go version
+        go-version: '1.24'  # Change to match your Go version
 
     - name: Build
-      run: go build -v ./...
+      run: go build -ldflags="-w" -gcflags="all=-l=4" -v ./...
