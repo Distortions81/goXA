@@ -1,6 +1,6 @@
 # goXA -- Go eXpress Archive
 
-**goXA** is a fast, flexible file archiver written in Go — similar in spirit to `tar` and `gzip`, but designed with a simpler CLI and modern Go-based internals.
+**goXA** is a fast, flexible file archiver written in Go — similar in spirit to `tar` but designed with modern Go-based internals.
 
 > ⚠️ **Early Development**: This project is still experimental and under active development. Expect bugs, untested behavior, and breaking changes. Use at your own risk.
 
