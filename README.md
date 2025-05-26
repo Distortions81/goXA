@@ -13,8 +13,8 @@
 - Optional metadata: permissions, mod time, checksums, etc.
 - Verbose and minimal modes
 - Works with stdout for scripting and piping
-- Threaded decompression and compression.
 - Single binary — no dependencies
+- Threaded decompression and compression.
 - Coming: Better threading for compression (with format change)
 
 ---
