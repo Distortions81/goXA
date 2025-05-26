@@ -14,6 +14,7 @@
 - Verbose and minimal modes
 - Works with stdout for scripting and piping
 - Single binary — no dependencies
+- Significantly faster than tar.gz
 - Threaded decompression and compression.
 - Coming: Better threading for compression (with format change)
 
