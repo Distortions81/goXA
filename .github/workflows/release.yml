@@ -1,0 +1,61 @@
+name: Go Cross-Platform Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # e.g., v1.0.0
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.24'
+
+    - name: Build and zip binaries
+      run: |
+        mkdir -p dist build
+        platforms=(
+          "linux/amd64"
+          "linux/arm64"
+          "windows/amd64"
+          "windows/arm64"
+          "darwin/amd64"
+          "darwin/arm64"
+        )
+        for platform in "${platforms[@]}"; do
+          os="${platform%/*}"
+          arch="${platform#*/}"
+          ext=""
+          if [ "$os" = "windows" ]; then
+            ext=".exe"
+          fi
+          bin_name="goxa${ext}"
+          zip_name="goxa-${os}-${arch}.zip"
+          build_dir="build/${os}_${arch}"
+          mkdir -p "$build_dir"
+          GOOS=$os GOARCH=$arch go build \
+            -o "$build_dir/$bin_name" \
+            -ldflags="-w" \
+            -gcflags="all=-l=4"
+          (cd "$build_dir" && zip -9 "../$zip_name" "$bin_name")
+        done
+
+    - name: Generate checksums
+      run: |
+        cd build
+        sha256sum *.zip > checksums.txt
+        mv *.zip checksums.txt ../dist/
+
+    - name: Upload release assets
+      uses: softprops/action-gh-release@v1
+      with:
+        files: dist/*
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
