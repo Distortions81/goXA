@@ -209,6 +209,7 @@ func writeEntries(offsetLoc uint64, bf *BufferedFile, files []FileEntry) {
 	}
 }
 
+// WIP
 func writeEntriesThreaded(offsetLoc uint64, bf *BufferedFile, files []FileEntry) {
 
 	totalBlocks := 0
@@ -251,7 +252,7 @@ func writeEntriesThreaded(offsetLoc uint64, bf *BufferedFile, files []FileEntry)
 	//End of BlockIndexOffset region
 	blockIndexOffset := totalBlocks * 8
 
-	//Shutup Compiler for them moment
+	//Shutup Compiler for the moment
 	if blockIndexOffset == 0 {
 		//
 	}
