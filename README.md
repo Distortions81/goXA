@@ -20,8 +20,8 @@
 ## 🚀 Usage
 
 ```
-Usage: goxa [c|l|x][apmsnive] -arc=arcFile [input paths/files...] or [destination]
-Output archive to stdout: -stdout, No progress bar: -progress=false
+Usage: goxa [c|l|x][apmsnive] -arc=archive.goxa [input paths/files...] or [destination]
+Output archive to stdout: -stdout, or just without progress bar: -progress=false
 
 Modes:
   c = Create a new archive. Requires input paths or files
@@ -42,33 +42,33 @@ Options:
 Create an archive:
 
 ```bash
-goxa c -arc=arcFile myStuff
+goxa c -arc=archive.goxa myStuff
 # Similar to: zip or tar -cf
 ```
 
 Create with metadata and compression:
 
 ```bash
-goxa cpmi -arc=arcFile myStuff
+goxa cpmi -arc=archive.goxa myStuff
 # Similar to: tar -czf
 ```
 
 List archive contents:
 
 ```bash
-goxa l -arc=arcFile
+goxa l -arc=archive.goxa
 ```
 
 Extract files:
 
 ```bash
-goxa x -arc=arcFile
+goxa x -arc=archive.goxa
 ```
 
 Extract with metadata:
 
 ```bash
-goxa xpmi -arc=arcFile
+goxa xpmi -arc=archive.goxa
 # Similar to: tar -xzf
 ```
 
