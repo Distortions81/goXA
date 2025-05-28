@@ -18,7 +18,7 @@
 - Threaded decompression and compression.
 - Coming: Better threading for compression (with format change)
 
-## Not yet complete
+## 🚧 Not yet complete
 - Listing files
 - Absolute path mode
 
