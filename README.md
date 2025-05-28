@@ -12,15 +12,16 @@
 - Optional compression (gzip)
 - Optional metadata: permissions, mod time, checksums, etc.
 - Verbose and minimal modes
-- Works with stdout for scripting and piping
+- Works with stdout (archive output)
 - Single binary — no dependencies
 - Significantly faster than tar.gz
 - Threaded decompression and compression.
-- Coming: Better threading for compression (with format change)
 
 ## 🚧 Not yet complete
 - Listing files
 - Absolute path mode
+- Extracting specific files
+- Better threading for compression (with format change)
 
 ---
 
