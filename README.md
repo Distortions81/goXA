@@ -9,9 +9,8 @@
 ## 🔧 Features
 
 - Create, and extract archives
-- Optional compression (gzip)
+- Compression (gzip)
 - Optional metadata: permissions, mod time, checksums, etc.
-- Verbose and minimal modes
 - Works with stdout (archive output)
 - Single binary — no dependencies
 - Significantly faster than tar.gz
