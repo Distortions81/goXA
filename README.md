@@ -8,7 +8,7 @@
 
 ## 🔧 Features
 
-- Create, list, and extract archives
+- Create, and extract archives
 - Optional compression (gzip)
 - Optional metadata: permissions, mod time, checksums, etc.
 - Verbose and minimal modes
@@ -17,6 +17,10 @@
 - Significantly faster than tar.gz
 - Threaded decompression and compression.
 - Coming: Better threading for compression (with format change)
+
+## Not yet complete
+- Listing files
+- Absolute path mode
 
 ---
 
