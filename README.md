@@ -21,6 +21,7 @@
 - Absolute path mode
 - Extracting specific files
 - Better threading for compression (with format change)
+- Handling symlinks, hardlinks, devices
 
 ---
 
