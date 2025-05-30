@@ -1,96 +1,123 @@
-# goXA -- Go eXpress Archive
 
-**goXA** is a fast, flexible file archiver written in Go — similar in spirit to `tar` but designed with modern Go-based internals.
+# GoXA -- Go eXpress Archive
 
+**GoXA** is a custom archival format and tool written in Go. It provides a simple, efficient, and feature-rich alternative to traditional archival formats like tar or zip, with an emphasis on data integrity, flexibility, and extensibility.
 > ⚠️ **Early Development**: This project is still experimental and under active development. Expect bugs, untested behavior, and breaking changes. Use at your own risk.
 
----
 
-## 🗜️ Current file format:
-[file-format.md](https://github.com/Distortions81/goXA/blob/main/file-format.md)
+## Features
 
-## 🔧 Features
+- ✅ Fast archive creation and extraction
+- ✅ Per-file compression (gzip, optional)
+- ✅ Per-file checksums (BLAKE2b-256, optional)
+- ✅ Preservation of permissions and modification timestamps (optional)
+- ✅ Empty directory support
+- ✅ Simple, fully documented binary format ([file-format.md](file-format.md))
+- ✅ Clean Go codebase, easy to extend
+- ✅ No external dependencies, self-contained
 
-- Create, and extract archives
-- Compression (gzip)
-- Optional metadata: permissions, mod time, absolute path
-- Checksums: BLAKE-256
-- Works with stdout (archive output)
-- Single binary — no dependencies
-- Significantly faster than tar.gz
-- Threaded decompression and compression.
+## File Format
 
-## 🚧 Not yet complete
-- Absolute path mode
-- Extracting specific files
-- Better threading for compression (with format change)
-- Handling symlinks, hardlinks, devices
+The full GoXA binary file format is documented here: [file-format.md](file-format.md).
 
----
+## Install
 
-## 🚀 Usage
-
-```
-Usage: goxa [c|l|x][apmsnive] -arc=archive.goxa [input paths/files...] or [destination]
-Output archive to stdout: -stdout, or just without progress bar: -progress=false
-
-Modes:
-  c = Create a new archive. Requires input paths or files
-  l = List archive contents. Requires -arc
-  x = Extract files from archive. Requires -arc
-
-Options:
-  a = Absolute paths      p = Permissions
-  m = Modification date   s = Sums
-  n = No-compression      i = Include dotfiles
-  v = Verbose logging     f = Force (overwrite files and ignore read errors)
-```
-
----
-
-## 🧪 Examples
-
-Create an archive:
-
-```bash
-goxa c -arc=archive.goxa myStuff
-# Similar to: zip or tar -cf
-```
-
-Create with metadata and compression:
-
-```bash
-goxa cpmi -arc=archive.goxa myStuff
-# Similar to: tar -czf
-```
-
-List archive contents:
-
-```bash
-goxa l -arc=archive.goxa
-```
-
-Extract files:
-
-```bash
-goxa x -arc=archive.goxa
-```
-
-Extract with metadata:
-
-```bash
-goxa xpmi -arc=archive.goxa
-# Similar to: tar -xzf
-```
-
----
-
-## 📦 Installation
-
-Clone and build:
+You can build GoXA easily using Go 1.20+:
 
 ```bash
 git clone https://github.com/Distortions81/goXA.git
 cd goXA
-go build -o goxa
+go build
 ```
+
+This will produce the `goxa` binary.
+
+## Usage
+
+### Command Syntax
+
+```
+goxa [mode][options] -arc=archiveFile [additional arguments]
+```
+
+- `mode` (required): one of:
+  - `c` = create
+  - `l` = list contents
+  - `x` = extract
+
+- `options` (optional): any combination of the following single-character flags:
+
+| Flag | Description |
+|------|-------------|
+| `a` | Store absolute paths |
+| `p` | Preserve file/directory permissions |
+| `m` | Preserve modification timestamps |
+| `s` | Enable BLAKE2b checksums |
+| `n` | Disable compression |
+| `i` | Include invisible files |
+| `v` | Verbose logging |
+| `f` | Force overwrite existing files / ignore read errors |
+
+### Additional Global Flags
+
+| Flag | Description |
+|------|-------------|
+| `-arc=` | Specify archive file name |
+| `-stdout` | Output archive to stdout |
+| `-progress=false` | Disable progress bar display |
+
+Progress bar example:
+```./goxa cpmif -arc=testFiles.goxa ~/gitRepos/
+Creating archive: testFiles.goxa, inputs: [/home/user/gitRepos/]
+[====                                                        ] 8.06% 180 MB/s```
+
+### Examples
+
+**Create Archive:**
+
+```bash
+goxa c -arc=mybackup.goxa myStuff/
+```
+
+**Full backup (like tar+gz):**
+
+```bash
+goxa capmsif -arc=mybackup.goxa ~/
+```
+
+**Extract Archive:**
+
+```bash
+goxa x -arc=mybackup.goxa
+```
+
+**List Archive Contents:**
+
+```bash
+goxa l -arc=mybackup.goxa
+```
+
+## Roadmap Ideas
+
+- ✅ Format documentation (complete)
+- 🛠 Working relative path support
+- 🛠 Add modes to allow non-files (symlinks, devices)
+- 🛠 Random-access extraction mode
+- 🛠 Multi-threaded archive optimization (blocks, v2 format)
+- 🛠 Additional compression formats
+- 🛠 Go 1.24+ os.Root directory jails
+- 🛠 Archive signatures for optional additional security
+- 🛠 Archive comment field
+- 🛠 Encrypted archives
+
+## License
+
+This project is licensed under the MIT License.
+
+## Author
+
+- https://github.com/Distortions81
+
+---
+
+**GoXA** — fast, clean, reliable archiving in Go.
