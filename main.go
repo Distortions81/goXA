@@ -78,8 +78,8 @@ func main() {
 	switch cmd[0] {
 	case 'c':
 		create(flagSet.Args())
-	case 't':
-		log.Fatal("Not yet implemented.")
+	case 'l':
+		extract(flagSet.Args(), true)
 	case 'x':
 		if archivePath == defaultArchiveName {
 			log.Fatal("You must specify an archive to extract.")
@@ -89,7 +89,7 @@ func main() {
 				log.Fatal("Destination specified in conjunction with absolute path mode, stopping.")
 			}
 		}
-		extract(flagSet.Args())
+		extract(flagSet.Args(), false)
 	default:
 		showUsage()
 		doLog(false, "Unknown mode: %c", cmd[0])

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/binary"
+	"fmt"
 	"io"
 	"io/fs"
 	"log"
@@ -14,13 +15,14 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	"github.com/remeh/sizedwaitgroup"
 	"golang.org/x/crypto/blake2b"
 )
 
 var skippedFiles, checksumCount atomic.Int64
 
-func extract(destinations []string) {
+func extract(destinations []string, listOnly bool) {
 
 	var destination string
 	//Clean destination
@@ -45,7 +47,9 @@ func extract(destinations []string) {
 		log.Fatalf("extract: Could not open the archive file: %v", err)
 	}
 	doLog(false, "Opening archive: %v", archivePath)
-	doLog(false, "Destination: %v", path.Clean(destination))
+	if !listOnly {
+		doLog(false, "Destination: %v", path.Clean(destination))
+	}
 
 	//Read header
 	readMagic := make([]byte, 4)
@@ -107,6 +111,22 @@ func extract(destinations []string) {
 
 		newEntry := FileEntry{Path: pathName, Size: fileSize, Mode: fs.FileMode(fileMode), ModTime: time.Unix(modTime, 0).UTC()}
 		fileList[n] = newEntry
+	}
+
+	if listOnly {
+		fileCount := 0
+		byteCount := 0
+		for _, item := range dirList {
+			fmt.Printf("%v\n", item.Path)
+		}
+		for _, item := range fileList {
+			fileCount++
+			byteCount += int(item.Size)
+			fmt.Printf("%v\n", item.Path)
+		}
+		fmt.Printf("%v files, %v\n", fileCount, humanize.Bytes(uint64(byteCount)))
+
+		return
 	}
 
 	//File offsets
