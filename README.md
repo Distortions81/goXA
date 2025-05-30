@@ -2,7 +2,8 @@
 # GoXA -- Go eXpress Archive
 
 **GoXA** is a custom archival format and tool written in Go. It provides a simple, efficient, and feature-rich alternative to traditional archival formats like tar or zip, with an emphasis on data integrity, flexibility, and extensibility.
-> ⚠️ **Early Development**: This project is still experimental and under active development. Expect bugs, untested behavior, and breaking changes. Use at your own risk.
+> ⚠️ **Early Development**: This project is still experimental and under active development. Expect bugs, untested behavior, and breaking changes. Use at your own risk.<br>
+> See the [issues list](https://github.com/Distortions81/goXA/issues)
 
 
 ## Features
