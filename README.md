@@ -67,9 +67,9 @@ goxa [mode][options] -arc=archiveFile [additional arguments]
 | `-progress=false` | Disable progress bar display |
 
 Progress bar example:
-```./goxa cpmif -arc=testFiles.goxa ~/gitRepos/
+`./goxa cpmif -arc=testFiles.goxa ~/gitRepos/
 Creating archive: testFiles.goxa, inputs: [/home/user/gitRepos/]
-[====                                                        ] 8.06% 180 MB/s```
+[====                                                        ] 8.06% 180 MB/s`
 
 ### Examples
 
