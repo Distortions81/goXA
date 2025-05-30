@@ -10,14 +10,14 @@
 
 - Create, and extract archives
 - Compression (gzip)
-- Optional metadata: permissions, mod time, checksums, etc.
+- Optional metadata: permissions, mod time, absolute path
+- Checksums: BLAKE-256
 - Works with stdout (archive output)
 - Single binary — no dependencies
 - Significantly faster than tar.gz
 - Threaded decompression and compression.
 
 ## 🚧 Not yet complete
-- Listing files
 - Absolute path mode
 - Extracting specific files
 - Better threading for compression (with format change)
