@@ -6,6 +6,9 @@
 
 ---
 
+## 🗜️ Current file format:
+[file-format.md](https://github.com/Distortions81/goXA/blob/main/file-format.md)
+
 ## 🔧 Features
 
 - Create, and extract archives
