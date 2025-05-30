@@ -45,7 +45,7 @@ The **Per-file Data Section** contains:
 
 | Field       | Type       | Size (bytes) | Description          |
 |-------------|------------|--------------|----------------------|
-| Magic Bytes | 4 bytes    | 4            | Format identifier (`GOXA`) |
+| Magic Bytes | bytes      | 4            | Format identifier (`GOXA`) |
 | Version     | uint16     | 2            | Format version (1) |
 | Features    | uint32     | 4            | Bitmask of enabled features |
 
@@ -53,9 +53,9 @@ The **Per-file Data Section** contains:
 
 The features field is a 32-bit mask. Possible flags include:
 
-| Flag            | Bit | Description                  |
+| Flag            | Bit | Description |
 |------------------|-----|------------------------------|
-| `fNone`          | 0x1 | No feature (default) |
+| `fNone`          | 0x1 | Reserved |
 | `fAbsolutePaths` | 0x2 | Store absolute paths |
 | `fPermissions`   | 0x4 | Store file/directory permissions |
 | `fModDates`      | 0x8 | Store file modification times |
@@ -71,18 +71,18 @@ The features field is a 32-bit mask. Possible flags include:
 
 Empty directories are stored first.
 
-| Field            | Type   | Description 
-|------------------|--------|-------------
-| Empty Dir Count  | uint64 | Number of empty directories
+| Field            | Type   | Description |
+|------------------|--------|-------------|
+| Empty Dir Count  | uint64 | Number of empty directories |
 
 For each empty directory:
 
-| Field             | Type   | Description 
-|-------------------|--------|-------------
-| Mode (optional)   | uint32 | Directory permissions (if `fPermissions`)
-| ModTime (optional)| int64  | UNIX timestamp (if `fModDates`)
-| Path Length       | uint16 | Byte count
-| Path              | string | Path as UTF-8 string
+| Field             | Type   | Description |
+|-------------------|--------|-------------|
+| Mode (optional)   | uint32 | Directory permissions (if `fPermissions`) |
+| ModTime (optional)| int64  | UNIX timestamp (if `fModDates`) |
+| Path Length       | uint16 | Byte count |
+| Path              | string | Path as UTF-8 string |
 
 ---
 
@@ -90,19 +90,19 @@ For each empty directory:
 
 File metadata follows empty directories.
 
-| Field           | Type   | Description 
-|-----------------|--------|-------------
-| File Count      | uint64 | Number of files
+| Field           | Type   | Description |
+|-----------------|--------|-------------|
+| File Count      | uint64 | Number of files |
 
 For each file:
 
-| Field             | Type   | Description 
-|-------------------|--------|-------------
-| Uncompressed Size | uint64 | File size (before compression)
-| Mode (optional)   | uint32 | File permissions (if `fPermissions`)
-| ModTime (optional)| int64  | UNIX timestamp (if `fModDates`)
-| Path Length       | uint16 | Byte count
-| Path              | string | Path as UTF-8 string
+| Field             | Type   | Description |
+|-------------------|--------|-------------|
+| Uncompressed Size | uint64 | File size (before compression) |
+| Mode (optional)   | uint32 | File permissions (if `fPermissions`) |
+| ModTime (optional)| int64  | UNIX timestamp (if `fModDates`) |
+| Path Length       | uint16 | Byte count |
+| Path              | string | Path as UTF-8 string |
 
 ---
 
@@ -112,8 +112,7 @@ Following the file entries is the offset table.
 
 - Threaded mode is always enabled, so the offset table is preallocated.
 - Each file has an 8-byte offset (uint64) indicating its starting position in the data section.
-
-Offsets are written relative to the beginning of the file.
+- Offsets are absolute file offsets (relative to beginning of archive file).
 
 ---
 
@@ -147,6 +146,12 @@ For each file:
 - Directories with files are implicit; empty directories are explicitly listed.
 - Compression and checksums are applied per file.
 - The offset table allows seeking directly to file data without reading entire archive.
+
+---
+
+## Versioning
+
+The current format version is 1.
 
 ---
 
