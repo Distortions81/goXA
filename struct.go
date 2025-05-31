@@ -7,6 +7,7 @@ import (
 
 var (
 	archivePath                              string
+	extractPath                              string
 	verboseMode, doForce, toStdOut, progress bool
 	features                                 BitFlags
 )

@@ -35,6 +35,7 @@ func main() {
 	cmd := strings.ToLower(os.Args[1])
 	flagSet := flag.NewFlagSet("goxa", flag.ExitOnError)
 	flagSet.StringVar(&archivePath, "arc", defaultArchiveName, "archive file name (extension not required)")
+	flagSet.StringVar(&extractPath, "xto", "", "extraction destination")
 	flagSet.BoolVar(&toStdOut, "stdout", false, "output archive data to stdout")
 	flagSet.BoolVar(&progress, "progress", true, "show progress bar")
 	flagSet.Parse(os.Args[2:])
@@ -79,7 +80,7 @@ func main() {
 	case 'c':
 		create(flagSet.Args())
 	case 'l':
-		extract(flagSet.Args(), true)
+		extract(extractPath, flagSet.Args(), true)
 	case 'x':
 		if archivePath == defaultArchiveName {
 			log.Fatal("You must specify an archive to extract.")
@@ -89,7 +90,7 @@ func main() {
 				log.Fatal("Destination specified in conjunction with absolute path mode, stopping.")
 			}
 		}
-		extract(flagSet.Args(), false)
+		extract(extractPath, flagSet.Args(), false)
 	default:
 		showUsage()
 		doLog(false, "Unknown mode: %c", cmd[0])

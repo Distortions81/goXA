@@ -22,12 +22,23 @@ import (
 
 var skippedFiles, checksumCount atomic.Int64
 
-func extract(destinations []string, listOnly bool) {
+func extract(extractPath string, selectList []string, listOnly bool) {
+
+	var selectMap map[string]bool
+
+	var selectiveMode bool
+	if !listOnly && len(selectList) > 0 {
+		selectiveMode = true
+		selectMap = map[string]bool{}
+		for _, item := range selectList {
+			selectMap[item] = true
+		}
+	}
 
 	var destination string
 	//Clean destination
-	if len(destinations) > 0 {
-		destination = path.Clean(destinations[0]) + "/"
+	if len(extractPath) > 0 {
+		destination = path.Clean(extractPath) + "/"
 
 		if destination != "" {
 			os.Mkdir(destination, os.ModePerm)
@@ -85,6 +96,12 @@ func extract(destinations []string, listOnly bool) {
 
 		pathName := ReadString(arc)
 
+		if selectiveMode {
+			if selectMap[pathName] == false {
+				continue
+			}
+		}
+
 		newDirEntry := FileEntry{Path: pathName, Mode: os.FileMode(fileMode), ModTime: time.Unix(modTime, 0).UTC()}
 		dirList[n] = newDirEntry
 	}
@@ -109,6 +126,11 @@ func extract(destinations []string, listOnly bool) {
 
 		pathName := ReadString(arc)
 
+		if selectiveMode {
+			if selectMap[pathName] == false {
+				continue
+			}
+		}
 		newEntry := FileEntry{Path: pathName, Size: fileSize, Mode: fs.FileMode(fileMode), ModTime: time.Unix(modTime, 0).UTC()}
 		fileList[n] = newEntry
 	}
