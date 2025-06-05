@@ -81,7 +81,9 @@ func writeHeader(emptyDirs, files []FileEntry) (uint64, []byte) {
 		if features&fModDates != 0 {
 			binary.Write(&header, binary.LittleEndian, int64(folder.ModTime.Unix()))
 		}
-		WriteString(&header, folder.Path)
+		if err := WriteString(&header, folder.Path); err != nil {
+			log.Fatalf("write string failed: %v", err)
+		}
 	}
 
 	//File info
@@ -94,17 +96,22 @@ func writeHeader(emptyDirs, files []FileEntry) (uint64, []byte) {
 		if features&fModDates != 0 {
 			binary.Write(&header, binary.LittleEndian, int64(file.ModTime.Unix()))
 		}
-		WriteString(&header, file.Path)
+		if err := WriteString(&header, file.Path); err != nil {
+			log.Fatalf("write string failed: %v", err)
+		}
 	}
 
 	//Save end of header, so we can update offsets later
 	offsetsLocation := uint64(header.Len())
 
-	const ThreadedMode = true
+	const ThreadedMode = false
 	if ThreadedMode {
-		//Write spacer for file offsets
+		//Write spacer for file offsets by block (experimental)
 		for _, file := range files {
-			header.Write(bytes.Repeat([]byte{0, 0, 0, 0, 0, 0, 0, 0}, int(file.Size/blockSize)))
+			blocks := int(math.Ceil(float64(file.Size) / float64(blockSize)))
+			for i := 0; i < blocks; i++ {
+				binary.Write(&header, binary.LittleEndian, uint64(0))
+			}
 		}
 	} else {
 		//Write spacer for file offsets
@@ -131,14 +138,18 @@ func writeEntries(offsetLoc uint64, bf *BufferedFile, files []FileEntry) {
 		totalBytes += int64(entry.Size)
 	}
 
-	p, done := progressTicker(&progressData{total: totalBytes, speedWindowSize: time.Second * 5})
+	p, done, finished := progressTicker(&progressData{total: totalBytes, speedWindowSize: time.Second * 5})
 	bf.progress = p
 	bf.doCount = true
-	defer close(done)
+	defer func() {
+		close(done)
+		<-finished
+	}()
 
 	for i, entry := range files {
+		p.file.Store(entry.Path)
 
-		file, err := os.Open(entry.Path)
+		file, err := os.Open(entry.SrcPath)
 		if err != nil {
 			if doForce {
 				//Soldier on even if read fails
@@ -148,28 +159,23 @@ func writeEntries(offsetLoc uint64, bf *BufferedFile, files []FileEntry) {
 				log.Fatalf("Unable to open file: %v", entry.Path)
 			}
 		}
-		br := NewBufferedFile(file, writeBuffer, p)
-
-		// Compute checksum if needed
+		// Compute checksum first without counting progress
 		var checksum []byte
 		if features.IsSet(fChecksums) {
 			h.Reset()
-
-			// Stream file into hash
-			if _, err := io.Copy(h, br); err != nil {
+			if _, err := io.Copy(h, file); err != nil {
 				log.Fatalf("checksum compute failed: %v", err)
 			}
-			// Reset file to beginning for actual writing
-			if _, err := br.Seek(0, io.SeekStart); err != nil {
+			checksum = h.Sum(nil)
+			if _, err := file.Seek(0, io.SeekStart); err != nil {
 				log.Fatalf("seek reset failed: %v", err)
 			}
-			// Grab sum
-			checksum = h.Sum(nil) // 32 bytes
-
 			if _, err := bf.Write(checksum); err != nil {
 				log.Fatalf("writing checksum failed: %v", err)
 			}
 		}
+
+		br := NewBufferedFile(file, writeBuffer, p)
 
 		// Write file data (compressed or not)
 		var written uint64
@@ -189,6 +195,7 @@ func writeEntries(offsetLoc uint64, bf *BufferedFile, files []FileEntry) {
 			}
 			written = uint64(cw.Count())
 		}
+
 		br.Close()
 
 		offsets[i] = cOffset
@@ -220,7 +227,7 @@ func writeEntriesThreaded(offsetLoc uint64, bf *BufferedFile, files []FileEntry)
 		go func(entry FileEntry) {
 			defer wg.Done()
 
-			file, err := os.Open(entry.Path)
+			file, err := os.Open(entry.SrcPath)
 			if err != nil {
 				if doForce {
 					//Soldier on even if read fails
@@ -233,7 +240,7 @@ func writeEntriesThreaded(offsetLoc uint64, bf *BufferedFile, files []FileEntry)
 			entry.NumBlocks = uint64(math.Ceil(float64(entry.Size) / float64(blockSize)))
 			rbuf := make([]byte, blockSize)
 
-			for blockNum := range entry.NumBlocks {
+			for blockNum := uint64(0); blockNum < entry.NumBlocks; blockNum++ {
 				readBuf := bytes.NewBuffer(rbuf)
 				io.Copy(readBuf, file)
 
@@ -260,7 +267,7 @@ func writeEntriesThreaded(offsetLoc uint64, bf *BufferedFile, files []FileEntry)
 	//Update blockOffsets in archive here
 	var writtenBlock uint64
 	for _, entry := range files {
-		for block := range entry.NumBlocks {
+		for block := uint64(0); block < entry.NumBlocks; block++ {
 			newOffset := blockIndexOffset + int(entry.BlockOffset[block])
 			_, err := bf.Seek(int64(offsetLoc+writtenBlock), io.SeekStart)
 			if err != nil {

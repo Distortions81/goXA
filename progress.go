@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -10,7 +11,10 @@ import (
 )
 
 const (
-	barWidth     = 60
+	// barWidth sets the number of characters used for the visual progress bar
+	// portion of the display. A slightly shorter bar leaves room for the
+	// current filename so it remains visible as operations progress.
+	barWidth     = 45
 	updatePeriod = time.Second / 8
 )
 
@@ -25,14 +29,21 @@ type progressData struct {
 	speedWindow      []sample
 	speedWindowSize  time.Duration
 	lastPrintStr     string
+	file             atomic.Value
 }
 
-func progressTicker(p *progressData) (*progressData, chan struct{}) {
+func progressTicker(p *progressData) (*progressData, chan struct{}, chan struct{}) {
 	done := make(chan struct{})
+	finished := make(chan struct{})
+	if !progress {
+		close(finished)
+		return p, done, finished
+	}
 
 	go func() {
 		ticker := time.NewTicker(updatePeriod)
 		defer ticker.Stop()
+		defer close(finished)
 
 		for {
 			select {
@@ -40,19 +51,31 @@ func progressTicker(p *progressData) (*progressData, chan struct{}) {
 				printProgress(p)
 			case <-done:
 				printProgress(p)
+				if progress {
+					fmt.Print("\n")
+				}
 				return
 			}
 		}
 	}()
 
-	return p, done
+	return p, done, finished
 }
 
 func printProgress(p *progressData) {
+	if !progress {
+		return
+	}
 	now := time.Now()
 
 	// Compute progress
-	progress := float64(p.current.Load()) / float64(p.total)
+	progress := 1.0
+	if p.total > 0 {
+		progress = float64(p.current.Load()) / float64(p.total)
+		if progress > 1 {
+			progress = 1
+		}
+	}
 	filled := int(progress * barWidth)
 	if filled > barWidth {
 		filled = barWidth
@@ -83,8 +106,10 @@ func printProgress(p *progressData) {
 	// Build progress bar
 	bar := "[" + strings.Repeat("=", filled) + strings.Repeat(" ", barWidth-filled) + "]"
 
+	fileName, _ := p.file.Load().(string)
+	fileName = filepath.Base(fileName)
 	// Format output (80 columns max)
-	out := fmt.Sprintf("\r%s %3.2f%% %v/s", bar, progress*100, humanize.Bytes(uint64(speed)))
+	out := fmt.Sprintf("\r%s %3.2f%% %v/s %s", bar, progress*100, humanize.Bytes(uint64(speed)), fileName)
 	if len(out) > 80 {
 		out = out[:80]
 	}

@@ -59,13 +59,20 @@ goxa [mode][options] -arc=archiveFile [additional arguments]
 | `v` | Verbose logging |
 | `f` | Force overwrite existing files / ignore read errors |
 
+Paths are stored relative to the given inputs by default. Use `a` when
+extracting to write files to their original absolute locations. If `a` is not
+specified for extraction, any absolute paths in the archive are recreated under
+the chosen destination directory.
+
 ### Additional Global Flags
 
 | Flag | Description |
 |------|-------------|
 | `-arc=` | Specify archive file name |
 | `-stdout` | Output archive to stdout |
-| `-progress=false` | Disable progress bar display |
+| `-progress=false` | Disable progress display |
+
+Progress output shows transfer speed and the current file being processed.
 
 ### Examples
 
