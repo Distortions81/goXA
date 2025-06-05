@@ -1,21 +1,28 @@
 package main
 
 import (
-        "encoding/binary"
-        "fmt"
-        "io"
+	"encoding/binary"
+	"fmt"
+	"io"
 )
 
 func WriteString(w io.Writer, s string) error {
-        b := []byte(s)
-        if len(b) > 0xFFFF {
-                return fmt.Errorf("string too long: %d bytes", len(b))
-        }
-        if err := binary.Write(w, binary.LittleEndian, uint16(len(b))); err != nil {
-                return err
-        }
-        _, err := w.Write(b)
-        return err
+	b := []byte(s)
+	if len(b) > 0xFFFF {
+		return fmt.Errorf("string too long: %d bytes", len(b))
+	}
+	if err := binary.Write(w, binary.LittleEndian, uint16(len(b))); err != nil {
+		return err
+	}
+
+	for len(b) > 0 {
+		n, err := w.Write(b)
+		b = b[n:]
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // a tiny io.Writer that counts bytes passed through
