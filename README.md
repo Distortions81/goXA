@@ -14,6 +14,7 @@
 - ✅ Preservation of permissions and modification timestamps (optional)
 - ✅ Empty directory support
 - ✅ Simple, fully documented binary format ([file-format.md](file-format.md))
+- ✅ Optional support for symlinks and other special files (new flag)
 - ✅ Clean Go codebase, easy to extend
 - ✅ No external dependencies, self-contained
 
@@ -56,6 +57,7 @@ goxa [mode][options] -arc=archiveFile [additional arguments]
 | `s` | Enable BLAKE2b checksums |
 | `n` | Disable compression |
 | `i` | Include invisible files |
+| `o` | Include special files (symlinks, devices) |
 | `v` | Verbose logging |
 | `f` | Force overwrite existing files / ignore read errors |
 

@@ -137,7 +137,7 @@ func walkPaths(roots []string) (dirs []FileEntry, files []FileEntry, err error) 
 	states := make(map[string]*dirState)
 
 	for _, root := range roots {
-		info, err := os.Stat(root)
+		info, err := os.Lstat(root)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -146,8 +146,10 @@ func walkPaths(roots []string) (dirs []FileEntry, files []FileEntry, err error) 
 		// File case
 		if !info.IsDir() {
 			if features.IsSet(fIncludeInvis) || !strings.HasPrefix(info.Name(), ".") {
-				metaData := gatherMeta(storedPath(root, root), root, info)
-				files = append(files, metaData)
+				if info.Mode().IsRegular() || features.IsSet(fSpecialFiles) {
+					metaData := gatherMeta(storedPath(root, root), root, info)
+					files = append(files, metaData)
+				}
 			}
 			continue
 		}
@@ -186,7 +188,9 @@ func walkPaths(roots []string) (dirs []FileEntry, files []FileEntry, err error) 
 				if err != nil {
 					return err
 				}
-				files = append(files, gatherMeta(storedPath(root, path), path, info))
+				if info.Mode().IsRegular() || features.IsSet(fSpecialFiles) {
+					files = append(files, gatherMeta(storedPath(root, path), path, info))
+				}
 			}
 			return nil
 		})
@@ -219,6 +223,19 @@ func gatherMeta(path, src string, info os.FileInfo) FileEntry {
 	}
 	if features.IsSet(fPermissions) {
 		entry.Mode = info.Mode()
+	}
+	switch {
+	case info.Mode().IsRegular():
+		entry.Type = entryFile
+	case info.Mode()&os.ModeSymlink != 0:
+		entry.Type = entrySymlink
+		entry.Size = 0
+		if link, err := os.Readlink(src); err == nil {
+			entry.Linkname = link
+		}
+	default:
+		entry.Type = entryOther
+		entry.Size = 0
 	}
 	return entry
 }

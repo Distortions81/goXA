@@ -178,3 +178,46 @@ func TestArchiveParentRelative(t *testing.T) {
 	extracted := filepath.Join(dest, filepath.Base(root), "file.txt")
 	checkFile(t, extracted, data, 0o644, false)
 }
+
+func TestSymlinkAndHardlink(t *testing.T) {
+	if os.Getuid() != 0 {
+		t.Skip("requires creating hard links")
+	}
+	tempDir := t.TempDir()
+	root := filepath.Join(tempDir, "root")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+
+	data := []byte("hi")
+	orig := filepath.Join(root, "file.txt")
+	if err := os.WriteFile(orig, data, 0o644); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+	os.Symlink("file.txt", filepath.Join(root, "link.txt"))
+	os.Link(orig, filepath.Join(root, "hard.txt"))
+
+	archivePath = filepath.Join(tempDir, "test.goxa")
+	features = fSpecialFiles
+	toStdOut = false
+	doForce = false
+
+	if err := create([]string{root}); err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+
+	os.RemoveAll(root)
+	dest := filepath.Join(tempDir, "out")
+	os.MkdirAll(dest, 0o755)
+	features = fSpecialFiles
+	extract([]string{dest}, false)
+
+	base := filepath.Join(dest, filepath.Base(root))
+	ltarget, err := os.Readlink(filepath.Join(base, "link.txt"))
+	if err != nil || ltarget != "file.txt" {
+		t.Fatalf("symlink mismatch")
+	}
+	if _, err := os.Lstat(filepath.Join(base, "hard.txt")); err != nil {
+		t.Fatalf("hardlink missing: %v", err)
+	}
+}
