@@ -171,7 +171,14 @@ func extract(destinations []string, listOnly bool) {
 		if lfeat.IsSet(fPermissions) {
 			perms = item.Mode
 		}
-		os.MkdirAll(item.Path, perms)
+		if err := os.MkdirAll(item.Path, perms); err != nil {
+			if doForce {
+				doLog(false, "Unable to create directory: %v :: %v", item.Path, err)
+				continue
+			} else {
+				log.Fatalf("Unable to create directory: %v :: %v", item.Path, err)
+			}
+		}
 	}
 	arc.Close()
 
@@ -204,7 +211,14 @@ func handleFile(destination string, lfeat BitFlags, item *FileEntry) {
 	var err error
 	//Make directories
 	dir := path.Dir(destination + item.Path)
-	os.MkdirAll(dir, os.ModePerm)
+	if err = os.MkdirAll(dir, os.ModePerm); err != nil {
+		if doForce {
+			doLog(false, "Unable to create directory: %v :: %v", dir, err)
+			return
+		} else {
+			log.Fatalf("Unable to create directory: %v :: %v", dir, err)
+		}
+	}
 
 	//Set file perms, if needed
 	filePerm := os.FileMode(0644)
