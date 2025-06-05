@@ -81,7 +81,9 @@ func writeHeader(emptyDirs, files []FileEntry) (uint64, []byte) {
 		if features&fModDates != 0 {
 			binary.Write(&header, binary.LittleEndian, int64(folder.ModTime.Unix()))
 		}
-		WriteString(&header, folder.Path)
+                if err := WriteString(&header, folder.Path); err != nil {
+                        log.Fatalf("write string failed: %v", err)
+                }
 	}
 
 	//File info
@@ -94,7 +96,9 @@ func writeHeader(emptyDirs, files []FileEntry) (uint64, []byte) {
 		if features&fModDates != 0 {
 			binary.Write(&header, binary.LittleEndian, int64(file.ModTime.Unix()))
 		}
-		WriteString(&header, file.Path)
+                if err := WriteString(&header, file.Path); err != nil {
+                        log.Fatalf("write string failed: %v", err)
+                }
 	}
 
 	//Save end of header, so we can update offsets later
