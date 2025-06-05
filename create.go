@@ -138,10 +138,13 @@ func writeEntries(offsetLoc uint64, bf *BufferedFile, files []FileEntry) {
 		totalBytes += int64(entry.Size)
 	}
 
-	p, done := progressTicker(&progressData{total: totalBytes, speedWindowSize: time.Second * 5})
+	p, done, finished := progressTicker(&progressData{total: totalBytes, speedWindowSize: time.Second * 5})
 	bf.progress = p
 	bf.doCount = true
-	defer close(done)
+	defer func() {
+		close(done)
+		<-finished
+	}()
 
 	for i, entry := range files {
 		p.file.Store(entry.Path)

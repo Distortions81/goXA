@@ -29,15 +29,18 @@ type progressData struct {
 	file             atomic.Value
 }
 
-func progressTicker(p *progressData) (*progressData, chan struct{}) {
+func progressTicker(p *progressData) (*progressData, chan struct{}, chan struct{}) {
 	done := make(chan struct{})
+	finished := make(chan struct{})
 	if !progress {
-		return p, done
+		close(finished)
+		return p, done, finished
 	}
 
 	go func() {
 		ticker := time.NewTicker(updatePeriod)
 		defer ticker.Stop()
+		defer close(finished)
 
 		for {
 			select {
@@ -45,12 +48,15 @@ func progressTicker(p *progressData) (*progressData, chan struct{}) {
 				printProgress(p)
 			case <-done:
 				printProgress(p)
+				if progress {
+					fmt.Print("\n")
+				}
 				return
 			}
 		}
 	}()
 
-	return p, done
+	return p, done, finished
 }
 
 func printProgress(p *progressData) {

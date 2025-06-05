@@ -172,8 +172,11 @@ func extract(destinations []string, listOnly bool) {
 		totalBytes += int64(entry.Size)
 	}
 
-	p, done := progressTicker(&progressData{total: totalBytes, speedWindowSize: time.Second * 5})
-	defer close(done)
+	p, done, finished := progressTicker(&progressData{total: totalBytes, speedWindowSize: time.Second * 5})
+	defer func() {
+		close(done)
+		<-finished
+	}()
 
 	for _, item := range dirList {
 		perms := os.FileMode(0644)
