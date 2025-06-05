@@ -100,11 +100,14 @@ func writeHeader(emptyDirs, files []FileEntry) (uint64, []byte) {
 	//Save end of header, so we can update offsets later
 	offsetsLocation := uint64(header.Len())
 
-	const ThreadedMode = true
+	const ThreadedMode = false
 	if ThreadedMode {
-		//Write spacer for file offsets
+		//Write spacer for file offsets by block (experimental)
 		for _, file := range files {
-			header.Write(bytes.Repeat([]byte{0, 0, 0, 0, 0, 0, 0, 0}, int(file.Size/blockSize)))
+			blocks := int(math.Ceil(float64(file.Size) / float64(blockSize)))
+			for i := 0; i < blocks; i++ {
+				binary.Write(&header, binary.LittleEndian, uint64(0))
+			}
 		}
 	} else {
 		//Write spacer for file offsets
