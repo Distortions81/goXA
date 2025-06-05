@@ -25,7 +25,7 @@ func TestHandleFileDirCreationFailure(t *testing.T) {
 
 	item := FileEntry{Path: filepath.Join("sub", "file.txt"), Offset: 1}
 
-	handleFile(destFile+string(os.PathSeparator), 0, &item)
+	_ = handleFile(destFile+string(os.PathSeparator), 0, &item, &progressData{})
 
 	if _, err := os.Stat(filepath.Join(tmp, "destfile", "sub")); err == nil {
 		t.Fatalf("directory should not be created")

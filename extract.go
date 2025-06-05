@@ -207,13 +207,13 @@ func extract(destinations []string, listOnly bool) {
 			wg.Add()
 			go func(item *FileEntry) {
 				defer wg.Done()
-				handleFile(destination, lfeat, item, p)
+				_ = handleFile(destination, lfeat, item, p)
 			}(&fileList[f])
 		}
 		wg.Wait()
 	} else {
 		for f := range fileList {
-			handleFile(destination, lfeat, &fileList[f], p)
+			_ = handleFile(destination, lfeat, &fileList[f], p)
 		}
 	}
 
@@ -222,7 +222,7 @@ func extract(destinations []string, listOnly bool) {
 	}
 }
 
-func handleFile(destination string, lfeat BitFlags, item *FileEntry, p *progressData) {
+func handleFile(destination string, lfeat BitFlags, item *FileEntry, p *progressData) error {
 	if item.Offset == 0 {
 		skippedFiles.Add(1)
 		return nil
@@ -237,7 +237,7 @@ func handleFile(destination string, lfeat BitFlags, item *FileEntry, p *progress
 			if doForce {
 				doLog(false, "invalid path: %v", item.Path)
 				skippedFiles.Add(1)
-				return
+				return nil
 			}
 			log.Fatalf("invalid path: %v", item.Path)
 		}
@@ -271,14 +271,23 @@ func handleFile(destination string, lfeat BitFlags, item *FileEntry, p *progress
 		return err
 	}
 
+	closeFile := func() {
+		if newFile != nil {
+			newFile.Close()
+			newFile = nil
+		}
+	}
+
 	//Seek to data in archive
 	arcB, err := NewBinReader(archivePath)
 	if err != nil {
 		if doForce {
 			doLog(false, "unable to open archive reader: %v", err)
 			skippedFiles.Add(1)
-			return
+			closeFile()
+			return nil
 		}
+		closeFile()
 		log.Fatalf("unable to open archive reader: %v", err)
 	}
 	defer arcB.Close()
@@ -304,8 +313,10 @@ func handleFile(destination string, lfeat BitFlags, item *FileEntry, p *progress
 			if doForce {
 				doLog(false, "unable to read checksum for %v: %v", item.Path, err)
 				skippedFiles.Add(1)
-				return
+				closeFile()
+				return nil
 			}
+			closeFile()
 			log.Fatalf("unable to read checksum for %v: %v", item.Path, err)
 		}
 	}
@@ -316,10 +327,11 @@ func handleFile(destination string, lfeat BitFlags, item *FileEntry, p *progress
 		if err != nil {
 			if doForce {
 				doLog(false, "gzip error: Unable to create reader: %v :: %v", item.Path, err)
-			} else {
-				log.Fatalf("gzip error: Unable to create reader: %v :: %v", item.Path, err)
+				closeFile()
+				return nil
 			}
-			return nil
+			closeFile()
+			log.Fatalf("gzip error: Unable to create reader: %v :: %v", item.Path, err)
 		}
 		defer gzReader.Close()
 		src = gzReader
