@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	barWidth     = 60
-	updatePeriod = time.Second / 8
+	barWidth     = 40
+	updatePeriod = time.Second / 4
 )
 
 type sample struct {
