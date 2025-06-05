@@ -17,12 +17,12 @@ func (f *BitFlags) Toggle(flag BitFlags) {
 	*f ^= flag
 }
 
-// Has checks if the specified bit(s) are set.
+// IsSet checks if the specified bit(s) are set.
 func (f BitFlags) IsSet(flag BitFlags) bool {
 	return f&flag == flag
 }
 
-// Has checks if the specified bit(s) are set.
+// IsNotSet checks if the specified bit(s) are not set.
 func (f BitFlags) IsNotSet(flag BitFlags) bool {
 	return f&flag != flag
 }
