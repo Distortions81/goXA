@@ -1,5 +1,7 @@
 # GoXA -- Go eXpress Archive
-
+<p align="center">
+  <img src="https://github.com/Distortions81/goXA/blob/main/Xango.png?raw=true" alt="Xango the Archivist" width="300"/>
+</p>
 GoXA is a gopher-friendly archiver written in Go. It's quick and simple, and still new enough that the paint is drying. Expect the odd bump and let the busy gophers know if you hit one.
 
 ## Features
