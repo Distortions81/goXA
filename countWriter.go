@@ -5,9 +5,20 @@ import (
 	"io"
 )
 
-func WriteString(w io.Writer, s string) {
-	binary.Write(w, binary.LittleEndian, uint16(len(s)))
-	w.Write([]byte(s))
+func WriteString(w io.Writer, s string) error {
+	if err := binary.Write(w, binary.LittleEndian, uint16(len(s))); err != nil {
+		return err
+	}
+
+	data := []byte(s)
+	for len(data) > 0 {
+		n, err := w.Write(data)
+		if err != nil {
+			return err
+		}
+		data = data[n:]
+	}
+	return nil
 }
 
 // a tiny io.Writer that counts bytes passed through
