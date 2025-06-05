@@ -210,9 +210,10 @@ func walkPaths(roots []string) (dirs []FileEntry, files []FileEntry, err error) 
 }
 
 // gatherMeta pulls the common metadata for a path.
-func gatherMeta(path string, info os.FileInfo) FileEntry {
+func gatherMeta(path, src string, info os.FileInfo) FileEntry {
 	entry := FileEntry{
 		Path:    path,
+		SrcPath: src,
 		Size:    uint64(info.Size()),
 		ModTime: info.ModTime(),
 	}
