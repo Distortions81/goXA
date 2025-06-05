@@ -70,7 +70,9 @@ the chosen destination directory.
 |------|-------------|
 | `-arc=` | Specify archive file name |
 | `-stdout` | Output archive to stdout |
-| `-progress=false` | Disable progress bar display |
+| `-progress=false` | Disable progress display |
+
+Progress output shows transfer speed and the current file being processed.
 
 ### Examples
 

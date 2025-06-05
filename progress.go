@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -25,10 +26,14 @@ type progressData struct {
 	speedWindow      []sample
 	speedWindowSize  time.Duration
 	lastPrintStr     string
+	file             atomic.Value
 }
 
 func progressTicker(p *progressData) (*progressData, chan struct{}) {
 	done := make(chan struct{})
+	if !progress {
+		return p, done
+	}
 
 	go func() {
 		ticker := time.NewTicker(updatePeriod)
@@ -49,6 +54,9 @@ func progressTicker(p *progressData) (*progressData, chan struct{}) {
 }
 
 func printProgress(p *progressData) {
+	if !progress {
+		return
+	}
 	now := time.Now()
 
 	// Compute progress
@@ -86,8 +94,10 @@ func printProgress(p *progressData) {
 	// Build progress bar
 	bar := "[" + strings.Repeat("=", filled) + strings.Repeat(" ", barWidth-filled) + "]"
 
+	fileName, _ := p.file.Load().(string)
+	fileName = filepath.Base(fileName)
 	// Format output (80 columns max)
-	out := fmt.Sprintf("\r%s %3.2f%% %v/s", bar, progress*100, humanize.Bytes(uint64(speed)))
+	out := fmt.Sprintf("\r%s %3.2f%% %v/s %s", bar, progress*100, humanize.Bytes(uint64(speed)), fileName)
 	if len(out) > 80 {
 		out = out[:80]
 	}

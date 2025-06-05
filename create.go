@@ -144,6 +144,7 @@ func writeEntries(offsetLoc uint64, bf *BufferedFile, files []FileEntry) {
 	defer close(done)
 
 	for i, entry := range files {
+		p.file.Store(entry.Path)
 
 		file, err := os.Open(entry.Path)
 		if err != nil {

@@ -167,6 +167,14 @@ func extract(destinations []string, listOnly bool) {
 
 	doLog(false, "Read index: %v files.", len(fileList))
 
+	var totalBytes int64
+	for _, entry := range fileList {
+		totalBytes += int64(entry.Size)
+	}
+
+	p, done := progressTicker(&progressData{total: totalBytes, speedWindowSize: time.Second * 5})
+	defer close(done)
+
 	for _, item := range dirList {
 		perms := os.FileMode(0644)
 		if lfeat.IsSet(fPermissions) {
@@ -197,13 +205,13 @@ func extract(destinations []string, listOnly bool) {
 			wg.Add()
 			go func(item *FileEntry) {
 				defer wg.Done()
-				handleFile(destination, lfeat, item)
+				handleFile(destination, lfeat, item, p)
 			}(&fileList[f])
 		}
 		wg.Wait()
 	} else {
 		for f := range fileList {
-			handleFile(destination, lfeat, &fileList[f])
+			handleFile(destination, lfeat, &fileList[f], p)
 		}
 	}
 
@@ -212,7 +220,7 @@ func extract(destinations []string, listOnly bool) {
 	}
 }
 
-func handleFile(destination string, lfeat BitFlags, item *FileEntry) {
+func handleFile(destination string, lfeat BitFlags, item *FileEntry, p *progressData) {
 	if item.Offset == 0 {
 		skippedFiles.Add(1)
 		return
@@ -286,8 +294,11 @@ func handleFile(destination string, lfeat BitFlags, item *FileEntry) {
 		}
 	}
 
+	p.file.Store(item.Path)
+
 	//Create buffer and copy
-	bf := NewBufferedFile(newFile, writeBuffer, &progressData{})
+	bf := NewBufferedFile(newFile, writeBuffer, p)
+	bf.doCount = true
 
 	//Read checksum
 	var expectedChecksum = make([]byte, checksumSize)
@@ -316,6 +327,8 @@ func handleFile(destination string, lfeat BitFlags, item *FileEntry) {
 		defer gzReader.Close()
 		src = gzReader
 	}
+
+	src = countingReader{r: src, p: p}
 
 	var writer io.Writer = bf
 	var hashSum []byte
