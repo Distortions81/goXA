@@ -11,7 +11,10 @@ import (
 )
 
 const (
-	barWidth     = 40
+	// barWidth sets the number of characters used for the visual progress bar
+	// portion of the display. A slightly shorter bar leaves room for the
+	// current filename so it remains visible as operations progress.
+	barWidth     = 45
 	updatePeriod = time.Second / 4
 )
 
