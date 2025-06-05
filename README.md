@@ -114,6 +114,21 @@ goxa l -arc=mybackup.goxa
 - 🛠 Archive comment field
 - 🛠 Encrypted archives
 
+## Security Notes
+
+- **Archive extraction uses path sanitization** to prevent directory traversal, but
+  enabling the `a` option allows files to be written to absolute paths. An
+  attacker could overwrite arbitrary files if you extract an untrusted archive
+  with `a` enabled.
+- Existing symbolic links in the destination are not resolved before writing
+  files. A malicious archive might exploit symlinks to write outside the target
+  directory when extracting with absolute paths.
+- File sizes stored in the archive are truncated to Go's `int64` before copying.
+  Extremely large or corrupted size fields may panic the extractor.
+- Command-line option parsing currently shortens the options string while
+  iterating, which could lead to unexpected failures if the program misreads the
+  provided flags.
+
 ## License
 
 This project is licensed under the MIT License.
