@@ -2,12 +2,14 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"time"
 
 	"github.com/dustin/go-humanize"
+	"golang.org/x/term"
 )
 
 const (
@@ -17,6 +19,13 @@ const (
 	barWidth     = 45
 	updatePeriod = time.Second / 4
 )
+
+func getLineWidth() int {
+	if w, _, err := term.GetSize(int(os.Stdout.Fd())); err == nil && w > 0 {
+		return w
+	}
+	return 80
+}
 
 type sample struct {
 	timestamp time.Time
@@ -108,15 +117,18 @@ func printProgress(p *progressData) {
 
 	fileName, _ := p.file.Load().(string)
 	fileName = filepath.Base(fileName)
-	// Format output (80 columns max)
-	out := fmt.Sprintf("\r%s %3.2f%% %v/s %s", bar, progress*100, humanize.Bytes(uint64(speed)), fileName)
-	if len(out) > 80 {
-		out = out[:80]
+
+	// Format output according to terminal width
+	out := fmt.Sprintf("%s %3.2f%% %v/s %s", bar, progress*100, humanize.Bytes(uint64(speed)), fileName)
+	width := getLineWidth()
+	if len(out) > width {
+		out = out[:width]
 	}
 
 	// Print only if changed (reduce flicker)
 	if out != p.lastPrintStr {
-		fmt.Print(out)
+		// Clear the previous line before printing the new progress
+		fmt.Printf("\r\033[K%s", out)
 		p.lastPrintStr = out
 	}
 }
