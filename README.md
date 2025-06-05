@@ -59,6 +59,7 @@ goxa [mode][options] -arc=archiveFile [additional arguments]
 | `v` | Verbose logging |
 | `f` | Force overwrite existing files / ignore read errors |
 
+
 Paths are stored relative to the given inputs by default. Use `a` when
 extracting to write files to their original absolute locations. If `a` is not
 specified for extraction, any absolute paths in the archive are recreated under

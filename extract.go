@@ -185,8 +185,7 @@ func extract(destinations []string, listOnly bool) {
 		}
 		var dirPath string
 		var err error
-		useAbs := features.IsSet(fAbsolutePaths) && lfeat.IsSet(fAbsolutePaths)
-		if useAbs {
+		if lfeat.IsSet(fAbsolutePaths) {
 			dirPath = filepath.Clean(item.Path)
 		} else {
 			dirPath, err = safeJoin(destination, item.Path)
@@ -230,8 +229,7 @@ func handleFile(destination string, lfeat BitFlags, item *FileEntry, p *progress
 	}
 	var err error
 	var finalPath string
-	useAbs := features.IsSet(fAbsolutePaths) && lfeat.IsSet(fAbsolutePaths)
-	if useAbs {
+	if lfeat.IsSet(fAbsolutePaths) {
 		finalPath = filepath.Clean(item.Path)
 	} else {
 		finalPath, err = safeJoin(destination, item.Path)
