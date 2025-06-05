@@ -7,6 +7,7 @@ import (
 	"os"
 	"runtime/pprof"
 
+	"path/filepath"
 	"strings"
 )
 
@@ -34,10 +35,23 @@ func main() {
 	}
 	cmd := strings.ToLower(os.Args[1])
 	flagSet := flag.NewFlagSet("goxa", flag.ExitOnError)
+	var sel string
 	flagSet.StringVar(&archivePath, "arc", defaultArchiveName, "archive file name (extension not required)")
 	flagSet.BoolVar(&toStdOut, "stdout", false, "output archive data to stdout")
 	flagSet.BoolVar(&progress, "progress", true, "show progress bar")
+	flagSet.StringVar(&sel, "files", "", "comma-separated list of files and directories to extract")
 	flagSet.Parse(os.Args[2:])
+
+	if sel != "" {
+		parts := strings.Split(sel, ",")
+		for _, p := range parts {
+			p = strings.TrimSpace(p)
+			if p == "" {
+				continue
+			}
+			extractList = append(extractList, filepath.Clean(p))
+		}
+	}
 
 	//Clean up archive name
 	archivePath = removeExtension(archivePath)

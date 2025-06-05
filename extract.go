@@ -155,9 +155,14 @@ func extract(destinations []string, listOnly bool) {
 		fileCount := 0
 		byteCount := 0
 		for _, item := range dirList {
-			fmt.Printf("%v\n", item.Path)
+			if isSelected(item.Path) {
+				fmt.Printf("%v\n", item.Path)
+			}
 		}
 		for _, item := range fileList {
+			if !isSelected(item.Path) {
+				continue
+			}
 			fileCount++
 			byteCount += int(item.Size)
 			fmt.Printf("%v\n", item.Path)
@@ -179,7 +184,12 @@ func extract(destinations []string, listOnly bool) {
 	doLog(false, "Read index: %v files.", len(fileList))
 
 	var totalBytes int64
+	selectedFiles := 0
 	for _, entry := range fileList {
+		if !isSelected(entry.Path) {
+			continue
+		}
+		selectedFiles++
 		totalBytes += int64(entry.Size)
 	}
 
@@ -190,6 +200,9 @@ func extract(destinations []string, listOnly bool) {
 	}()
 
 	for _, item := range dirList {
+		if !isSelected(item.Path) {
+			continue
+		}
 		perms := os.FileMode(0644)
 		if lfeat.IsSet(fPermissions) {
 			perms = item.Mode
@@ -215,6 +228,9 @@ func extract(destinations []string, listOnly bool) {
 	if lfeat.IsNotSet(fNoCompress) {
 		wg := sizedwaitgroup.New(runtime.NumCPU())
 		for f := range fileList {
+			if !isSelected(fileList[f].Path) {
+				continue
+			}
 			wg.Add()
 			go func(item *FileEntry) {
 				defer wg.Done()
@@ -224,11 +240,14 @@ func extract(destinations []string, listOnly bool) {
 		wg.Wait()
 	} else {
 		for f := range fileList {
+			if !isSelected(fileList[f].Path) {
+				continue
+			}
 			_ = handleFile(destination, lfeat, &fileList[f], p)
 		}
 	}
 
-	if lfeat.IsSet(fChecksums) && int(checksumCount.Load()) == int(numFiles-uint64(skippedFiles.Load())) {
+	if lfeat.IsSet(fChecksums) && int(checksumCount.Load()) == selectedFiles-int(skippedFiles.Load()) {
 		doLog(false, "All checksums verified.")
 	}
 }
