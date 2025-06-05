@@ -2,17 +2,31 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"time"
 
 	"github.com/dustin/go-humanize"
+	"golang.org/x/term"
 )
 
 const (
-	barWidth     = 60
-	updatePeriod = time.Second / 8
+	// maxBarWidth limits the progress bar size so that extremely wide
+	// terminals don't allocate a huge bar. The actual width used is
+	// calculated dynamically based on the terminal size and other
+	// displayed information.
+	maxBarWidth  = 60
+	updatePeriod = time.Second / 4
 )
+
+func getLineWidth() int {
+	if w, _, err := term.GetSize(int(os.Stdout.Fd())); err == nil && w > 0 {
+		return w
+	}
+	return 80
+}
 
 type sample struct {
 	timestamp time.Time
@@ -25,14 +39,21 @@ type progressData struct {
 	speedWindow      []sample
 	speedWindowSize  time.Duration
 	lastPrintStr     string
+	file             atomic.Value
 }
 
-func progressTicker(p *progressData) (*progressData, chan struct{}) {
+func progressTicker(p *progressData) (*progressData, chan struct{}, chan struct{}) {
 	done := make(chan struct{})
+	finished := make(chan struct{})
+	if !progress {
+		close(finished)
+		return p, done, finished
+	}
 
 	go func() {
 		ticker := time.NewTicker(updatePeriod)
 		defer ticker.Stop()
+		defer close(finished)
 
 		for {
 			select {
@@ -40,22 +61,30 @@ func progressTicker(p *progressData) (*progressData, chan struct{}) {
 				printProgress(p)
 			case <-done:
 				printProgress(p)
+				if progress {
+					fmt.Print("\n")
+				}
 				return
 			}
 		}
 	}()
 
-	return p, done
+	return p, done, finished
 }
 
 func printProgress(p *progressData) {
+	if !progress {
+		return
+	}
 	now := time.Now()
 
 	// Compute progress
-	progress := float64(p.current.Load()) / float64(p.total)
-	filled := int(progress * barWidth)
-	if filled > barWidth {
-		filled = barWidth
+	progress := 1.0
+	if p.total > 0 {
+		progress = float64(p.current.Load()) / float64(p.total)
+		if progress > 1 {
+			progress = 1
+		}
 	}
 
 	// Add current sample
@@ -80,18 +109,32 @@ func printProgress(p *progressData) {
 		speed = float64(bytesDelta) / seconds
 	}
 
-	// Build progress bar
+	fileName, _ := p.file.Load().(string)
+	fileName = filepath.Base(fileName)
+
+	// Build the informational part of the line and determine the bar width
+	info := fmt.Sprintf(" %3.2f%% %v/s %s", progress*100, humanize.Bytes(uint64(speed)), fileName)
+	width := getLineWidth()
+	barWidth := width - len(info) - 2 // 2 for the surrounding []
+	if barWidth > maxBarWidth {
+		barWidth = maxBarWidth
+	}
+	if barWidth < 0 {
+		barWidth = 0
+	}
+
+	filled := int(progress * float64(barWidth))
+	if filled > barWidth {
+		filled = barWidth
+	}
 	bar := "[" + strings.Repeat("=", filled) + strings.Repeat(" ", barWidth-filled) + "]"
 
-	// Format output (80 columns max)
-	out := fmt.Sprintf("\r%s %3.2f%% %v/s", bar, progress*100, humanize.Bytes(uint64(speed)))
-	if len(out) > 80 {
-		out = out[:80]
-	}
+	out := bar + info
 
 	// Print only if changed (reduce flicker)
 	if out != p.lastPrintStr {
-		fmt.Print(out)
+		// Clear the previous line before printing the new progress
+		fmt.Printf("\r\033[K%s", out)
 		p.lastPrintStr = out
 	}
 }

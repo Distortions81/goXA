@@ -1,20 +1,28 @@
 package main
 
 import (
-	"bufio"
-	"encoding/binary"
-	"io"
-	"os"
+        "bufio"
+        "encoding/binary"
+        "fmt"
+        "io"
+        "os"
+        "unicode/utf8"
 )
 
 // Read string length, then the string
-func ReadString(w io.Reader) string {
-	var stringLength uint16
-	binary.Read(w, binary.LittleEndian, &stringLength)
-	stringData := make([]byte, stringLength)
-	binary.Read(w, binary.LittleEndian, &stringData)
-
-	return string(stringData)
+func ReadString(w io.Reader) (string, error) {
+        var stringLength uint16
+        if err := binary.Read(w, binary.LittleEndian, &stringLength); err != nil {
+                return "", err
+        }
+        stringData := make([]byte, stringLength)
+        if _, err := io.ReadFull(w, stringData); err != nil {
+                return "", err
+        }
+        if !utf8.Valid(stringData) {
+                return "", fmt.Errorf("invalid UTF-8 string")
+        }
+        return string(stringData), nil
 }
 
 type BinReader struct {

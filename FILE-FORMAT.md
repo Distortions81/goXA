@@ -62,6 +62,7 @@ The features field is a 32-bit mask. Possible flags include:
 | `fChecksums`     | 0x10 | Include per-file BLAKE2b checksums |
 | `fNoCompress`    | 0x20 | Disable compression |
 | `fIncludeInvis`  | 0x40 | Include invisible files |
+| `fSpecialFiles`  | 0x80 | Include special files (symlinks, devices) |
 
 > Note: multiple flags may be combined.
 
@@ -103,6 +104,8 @@ For each file:
 | ModTime (optional)| int64  | UNIX timestamp (if `fModDates`) |
 | Path Length       | uint16 | Byte count |
 | Path              | string | Path as UTF-8 string |
+| Type              | uint8  | Entry type (file, symlink, hardlink, other) |
+| Link Target       | string | For links, the referenced path |
 
 ---
 
@@ -149,6 +152,7 @@ For each file:
 
 ---
 
+- Special file entries (symlinks, hardlinks, devices) are only stored when `fSpecialFiles` is set and contain no data.
 ## Versioning
 
 The current format version is 1.

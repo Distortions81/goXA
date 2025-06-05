@@ -7,6 +7,7 @@ import (
 	"os"
 	"runtime/pprof"
 
+	"path/filepath"
 	"strings"
 )
 
@@ -34,10 +35,23 @@ func main() {
 	}
 	cmd := strings.ToLower(os.Args[1])
 	flagSet := flag.NewFlagSet("goxa", flag.ExitOnError)
+	var sel string
 	flagSet.StringVar(&archivePath, "arc", defaultArchiveName, "archive file name (extension not required)")
 	flagSet.BoolVar(&toStdOut, "stdout", false, "output archive data to stdout")
 	flagSet.BoolVar(&progress, "progress", true, "show progress bar")
+	flagSet.StringVar(&sel, "files", "", "comma-separated list of files and directories to extract")
 	flagSet.Parse(os.Args[2:])
+
+	if sel != "" {
+		parts := strings.Split(sel, ",")
+		for _, p := range parts {
+			p = strings.TrimSpace(p)
+			if p == "" {
+				continue
+			}
+			extractList = append(extractList, filepath.Clean(p))
+		}
+	}
 
 	//Clean up archive name
 	archivePath = removeExtension(archivePath)
@@ -59,6 +73,8 @@ func main() {
 			features.Set(fNoCompress)
 		case 'i':
 			features.Set(fIncludeInvis)
+		case 'o':
+			features.Set(fSpecialFiles)
 		case 'v':
 			verboseMode = true
 		case 'f':
@@ -98,7 +114,7 @@ func main() {
 }
 
 func showUsage() {
-	fmt.Println("Usage: goxa [c|l|x][apmsnive] -arc=arcFile [input paths/files...] or [destination]")
+	fmt.Println("Usage: goxa [c|l|x][apmsniveo] -arc=arcFile [input paths/files...] or [destination]")
 	fmt.Println("Output archive to stdout: -stdout, No progress bar: -progress=false")
 	fmt.Println("\nModes:")
 	fmt.Println("  c = Create a new archive. Requires input paths or files")
@@ -112,10 +128,10 @@ func showUsage() {
 	fmt.Println("  s = Sums")
 	fmt.Print("  n = No-compression	")
 	fmt.Println("  i = Include dotfiles")
-	fmt.Print("  v = Verbose logging	")
-	fmt.Println("  f = Force (overwrite files and ignore read errors)")
-
-	fmt.Println("\nExamples:")
+	fmt.Print("  o = Special files          ")
+	fmt.Println("  v = Verbose logging")
+	fmt.Print("  f = Force (overwrite files and ignore read errors)")
+	fmt.Println()
 	fmt.Println("  goxa c -arc=arcFile myStuff		(similar to zip)")
 	fmt.Println("  goxa cpmi -arc=arcFile myStuff	(similar to tar -czf)")
 	fmt.Println("")

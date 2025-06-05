@@ -22,10 +22,19 @@ const (
 	fChecksums
 	fNoCompress
 	fIncludeInvis
+	fSpecialFiles
 
 	fTop //Do not use, move or delete
 )
 
 var (
-	flagNames = []string{"None", "Absolute Paths", "Permissions", "Mod Dates", "Checksums", "No Compress", "Include Invis", "Unknown"}
+	flagNames = []string{"None", "Absolute Paths", "Permissions", "Mod Dates", "Checksums", "No Compress", "Include Invis", "Special Files", "Unknown"}
+)
+
+// Entry Types
+const (
+	entryFile uint8 = iota
+	entrySymlink
+	entryHardlink
+	entryOther
 )
