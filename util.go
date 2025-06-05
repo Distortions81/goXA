@@ -67,8 +67,73 @@ func doLog(verbose bool, format string, args ...interface{}) {
 	}
 }
 
+// safeJoin joins base and target, ensuring the result stays within base.
+func safeJoin(base, target string) (string, error) {
+	cleanBase := filepath.Clean(base)
+	cleanTarget := filepath.Clean(target)
+
+	if filepath.IsAbs(cleanTarget) {
+		cleanTarget = strings.TrimPrefix(cleanTarget, string(os.PathSeparator))
+	}
+
+	joined := filepath.Join(cleanBase, cleanTarget)
+	joined = filepath.Clean(joined)
+
+	prefix := cleanBase + string(os.PathSeparator)
+	if joined != cleanBase && !strings.HasPrefix(joined, prefix) {
+		return "", fmt.Errorf("illegal path: %s", target)
+	}
+
+	return joined, nil
+}
+
+// storedPath returns the archived path for fullPath based on root and the
+// fAbsolutePaths flag. When absolute paths are disabled, paths are stored
+// relative to the provided root's basename.
+func storedPath(root, fullPath string) string {
+	cleanFull := filepath.Clean(fullPath)
+
+	if features.IsSet(fAbsolutePaths) {
+		if filepath.IsAbs(cleanFull) {
+			return cleanFull
+		}
+		abs, err := filepath.Abs(cleanFull)
+		if err == nil {
+			return abs
+		}
+		return cleanFull
+	}
+
+	cleanRoot := filepath.Clean(root)
+	base := filepath.Base(cleanRoot)
+	if base == "." {
+		base = ""
+	}
+
+	rel, err := filepath.Rel(cleanRoot, cleanFull)
+	if err != nil {
+		rel = filepath.Base(cleanFull)
+	}
+	if rel == "." {
+		rel = ""
+	}
+
+	if base == "" {
+		return filepath.Clean(rel)
+	}
+
+	if rel == "" {
+		return filepath.Clean(base)
+	}
+
+	return filepath.Join(base, rel)
+}
+
 func walkPaths(roots []string) (dirs []FileEntry, files []FileEntry, err error) {
-	type dirState struct{ entryCount int }
+	type dirState struct {
+		entryCount int
+		info       os.FileInfo
+	}
 	states := make(map[string]*dirState)
 
 	for _, root := range roots {
@@ -76,21 +141,19 @@ func walkPaths(roots []string) (dirs []FileEntry, files []FileEntry, err error) 
 		if err != nil {
 			return nil, nil, err
 		}
+		root = filepath.Clean(root)
 
 		// File case
 		if !info.IsDir() {
 			if features.IsSet(fIncludeInvis) || !strings.HasPrefix(info.Name(), ".") {
-				metaData := gatherMeta(root, info)
-
-				if metaData.Mode&os.ModeSymlink != 0 {
-					files = append(files, metaData)
-				}
+				metaData := gatherMeta(storedPath(root, root), info)
+				files = append(files, metaData)
 			}
 			continue
 		}
 
 		// Directory case
-		states[root] = &dirState{}
+		states[storedPath(root, root)] = &dirState{info: info}
 		err = filepath.WalkDir(root, func(path string, d fs.DirEntry, walkErr error) error {
 			if walkErr != nil {
 				return walkErr
@@ -107,19 +170,23 @@ func walkPaths(roots []string) (dirs []FileEntry, files []FileEntry, err error) 
 				return nil
 			}
 
-			parent := filepath.Dir(path)
-			if st, ok := states[parent]; ok {
+			parentKey := storedPath(root, filepath.Dir(path))
+			if st, ok := states[parentKey]; ok {
 				st.entryCount++
 			}
 
 			if d.IsDir() {
-				states[path] = &dirState{}
+				info, err := d.Info()
+				if err != nil {
+					return err
+				}
+				states[storedPath(root, path)] = &dirState{info: info}
 			} else {
 				info, err := d.Info()
 				if err != nil {
 					return err
 				}
-				files = append(files, gatherMeta(path, info))
+				files = append(files, gatherMeta(storedPath(root, path), info))
 			}
 			return nil
 		})
@@ -131,11 +198,7 @@ func walkPaths(roots []string) (dirs []FileEntry, files []FileEntry, err error) 
 	// Collect only those dirs with zero entries
 	for path, st := range states {
 		if st.entryCount == 0 {
-			info, err := os.Stat(path)
-			if err != nil {
-				return nil, nil, err
-			}
-			dirs = append(dirs, gatherMeta(path, info))
+			dirs = append(dirs, gatherMeta(path, st.info))
 		}
 	}
 

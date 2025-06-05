@@ -59,6 +59,9 @@ goxa [mode][options] -arc=archiveFile [additional arguments]
 | `v` | Verbose logging |
 | `f` | Force overwrite existing files / ignore read errors |
 
+Paths are stored relative to the given inputs by default. Use `a` to preserve
+absolute paths during creation and extraction.
+
 ### Additional Global Flags
 
 | Flag | Description |

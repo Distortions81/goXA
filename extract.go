@@ -10,6 +10,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync/atomic"
@@ -171,7 +172,21 @@ func extract(destinations []string, listOnly bool) {
 		if lfeat.IsSet(fPermissions) {
 			perms = item.Mode
 		}
-		os.MkdirAll(item.Path, perms)
+		var dirPath string
+		var err error
+		if lfeat.IsSet(fAbsolutePaths) {
+			dirPath = filepath.Clean(item.Path)
+		} else {
+			dirPath, err = safeJoin(destination, item.Path)
+			if err != nil {
+				if doForce {
+					doLog(false, "invalid path: %v", item.Path)
+					continue
+				}
+				log.Fatalf("extract: invalid path %v", item.Path)
+			}
+		}
+		os.MkdirAll(dirPath, perms)
 	}
 	arc.Close()
 
@@ -202,8 +217,23 @@ func handleFile(destination string, lfeat BitFlags, item *FileEntry) {
 		return
 	}
 	var err error
+	var finalPath string
+	if lfeat.IsSet(fAbsolutePaths) {
+		finalPath = filepath.Clean(item.Path)
+	} else {
+		finalPath, err = safeJoin(destination, item.Path)
+		if err != nil {
+			if doForce {
+				doLog(false, "invalid path: %v", item.Path)
+				skippedFiles.Add(1)
+				return
+			}
+			log.Fatalf("invalid path: %v", item.Path)
+		}
+	}
+
 	//Make directories
-	dir := path.Dir(destination + item.Path)
+	dir := filepath.Dir(finalPath)
 	os.MkdirAll(dir, os.ModePerm)
 
 	//Set file perms, if needed
@@ -215,16 +245,16 @@ func handleFile(destination string, lfeat BitFlags, item *FileEntry) {
 	//Open file
 	var newFile *os.File
 	if doForce {
-		exists, _ := fileExists(destination + item.Path)
+		exists, _ := fileExists(finalPath)
 		if exists {
-			os.Chmod(destination+item.Path, 0644)
+			os.Chmod(finalPath, 0644)
 		}
-		newFile, err = os.OpenFile(destination+item.Path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+		newFile, err = os.OpenFile(finalPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 		if exists {
-			os.Chmod(destination+item.Path, filePerm)
+			os.Chmod(finalPath, filePerm)
 		}
 	} else {
-		newFile, err = os.OpenFile(destination+item.Path, os.O_CREATE|os.O_WRONLY, filePerm)
+		newFile, err = os.OpenFile(finalPath, os.O_CREATE|os.O_WRONLY, filePerm)
 	}
 	if err != nil {
 		if doForce {
