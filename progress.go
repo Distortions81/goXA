@@ -13,10 +13,11 @@ import (
 )
 
 const (
-	// barWidth sets the number of characters used for the visual progress bar
-	// portion of the display. A slightly shorter bar leaves room for the
-	// current filename so it remains visible as operations progress.
-	barWidth     = 45
+	// maxBarWidth limits the progress bar size so that extremely wide
+	// terminals don't allocate a huge bar. The actual width used is
+	// calculated dynamically based on the terminal size and other
+	// displayed information.
+	maxBarWidth  = 60
 	updatePeriod = time.Second / 4
 )
 
@@ -85,10 +86,6 @@ func printProgress(p *progressData) {
 			progress = 1
 		}
 	}
-	filled := int(progress * barWidth)
-	if filled > barWidth {
-		filled = barWidth
-	}
 
 	// Add current sample
 	var speed float64
@@ -112,18 +109,27 @@ func printProgress(p *progressData) {
 		speed = float64(bytesDelta) / seconds
 	}
 
-	// Build progress bar
-	bar := "[" + strings.Repeat("=", filled) + strings.Repeat(" ", barWidth-filled) + "]"
-
 	fileName, _ := p.file.Load().(string)
 	fileName = filepath.Base(fileName)
 
-	// Format output according to terminal width
-	out := fmt.Sprintf("%s %3.2f%% %v/s %s", bar, progress*100, humanize.Bytes(uint64(speed)), fileName)
+	// Build the informational part of the line and determine the bar width
+	info := fmt.Sprintf(" %3.2f%% %v/s %s", progress*100, humanize.Bytes(uint64(speed)), fileName)
 	width := getLineWidth()
-	if len(out) > width {
-		out = out[:width]
+	barWidth := width - len(info) - 2 // 2 for the surrounding []
+	if barWidth > maxBarWidth {
+		barWidth = maxBarWidth
 	}
+	if barWidth < 0 {
+		barWidth = 0
+	}
+
+	filled := int(progress * float64(barWidth))
+	if filled > barWidth {
+		filled = barWidth
+	}
+	bar := "[" + strings.Repeat("=", filled) + strings.Repeat(" ", barWidth-filled) + "]"
+
+	out := bar + info
 
 	// Print only if changed (reduce flicker)
 	if out != p.lastPrintStr {
