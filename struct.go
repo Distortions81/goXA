@@ -9,6 +9,7 @@ var (
 	archivePath                              string
 	verboseMode, doForce, toStdOut, progress bool
 	features                                 BitFlags
+	extractList                              []string
 )
 
 type FileEntry struct {
