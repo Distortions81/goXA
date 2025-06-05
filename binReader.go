@@ -8,13 +8,17 @@ import (
 )
 
 // Read string length, then the string
-func ReadString(w io.Reader) string {
+func ReadString(w io.Reader) (string, error) {
 	var stringLength uint16
-	binary.Read(w, binary.LittleEndian, &stringLength)
+	if err := binary.Read(w, binary.LittleEndian, &stringLength); err != nil {
+		return "", err
+	}
 	stringData := make([]byte, stringLength)
-	binary.Read(w, binary.LittleEndian, &stringData)
+	if err := binary.Read(w, binary.LittleEndian, &stringData); err != nil {
+		return "", err
+	}
 
-	return string(stringData)
+	return string(stringData), nil
 }
 
 type BinReader struct {

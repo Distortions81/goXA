@@ -53,37 +53,52 @@ func extract(destinations []string, listOnly bool) {
 
 	//Read header
 	readMagic := make([]byte, 4)
-	binary.Read(arc, binary.LittleEndian, &readMagic)
+	if err := binary.Read(arc, binary.LittleEndian, &readMagic); err != nil {
+		log.Fatalf("extract: failed to read magic: %v", err)
+	}
 	if string(readMagic) != magic {
 		log.Fatal("extract: File does not appear to be a goxa archive")
 	}
 
 	var readVersion uint16
-	binary.Read(arc, binary.LittleEndian, &readVersion)
+	if err := binary.Read(arc, binary.LittleEndian, &readVersion); err != nil {
+		log.Fatalf("extract: failed to read version: %v", err)
+	}
 	if readVersion != version {
 		log.Fatalf("extract: Archive is of an unsupported version: %v", readVersion)
 	}
 
 	var lfeat BitFlags
-	binary.Read(arc, binary.LittleEndian, &lfeat)
+	if err := binary.Read(arc, binary.LittleEndian, &lfeat); err != nil {
+		log.Fatalf("extract: failed to read feature flags: %v", err)
+	}
 	showFeatures(lfeat)
 
 	//Empty Directories
 	var numEmptyDirs uint64
-	binary.Read(arc, binary.LittleEndian, &numEmptyDirs)
+	if err := binary.Read(arc, binary.LittleEndian, &numEmptyDirs); err != nil {
+		log.Fatalf("extract: failed to read empty directory count: %v", err)
+	}
 
 	dirList := make([]FileEntry, numEmptyDirs)
 	for n := range numEmptyDirs {
 		var fileMode uint32
 		var modTime int64
 		if lfeat.IsSet(fPermissions) {
-			binary.Read(arc, binary.LittleEndian, &fileMode)
+			if err := binary.Read(arc, binary.LittleEndian, &fileMode); err != nil {
+				log.Fatalf("extract: failed to read directory mode: %v", err)
+			}
 		}
 		if lfeat.IsSet(fModDates) {
-			binary.Read(arc, binary.LittleEndian, &modTime)
+			if err := binary.Read(arc, binary.LittleEndian, &modTime); err != nil {
+				log.Fatalf("extract: failed to read directory mod time: %v", err)
+			}
 		}
 
-		pathName := ReadString(arc)
+		pathName, err := ReadString(arc)
+		if err != nil {
+			log.Fatalf("extract: failed to read directory path: %v", err)
+		}
 
 		newDirEntry := FileEntry{Path: pathName, Mode: os.FileMode(fileMode), ModTime: time.Unix(modTime, 0).UTC()}
 		dirList[n] = newDirEntry
@@ -91,7 +106,9 @@ func extract(destinations []string, listOnly bool) {
 
 	//Files
 	var numFiles uint64
-	binary.Read(arc, binary.LittleEndian, &numFiles)
+	if err := binary.Read(arc, binary.LittleEndian, &numFiles); err != nil {
+		log.Fatalf("extract: failed to read file count: %v", err)
+	}
 
 	fileList := make([]FileEntry, numFiles)
 	for n := range numFiles {
@@ -99,15 +116,24 @@ func extract(destinations []string, listOnly bool) {
 		var fileMode uint32
 		var modTime int64
 
-		binary.Read(arc, binary.LittleEndian, &fileSize)
+		if err := binary.Read(arc, binary.LittleEndian, &fileSize); err != nil {
+			log.Fatalf("extract: failed to read file size: %v", err)
+		}
 		if lfeat&fPermissions != 0 {
-			binary.Read(arc, binary.LittleEndian, &fileMode)
+			if err := binary.Read(arc, binary.LittleEndian, &fileMode); err != nil {
+				log.Fatalf("extract: failed to read file mode: %v", err)
+			}
 		}
 		if lfeat&fModDates != 0 {
-			binary.Read(arc, binary.LittleEndian, &modTime)
+			if err := binary.Read(arc, binary.LittleEndian, &modTime); err != nil {
+				log.Fatalf("extract: failed to read file mod time: %v", err)
+			}
 		}
 
-		pathName := ReadString(arc)
+		pathName, err := ReadString(arc)
+		if err != nil {
+			log.Fatalf("extract: failed to read file path: %v", err)
+		}
 
 		newEntry := FileEntry{Path: pathName, Size: fileSize, Mode: fs.FileMode(fileMode), ModTime: time.Unix(modTime, 0).UTC()}
 		fileList[n] = newEntry
@@ -132,7 +158,9 @@ func extract(destinations []string, listOnly bool) {
 	//File offsets
 	for n := range numFiles {
 		var fileOffset uint64
-		binary.Read(arc, binary.LittleEndian, &fileOffset)
+		if err := binary.Read(arc, binary.LittleEndian, &fileOffset); err != nil {
+			log.Fatalf("extract: failed to read file offset: %v", err)
+		}
 		fileList[n].Offset = fileOffset
 	}
 
