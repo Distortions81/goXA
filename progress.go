@@ -108,15 +108,17 @@ func printProgress(p *progressData) {
 
 	fileName, _ := p.file.Load().(string)
 	fileName = filepath.Base(fileName)
+
 	// Format output (80 columns max)
-	out := fmt.Sprintf("\r%s %3.2f%% %v/s %s", bar, progress*100, humanize.Bytes(uint64(speed)), fileName)
+	out := fmt.Sprintf("%s %3.2f%% %v/s %s", bar, progress*100, humanize.Bytes(uint64(speed)), fileName)
 	if len(out) > 80 {
 		out = out[:80]
 	}
 
 	// Print only if changed (reduce flicker)
 	if out != p.lastPrintStr {
-		fmt.Print(out)
+		// Clear the previous line before printing the new progress
+		fmt.Printf("\r\033[K%s", out)
 		p.lastPrintStr = out
 	}
 }
