@@ -188,13 +188,25 @@ func extract(destinations []string, listOnly bool) {
 			wg.Add()
 			go func(item *FileEntry) {
 				defer wg.Done()
-				handleFile(destination, lfeat, item)
+				if err := handleFile(destination, lfeat, item); err != nil {
+					if doForce {
+						doLog(false, "Unable to open file: %v :: %v", item.Path, err)
+					} else {
+						log.Fatalf("Unable to open file: %v :: %v", item.Path, err)
+					}
+				}
 			}(&fileList[f])
 		}
 		wg.Wait()
 	} else {
 		for f := range fileList {
-			handleFile(destination, lfeat, &fileList[f])
+			if err := handleFile(destination, lfeat, &fileList[f]); err != nil {
+				if doForce {
+					doLog(false, "Unable to open file: %v :: %v", fileList[f].Path, err)
+				} else {
+					log.Fatalf("Unable to open file: %v :: %v", fileList[f].Path, err)
+				}
+			}
 		}
 	}
 
@@ -203,10 +215,10 @@ func extract(destinations []string, listOnly bool) {
 	}
 }
 
-func handleFile(destination string, lfeat BitFlags, item *FileEntry) {
+func handleFile(destination string, lfeat BitFlags, item *FileEntry) error {
 	if item.Offset == 0 {
 		skippedFiles.Add(1)
-		return
+		return nil
 	}
 	var err error
 	//Make directories
@@ -238,14 +250,10 @@ func handleFile(destination string, lfeat BitFlags, item *FileEntry) {
 			os.Chmod(destination+item.Path, filePerm)
 		}
 	} else {
-		newFile, err = os.OpenFile(destination+item.Path, os.O_CREATE|os.O_WRONLY, filePerm)
+		newFile, err = os.OpenFile(destination+item.Path, os.O_CREATE|os.O_WRONLY|os.O_EXCL, filePerm)
 	}
 	if err != nil {
-		if doForce {
-			doLog(false, "Unable to open file: %v :: %v", item.Path, err)
-		} else {
-			log.Fatalf("Unable to open file: %v :: %v", item.Path, err)
-		}
+		return err
 	}
 
 	//Seek to data in archive
@@ -277,7 +285,7 @@ func handleFile(destination string, lfeat BitFlags, item *FileEntry) {
 			} else {
 				log.Fatalf("gzip error: Unable to create reader: %v :: %v", item.Path, err)
 			}
-			return
+			return nil
 		}
 		defer gzReader.Close()
 		src = gzReader
@@ -320,4 +328,5 @@ func handleFile(destination string, lfeat BitFlags, item *FileEntry) {
 			}
 		}
 	}
+	return nil
 }
