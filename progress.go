@@ -63,6 +63,9 @@ func printProgress(p *progressData) {
 	progress := 1.0
 	if p.total > 0 {
 		progress = float64(p.current.Load()) / float64(p.total)
+		if progress > 1 {
+			progress = 1
+		}
 	}
 	filled := int(progress * barWidth)
 	if filled > barWidth {

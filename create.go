@@ -156,28 +156,23 @@ func writeEntries(offsetLoc uint64, bf *BufferedFile, files []FileEntry) {
 				log.Fatalf("Unable to open file: %v", entry.Path)
 			}
 		}
-		br := NewBufferedFile(file, writeBuffer, p)
-
-		// Compute checksum if needed
+		// Compute checksum first without counting progress
 		var checksum []byte
 		if features.IsSet(fChecksums) {
 			h.Reset()
-
-			// Stream file into hash
-			if _, err := io.Copy(h, br); err != nil {
+			if _, err := io.Copy(h, file); err != nil {
 				log.Fatalf("checksum compute failed: %v", err)
 			}
-			// Reset file to beginning for actual writing
-			if _, err := br.Seek(0, io.SeekStart); err != nil {
+			checksum = h.Sum(nil)
+			if _, err := file.Seek(0, io.SeekStart); err != nil {
 				log.Fatalf("seek reset failed: %v", err)
 			}
-			// Grab sum
-			checksum = h.Sum(nil) // 32 bytes
-
 			if _, err := bf.Write(checksum); err != nil {
 				log.Fatalf("writing checksum failed: %v", err)
 			}
 		}
+
+		br := NewBufferedFile(file, writeBuffer, p)
 
 		// Write file data (compressed or not)
 		var written uint64
@@ -197,6 +192,7 @@ func writeEntries(offsetLoc uint64, bf *BufferedFile, files []FileEntry) {
 			}
 			written = uint64(cw.Count())
 		}
+
 		br.Close()
 
 		offsets[i] = cOffset
