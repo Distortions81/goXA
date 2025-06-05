@@ -67,7 +67,8 @@ func doLog(verbose bool, format string, args ...interface{}) {
 	}
 }
 
-// safeJoin joins base and target, ensuring the result stays within base.
+// safeJoin joins base and target, ensuring the result stays within base and
+// does not escape via symlinks that already exist on disk.
 func safeJoin(base, target string) (string, error) {
 	cleanBase := filepath.Clean(base)
 	cleanTarget := filepath.Clean(target)
@@ -82,6 +83,26 @@ func safeJoin(base, target string) (string, error) {
 	prefix := cleanBase + string(os.PathSeparator)
 	if joined != cleanBase && !strings.HasPrefix(joined, prefix) {
 		return "", fmt.Errorf("illegal path: %s", target)
+	}
+
+	rel, err := filepath.Rel(cleanBase, joined)
+	if err != nil {
+		return "", err
+	}
+	parts := strings.Split(rel, string(os.PathSeparator))
+	cur := cleanBase
+	for _, part := range parts {
+		cur = filepath.Join(cur, part)
+		info, err := os.Lstat(cur)
+		if err != nil {
+			if os.IsNotExist(err) {
+				break
+			}
+			return "", err
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return "", fmt.Errorf("symlink traversal detected: %s", cur)
+		}
 	}
 
 	return joined, nil

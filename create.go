@@ -81,9 +81,9 @@ func writeHeader(emptyDirs, files []FileEntry) (uint64, []byte) {
 		if features&fModDates != 0 {
 			binary.Write(&header, binary.LittleEndian, int64(folder.ModTime.Unix()))
 		}
-                if err := WriteString(&header, folder.Path); err != nil {
-                        log.Fatalf("write string failed: %v", err)
-                }
+		if err := WriteString(&header, folder.Path); err != nil {
+			log.Fatalf("write string failed: %v", err)
+		}
 	}
 
 	//File info
@@ -96,9 +96,9 @@ func writeHeader(emptyDirs, files []FileEntry) (uint64, []byte) {
 		if features&fModDates != 0 {
 			binary.Write(&header, binary.LittleEndian, int64(file.ModTime.Unix()))
 		}
-                if err := WriteString(&header, file.Path); err != nil {
-                        log.Fatalf("write string failed: %v", err)
-                }
+		if err := WriteString(&header, file.Path); err != nil {
+			log.Fatalf("write string failed: %v", err)
+		}
 	}
 
 	//Save end of header, so we can update offsets later
@@ -240,7 +240,7 @@ func writeEntriesThreaded(offsetLoc uint64, bf *BufferedFile, files []FileEntry)
 			entry.NumBlocks = uint64(math.Ceil(float64(entry.Size) / float64(blockSize)))
 			rbuf := make([]byte, blockSize)
 
-			for blockNum := range entry.NumBlocks {
+			for blockNum := uint64(0); blockNum < entry.NumBlocks; blockNum++ {
 				readBuf := bytes.NewBuffer(rbuf)
 				io.Copy(readBuf, file)
 
@@ -267,7 +267,7 @@ func writeEntriesThreaded(offsetLoc uint64, bf *BufferedFile, files []FileEntry)
 	//Update blockOffsets in archive here
 	var writtenBlock uint64
 	for _, entry := range files {
-		for block := range entry.NumBlocks {
+		for block := uint64(0); block < entry.NumBlocks; block++ {
 			newOffset := blockIndexOffset + int(entry.BlockOffset[block])
 			_, err := bf.Seek(int64(offsetLoc+writtenBlock), io.SeekStart)
 			if err != nil {

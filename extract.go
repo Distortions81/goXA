@@ -82,7 +82,7 @@ func extract(destinations []string, listOnly bool) {
 	}
 
 	dirList := make([]FileEntry, numEmptyDirs)
-	for n := range numEmptyDirs {
+	for n := uint64(0); n < numEmptyDirs; n++ {
 		var fileMode uint32
 		var modTime int64
 		if lfeat.IsSet(fPermissions) {
@@ -112,7 +112,7 @@ func extract(destinations []string, listOnly bool) {
 	}
 
 	fileList := make([]FileEntry, numFiles)
-	for n := range numFiles {
+	for n := uint64(0); n < numFiles; n++ {
 		var fileSize uint64
 		var fileMode uint32
 		var modTime int64
@@ -157,7 +157,7 @@ func extract(destinations []string, listOnly bool) {
 	}
 
 	//File offsets
-	for n := range numFiles {
+	for n := uint64(0); n < numFiles; n++ {
 		var fileOffset uint64
 		if err := binary.Read(arc, binary.LittleEndian, &fileOffset); err != nil {
 			log.Fatalf("extract: failed to read file offset: %v", err)
@@ -267,7 +267,16 @@ func handleFile(destination string, lfeat BitFlags, item *FileEntry) {
 	}
 
 	//Seek to data in archive
-	arcB, _ := NewBinReader(archivePath)
+	arcB, err := NewBinReader(archivePath)
+	if err != nil {
+		if doForce {
+			doLog(false, "unable to open archive reader: %v", err)
+			skippedFiles.Add(1)
+			return
+		}
+		log.Fatalf("unable to open archive reader: %v", err)
+	}
+	defer arcB.Close()
 	_, err = arcB.Seek(int64(item.Offset), io.SeekStart)
 	if err != nil {
 		if doForce {
@@ -283,7 +292,14 @@ func handleFile(destination string, lfeat BitFlags, item *FileEntry) {
 	//Read checksum
 	var expectedChecksum = make([]byte, checksumSize)
 	if lfeat.IsSet(fChecksums) {
-		arcB.Read(expectedChecksum)
+		if _, err := io.ReadFull(arcB, expectedChecksum); err != nil {
+			if doForce {
+				doLog(false, "unable to read checksum for %v: %v", item.Path, err)
+				skippedFiles.Add(1)
+				return
+			}
+			log.Fatalf("unable to read checksum for %v: %v", item.Path, err)
+		}
 	}
 
 	var src io.Reader = arcB
