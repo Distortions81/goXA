@@ -56,7 +56,9 @@ func create(inputPaths []string) error {
 		log.Fatalf("create: os.Create: %v", err)
 	}
 
-	bf.Close()
+	if err := bf.Close(); err != nil {
+		log.Fatalf("create: close failed: %v", err)
+	}
 	doLog(false, "\nWrote %v, %v containing %v files.", archivePath, humanize.Bytes(uint64(info.Size())), len(files))
 	return nil
 }
