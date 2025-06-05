@@ -2,21 +2,31 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"time"
 
 	"github.com/dustin/go-humanize"
+	"golang.org/x/term"
 )
 
 const (
-	// barWidth sets the number of characters used for the visual progress bar
-	// portion of the display. A slightly shorter bar leaves room for the
-	// current filename so it remains visible as operations progress.
-	barWidth     = 45
+	// maxBarWidth limits the progress bar size so that extremely wide
+	// terminals don't allocate a huge bar. The actual width used is
+	// calculated dynamically based on the terminal size and other
+	// displayed information.
+	maxBarWidth  = 60
 	updatePeriod = time.Second / 4
 )
+
+func getLineWidth() int {
+	if w, _, err := term.GetSize(int(os.Stdout.Fd())); err == nil && w > 0 {
+		return w
+	}
+	return 80
+}
 
 type sample struct {
 	timestamp time.Time
@@ -76,10 +86,6 @@ func printProgress(p *progressData) {
 			progress = 1
 		}
 	}
-	filled := int(progress * barWidth)
-	if filled > barWidth {
-		filled = barWidth
-	}
 
 	// Add current sample
 	var speed float64
@@ -103,17 +109,27 @@ func printProgress(p *progressData) {
 		speed = float64(bytesDelta) / seconds
 	}
 
-	// Build progress bar
-	bar := "[" + strings.Repeat("=", filled) + strings.Repeat(" ", barWidth-filled) + "]"
-
 	fileName, _ := p.file.Load().(string)
 	fileName = filepath.Base(fileName)
 
-	// Format output (80 columns max)
-	out := fmt.Sprintf("%s %3.2f%% %v/s %s", bar, progress*100, humanize.Bytes(uint64(speed)), fileName)
-	if len(out) > 80 {
-		out = out[:80]
+	// Build the informational part of the line and determine the bar width
+	info := fmt.Sprintf(" %3.2f%% %v/s %s", progress*100, humanize.Bytes(uint64(speed)), fileName)
+	width := getLineWidth()
+	barWidth := width - len(info) - 2 // 2 for the surrounding []
+	if barWidth > maxBarWidth {
+		barWidth = maxBarWidth
 	}
+	if barWidth < 0 {
+		barWidth = 0
+	}
+
+	filled := int(progress * float64(barWidth))
+	if filled > barWidth {
+		filled = barWidth
+	}
+	bar := "[" + strings.Repeat("=", filled) + strings.Repeat(" ", barWidth-filled) + "]"
+
+	out := bar + info
 
 	// Print only if changed (reduce flicker)
 	if out != p.lastPrintStr {

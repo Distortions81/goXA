@@ -30,7 +30,7 @@ func (bf *BufferedFile) Write(p []byte) (int, error) {
 	return n, err
 }
 
-// Read method
+// Read implements io.Reader.
 func (bf *BufferedFile) Read(p []byte) (int, error) {
 	n, err := bf.reader.Read(p)
 	bf.progress.current.Add(int64(n))

@@ -7,6 +7,7 @@ require (
 	github.com/klauspost/pgzip v1.2.6
 	github.com/remeh/sizedwaitgroup v1.0.0
 	golang.org/x/crypto v0.38.0
+	golang.org/x/term v0.32.0
 )
 
 require (
