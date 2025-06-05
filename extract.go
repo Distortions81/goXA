@@ -10,6 +10,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync/atomic"
@@ -81,7 +82,7 @@ func extract(destinations []string, listOnly bool) {
 	}
 
 	dirList := make([]FileEntry, numEmptyDirs)
-	for n := range numEmptyDirs {
+	for n := uint64(0); n < numEmptyDirs; n++ {
 		var fileMode uint32
 		var modTime int64
 		if lfeat.IsSet(fPermissions) {
@@ -111,7 +112,7 @@ func extract(destinations []string, listOnly bool) {
 	}
 
 	fileList := make([]FileEntry, numFiles)
-	for n := range numFiles {
+	for n := uint64(0); n < numFiles; n++ {
 		var fileSize uint64
 		var fileMode uint32
 		var modTime int64
@@ -156,7 +157,7 @@ func extract(destinations []string, listOnly bool) {
 	}
 
 	//File offsets
-	for n := range numFiles {
+	for n := uint64(0); n < numFiles; n++ {
 		var fileOffset uint64
 		if err := binary.Read(arc, binary.LittleEndian, &fileOffset); err != nil {
 			log.Fatalf("extract: failed to read file offset: %v", err)
@@ -166,19 +167,38 @@ func extract(destinations []string, listOnly bool) {
 
 	doLog(false, "Read index: %v files.", len(fileList))
 
+	var totalBytes int64
+	for _, entry := range fileList {
+		totalBytes += int64(entry.Size)
+	}
+
+	p, done, finished := progressTicker(&progressData{total: totalBytes, speedWindowSize: time.Second * 5})
+	defer func() {
+		close(done)
+		<-finished
+	}()
+
 	for _, item := range dirList {
 		perms := os.FileMode(0644)
 		if lfeat.IsSet(fPermissions) {
 			perms = item.Mode
 		}
-		if err := os.MkdirAll(item.Path, perms); err != nil {
-			if doForce {
-				doLog(false, "Unable to create directory: %v :: %v", item.Path, err)
-				continue
-			} else {
-				log.Fatalf("Unable to create directory: %v :: %v", item.Path, err)
+		var dirPath string
+		var err error
+		useAbs := features.IsSet(fAbsolutePaths) && lfeat.IsSet(fAbsolutePaths)
+		if useAbs {
+			dirPath = filepath.Clean(item.Path)
+		} else {
+			dirPath, err = safeJoin(destination, item.Path)
+			if err != nil {
+				if doForce {
+					doLog(false, "invalid path: %v", item.Path)
+					continue
+				}
+				log.Fatalf("extract: invalid path %v", item.Path)
 			}
 		}
+		os.MkdirAll(dirPath, perms)
 	}
 	arc.Close()
 
@@ -188,25 +208,13 @@ func extract(destinations []string, listOnly bool) {
 			wg.Add()
 			go func(item *FileEntry) {
 				defer wg.Done()
-				if err := handleFile(destination, lfeat, item); err != nil {
-					if doForce {
-						doLog(false, "Unable to open file: %v :: %v", item.Path, err)
-					} else {
-						log.Fatalf("Unable to open file: %v :: %v", item.Path, err)
-					}
-				}
+				handleFile(destination, lfeat, item, p)
 			}(&fileList[f])
 		}
 		wg.Wait()
 	} else {
 		for f := range fileList {
-			if err := handleFile(destination, lfeat, &fileList[f]); err != nil {
-				if doForce {
-					doLog(false, "Unable to open file: %v :: %v", fileList[f].Path, err)
-				} else {
-					log.Fatalf("Unable to open file: %v :: %v", fileList[f].Path, err)
-				}
-			}
+			handleFile(destination, lfeat, &fileList[f], p)
 		}
 	}
 
@@ -215,22 +223,31 @@ func extract(destinations []string, listOnly bool) {
 	}
 }
 
-func handleFile(destination string, lfeat BitFlags, item *FileEntry) error {
+func handleFile(destination string, lfeat BitFlags, item *FileEntry, p *progressData) {
 	if item.Offset == 0 {
 		skippedFiles.Add(1)
 		return nil
 	}
 	var err error
-	//Make directories
-	dir := path.Dir(destination + item.Path)
-	if err = os.MkdirAll(dir, os.ModePerm); err != nil {
-		if doForce {
-			doLog(false, "Unable to create directory: %v :: %v", dir, err)
-			return
-		} else {
-			log.Fatalf("Unable to create directory: %v :: %v", dir, err)
+	var finalPath string
+	useAbs := features.IsSet(fAbsolutePaths) && lfeat.IsSet(fAbsolutePaths)
+	if useAbs {
+		finalPath = filepath.Clean(item.Path)
+	} else {
+		finalPath, err = safeJoin(destination, item.Path)
+		if err != nil {
+			if doForce {
+				doLog(false, "invalid path: %v", item.Path)
+				skippedFiles.Add(1)
+				return
+			}
+			log.Fatalf("invalid path: %v", item.Path)
 		}
 	}
+
+	//Make directories
+	dir := filepath.Dir(finalPath)
+	os.MkdirAll(dir, os.ModePerm)
 
 	//Set file perms, if needed
 	filePerm := os.FileMode(0644)
@@ -241,23 +258,32 @@ func handleFile(destination string, lfeat BitFlags, item *FileEntry) error {
 	//Open file
 	var newFile *os.File
 	if doForce {
-		exists, _ := fileExists(destination + item.Path)
+		exists, _ := fileExists(finalPath)
 		if exists {
-			os.Chmod(destination+item.Path, 0644)
+			os.Chmod(finalPath, 0644)
 		}
-		newFile, err = os.OpenFile(destination+item.Path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+		newFile, err = os.OpenFile(finalPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 		if exists {
-			os.Chmod(destination+item.Path, filePerm)
+			os.Chmod(finalPath, filePerm)
 		}
 	} else {
-		newFile, err = os.OpenFile(destination+item.Path, os.O_CREATE|os.O_WRONLY|os.O_EXCL, filePerm)
+		newFile, err = os.OpenFile(finalPath, os.O_CREATE|os.O_WRONLY, filePerm)
 	}
 	if err != nil {
 		return err
 	}
 
 	//Seek to data in archive
-	arcB, _ := NewBinReader(archivePath)
+	arcB, err := NewBinReader(archivePath)
+	if err != nil {
+		if doForce {
+			doLog(false, "unable to open archive reader: %v", err)
+			skippedFiles.Add(1)
+			return
+		}
+		log.Fatalf("unable to open archive reader: %v", err)
+	}
+	defer arcB.Close()
 	_, err = arcB.Seek(int64(item.Offset), io.SeekStart)
 	if err != nil {
 		if doForce {
@@ -267,13 +293,23 @@ func handleFile(destination string, lfeat BitFlags, item *FileEntry) error {
 		}
 	}
 
+	p.file.Store(item.Path)
+
 	//Create buffer and copy
-	bf := NewBufferedFile(newFile, writeBuffer, &progressData{})
+	bf := NewBufferedFile(newFile, writeBuffer, p)
+	bf.doCount = true
 
 	//Read checksum
 	var expectedChecksum = make([]byte, checksumSize)
 	if lfeat.IsSet(fChecksums) {
-		arcB.Read(expectedChecksum)
+		if _, err := io.ReadFull(arcB, expectedChecksum); err != nil {
+			if doForce {
+				doLog(false, "unable to read checksum for %v: %v", item.Path, err)
+				skippedFiles.Add(1)
+				return
+			}
+			log.Fatalf("unable to read checksum for %v: %v", item.Path, err)
+		}
 	}
 
 	var src io.Reader = arcB
@@ -290,6 +326,8 @@ func handleFile(destination string, lfeat BitFlags, item *FileEntry) error {
 		defer gzReader.Close()
 		src = gzReader
 	}
+
+	src = countingReader{r: src, p: p}
 
 	var writer io.Writer = bf
 	var hashSum []byte
