@@ -305,7 +305,9 @@ func handleFile(destination string, lfeat BitFlags, item *FileEntry) {
 			log.Fatalf("Unable to write data to file: %v :: %v", item.Path, err)
 		}
 	}
-	bf.Close()
+	if err := bf.Close(); err != nil {
+		log.Fatalf("extract: close failed: %v", err)
+	}
 
 	if lfeat.IsSet(fChecksums) {
 		if bytes.Equal(hashSum, expectedChecksum) {
