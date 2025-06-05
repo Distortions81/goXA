@@ -136,3 +136,45 @@ func TestArchiveScenarios(t *testing.T) {
 		})
 	}
 }
+
+func TestArchiveParentRelative(t *testing.T) {
+	tempDir := t.TempDir()
+	parent := filepath.Join(tempDir, "parent")
+	root := filepath.Join(parent, "root")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	data := []byte("hi")
+	if err := os.WriteFile(filepath.Join(root, "file.txt"), data, 0o644); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+
+	work := filepath.Join(tempDir, "work")
+	if err := os.MkdirAll(work, 0o755); err != nil {
+		t.Fatalf("mkdir work: %v", err)
+	}
+
+	archivePath = filepath.Join(tempDir, "test.goxa")
+	features = 0
+	toStdOut = false
+	doForce = false
+
+	cwd, _ := os.Getwd()
+	os.Chdir(work)
+	defer os.Chdir(cwd)
+
+	relRoot, _ := filepath.Rel(work, root)
+	if err := create([]string{relRoot}); err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+
+	os.RemoveAll(root)
+	dest := filepath.Join(tempDir, "out")
+	if err := os.MkdirAll(dest, 0o755); err != nil {
+		t.Fatalf("mkdir dest: %v", err)
+	}
+	extract([]string{dest}, false)
+
+	extracted := filepath.Join(dest, filepath.Base(root), "file.txt")
+	checkFile(t, extracted, data, 0o644, false)
+}

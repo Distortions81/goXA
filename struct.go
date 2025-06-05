@@ -14,6 +14,7 @@ var (
 type FileEntry struct {
 	Offset  uint64
 	Path    string
+	SrcPath string
 	Size    uint64
 	Mode    fs.FileMode
 	ModTime time.Time

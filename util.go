@@ -167,7 +167,7 @@ func walkPaths(roots []string) (dirs []FileEntry, files []FileEntry, err error) 
 		// File case
 		if !info.IsDir() {
 			if features.IsSet(fIncludeInvis) || !strings.HasPrefix(info.Name(), ".") {
-				metaData := gatherMeta(storedPath(root, root), info)
+				metaData := gatherMeta(storedPath(root, root), root, info)
 				files = append(files, metaData)
 			}
 			continue
@@ -207,7 +207,7 @@ func walkPaths(roots []string) (dirs []FileEntry, files []FileEntry, err error) 
 				if err != nil {
 					return err
 				}
-				files = append(files, gatherMeta(storedPath(root, path), info))
+				files = append(files, gatherMeta(storedPath(root, path), path, info))
 			}
 			return nil
 		})
@@ -219,7 +219,7 @@ func walkPaths(roots []string) (dirs []FileEntry, files []FileEntry, err error) 
 	// Collect only those dirs with zero entries
 	for path, st := range states {
 		if st.entryCount == 0 {
-			dirs = append(dirs, gatherMeta(path, st.info))
+			dirs = append(dirs, gatherMeta(path, path, st.info))
 		}
 	}
 
@@ -231,9 +231,10 @@ func walkPaths(roots []string) (dirs []FileEntry, files []FileEntry, err error) 
 }
 
 // gatherMeta pulls the common metadata for a path.
-func gatherMeta(path string, info os.FileInfo) FileEntry {
+func gatherMeta(path, src string, info os.FileInfo) FileEntry {
 	entry := FileEntry{
 		Path:    path,
+		SrcPath: src,
 		Size:    uint64(info.Size()),
 		ModTime: info.ModTime(),
 	}

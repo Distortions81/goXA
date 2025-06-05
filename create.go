@@ -149,7 +149,7 @@ func writeEntries(offsetLoc uint64, bf *BufferedFile, files []FileEntry) {
 	for i, entry := range files {
 		p.file.Store(entry.Path)
 
-		file, err := os.Open(entry.Path)
+		file, err := os.Open(entry.SrcPath)
 		if err != nil {
 			if doForce {
 				//Soldier on even if read fails
@@ -227,7 +227,7 @@ func writeEntriesThreaded(offsetLoc uint64, bf *BufferedFile, files []FileEntry)
 		go func(entry FileEntry) {
 			defer wg.Done()
 
-			file, err := os.Open(entry.Path)
+			file, err := os.Open(entry.SrcPath)
 			if err != nil {
 				if doForce {
 					//Soldier on even if read fails
