@@ -226,7 +226,7 @@ func extract(destinations []string, listOnly bool) {
 func handleFile(destination string, lfeat BitFlags, item *FileEntry, p *progressData) {
 	if item.Offset == 0 {
 		skippedFiles.Add(1)
-		return
+		return nil
 	}
 	var err error
 	var finalPath string
@@ -270,11 +270,7 @@ func handleFile(destination string, lfeat BitFlags, item *FileEntry, p *progress
 		newFile, err = os.OpenFile(finalPath, os.O_CREATE|os.O_WRONLY, filePerm)
 	}
 	if err != nil {
-		if doForce {
-			doLog(false, "Unable to open file: %v :: %v", item.Path, err)
-		} else {
-			log.Fatalf("Unable to open file: %v :: %v", item.Path, err)
-		}
+		return err
 	}
 
 	//Seek to data in archive
@@ -325,7 +321,7 @@ func handleFile(destination string, lfeat BitFlags, item *FileEntry, p *progress
 			} else {
 				log.Fatalf("gzip error: Unable to create reader: %v :: %v", item.Path, err)
 			}
-			return
+			return nil
 		}
 		defer gzReader.Close()
 		src = gzReader
@@ -355,7 +351,9 @@ func handleFile(destination string, lfeat BitFlags, item *FileEntry, p *progress
 			log.Fatalf("Unable to write data to file: %v :: %v", item.Path, err)
 		}
 	}
-	bf.Close()
+	if err := bf.Close(); err != nil {
+		log.Fatalf("extract: close failed: %v", err)
+	}
 
 	if lfeat.IsSet(fChecksums) {
 		if bytes.Equal(hashSum, expectedChecksum) {
@@ -368,4 +366,5 @@ func handleFile(destination string, lfeat BitFlags, item *FileEntry, p *progress
 			}
 		}
 	}
+	return nil
 }
