@@ -239,3 +239,20 @@ func gatherMeta(path, src string, info os.FileInfo) FileEntry {
 	}
 	return entry
 }
+
+// isSelected checks if the provided path matches one of the
+// user-specified extractList entries. When no list is specified,
+// it always returns true.
+func isSelected(p string) bool {
+	if len(extractList) == 0 {
+		return true
+	}
+	clean := filepath.Clean(p)
+	for _, f := range extractList {
+		f = strings.TrimSuffix(filepath.Clean(f), string(os.PathSeparator))
+		if clean == f || strings.HasPrefix(clean, f+string(os.PathSeparator)) {
+			return true
+		}
+	}
+	return false
+}
