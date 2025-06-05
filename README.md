@@ -14,6 +14,7 @@
 - ✅ Preservation of permissions and modification timestamps (optional)
 - ✅ Empty directory support
 - ✅ Simple, fully documented binary format ([file-format.md](file-format.md))
+- ✅ Optional support for symlinks and other special files (new flag)
 - ✅ Clean Go codebase, easy to extend
 - ✅ No external dependencies, self-contained
 
@@ -56,6 +57,7 @@ goxa [mode][options] -arc=archiveFile [additional arguments]
 | `s` | Enable BLAKE2b checksums |
 | `n` | Disable compression |
 | `i` | Include invisible files |
+| `o` | Include special files (symlinks, devices) |
 | `v` | Verbose logging |
 | `f` | Force overwrite existing files / ignore read errors |
 
@@ -113,6 +115,21 @@ goxa l -arc=mybackup.goxa
 - 🛠 Archive signatures for optional additional security
 - 🛠 Archive comment field
 - 🛠 Encrypted archives
+
+## Security Notes
+
+- **Archive extraction uses path sanitization** to prevent directory traversal, but
+  enabling the `a` option allows files to be written to absolute paths. An
+  attacker could overwrite arbitrary files if you extract an untrusted archive
+  with `a` enabled.
+- Existing symbolic links in the destination are not resolved before writing
+  files. A malicious archive might exploit symlinks to write outside the target
+  directory when extracting with absolute paths.
+- File sizes stored in the archive are truncated to Go's `int64` before copying.
+  Extremely large or corrupted size fields may panic the extractor.
+- Command-line option parsing currently shortens the options string while
+  iterating, which could lead to unexpected failures if the program misreads the
+  provided flags.
 
 ## License
 

@@ -101,6 +101,12 @@ func writeHeader(emptyDirs, files []FileEntry) (uint64, []byte) {
 		if err := WriteString(&header, file.Path); err != nil {
 			log.Fatalf("write string failed: %v", err)
 		}
+		header.WriteByte(file.Type)
+		if file.Type == entrySymlink || file.Type == entryHardlink {
+			if err := WriteString(&header, file.Linkname); err != nil {
+				log.Fatalf("write string failed: %v", err)
+			}
+		}
 	}
 
 	//Save end of header, so we can update offsets later
@@ -150,6 +156,11 @@ func writeEntries(offsetLoc uint64, bf *BufferedFile, files []FileEntry) {
 
 	for i, entry := range files {
 		p.file.Store(entry.Path)
+
+		if entry.Type != entryFile {
+			offsets[i] = 0
+			continue
+		}
 
 		file, err := os.Open(entry.SrcPath)
 		if err != nil {

@@ -135,8 +135,19 @@ func extract(destinations []string, listOnly bool) {
 		if err != nil {
 			log.Fatalf("extract: failed to read file path: %v", err)
 		}
+		var ftype uint8
+		if err := binary.Read(arc, binary.LittleEndian, &ftype); err != nil {
+			log.Fatalf("extract: failed to read file type: %v", err)
+		}
+		var linkName string
+		if ftype == entrySymlink || ftype == entryHardlink {
+			linkName, err = ReadString(arc)
+			if err != nil {
+				log.Fatalf("extract: failed to read link target: %v", err)
+			}
+		}
 
-		newEntry := FileEntry{Path: pathName, Size: fileSize, Mode: fs.FileMode(fileMode), ModTime: time.Unix(modTime, 0).UTC()}
+		newEntry := FileEntry{Path: pathName, Size: fileSize, Mode: fs.FileMode(fileMode), ModTime: time.Unix(modTime, 0).UTC(), Type: ftype, Linkname: linkName}
 		fileList[n] = newEntry
 	}
 
@@ -223,6 +234,34 @@ func extract(destinations []string, listOnly bool) {
 }
 
 func handleFile(destination string, lfeat BitFlags, item *FileEntry, p *progressData) error {
+	if item.Type == entryOther {
+		return nil
+	}
+	if item.Type == entrySymlink || item.Type == entryHardlink {
+		var err error
+		var finalPath string
+		if lfeat.IsSet(fAbsolutePaths) {
+			finalPath = filepath.Clean(item.Path)
+		} else {
+			finalPath, err = safeJoin(destination, item.Path)
+			if err != nil {
+				if doForce {
+					doLog(false, "invalid path: %v", item.Path)
+					skippedFiles.Add(1)
+					return nil
+				}
+				log.Fatalf("invalid path: %v", item.Path)
+			}
+		}
+		os.MkdirAll(filepath.Dir(finalPath), os.ModePerm)
+		if doForce {
+			os.RemoveAll(finalPath)
+		}
+		if item.Type == entrySymlink {
+			return os.Symlink(item.Linkname, finalPath)
+		}
+		return os.Link(item.Linkname, finalPath)
+	}
 	if item.Offset == 0 {
 		skippedFiles.Add(1)
 		return nil

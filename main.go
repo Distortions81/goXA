@@ -59,6 +59,8 @@ func main() {
 			features.Set(fNoCompress)
 		case 'i':
 			features.Set(fIncludeInvis)
+		case 'o':
+			features.Set(fSpecialFiles)
 		case 'v':
 			verboseMode = true
 		case 'f':
@@ -98,7 +100,7 @@ func main() {
 }
 
 func showUsage() {
-	fmt.Println("Usage: goxa [c|l|x][apmsnive] -arc=arcFile [input paths/files...] or [destination]")
+	fmt.Println("Usage: goxa [c|l|x][apmsniveo] -arc=arcFile [input paths/files...] or [destination]")
 	fmt.Println("Output archive to stdout: -stdout, No progress bar: -progress=false")
 	fmt.Println("\nModes:")
 	fmt.Println("  c = Create a new archive. Requires input paths or files")
@@ -112,10 +114,10 @@ func showUsage() {
 	fmt.Println("  s = Sums")
 	fmt.Print("  n = No-compression	")
 	fmt.Println("  i = Include dotfiles")
-	fmt.Print("  v = Verbose logging	")
-	fmt.Println("  f = Force (overwrite files and ignore read errors)")
-
-	fmt.Println("\nExamples:")
+	fmt.Print("  o = Special files          ")
+	fmt.Println("  v = Verbose logging")
+	fmt.Print("  f = Force (overwrite files and ignore read errors)")
+	fmt.Println()
 	fmt.Println("  goxa c -arc=arcFile myStuff		(similar to zip)")
 	fmt.Println("  goxa cpmi -arc=arcFile myStuff	(similar to tar -czf)")
 	fmt.Println("")
