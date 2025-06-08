@@ -96,7 +96,7 @@ func extract(destinations []string, listOnly bool) {
 			}
 		}
 
-		pathName, err := ReadString(arc)
+		pathName, err := ReadLPString(arc)
 		if err != nil {
 			log.Fatalf("extract: failed to read directory path: %v", err)
 		}
@@ -131,7 +131,7 @@ func extract(destinations []string, listOnly bool) {
 			}
 		}
 
-		pathName, err := ReadString(arc)
+		pathName, err := ReadLPString(arc)
 		if err != nil {
 			log.Fatalf("extract: failed to read file path: %v", err)
 		}
@@ -141,7 +141,7 @@ func extract(destinations []string, listOnly bool) {
 		}
 		var linkName string
 		if ftype == entrySymlink || ftype == entryHardlink {
-			linkName, err = ReadString(arc)
+			linkName, err = ReadLPString(arc)
 			if err != nil {
 				log.Fatalf("extract: failed to read link target: %v", err)
 			}
@@ -234,7 +234,7 @@ func extract(destinations []string, listOnly bool) {
 			wg.Add()
 			go func(item *FileEntry) {
 				defer wg.Done()
-				_ = handleFile(destination, lfeat, item, p)
+				_ = extractFile(destination, lfeat, item, p)
 			}(&fileList[f])
 		}
 		wg.Wait()
@@ -243,7 +243,7 @@ func extract(destinations []string, listOnly bool) {
 			if !isSelected(fileList[f].Path) {
 				continue
 			}
-			_ = handleFile(destination, lfeat, &fileList[f], p)
+			_ = extractFile(destination, lfeat, &fileList[f], p)
 		}
 	}
 
@@ -252,7 +252,7 @@ func extract(destinations []string, listOnly bool) {
 	}
 }
 
-func handleFile(destination string, lfeat BitFlags, item *FileEntry, p *progressData) error {
+func extractFile(destination string, lfeat BitFlags, item *FileEntry, p *progressData) error {
 	if item.Type == entryOther {
 		return nil
 	}
@@ -395,7 +395,7 @@ func handleFile(destination string, lfeat BitFlags, item *FileEntry, p *progress
 		src = gzReader
 	}
 
-	src = countingReader{r: src, p: p}
+	src = progressReader{r: src, p: p}
 
 	var writer io.Writer = bf
 	var hashSum []byte
