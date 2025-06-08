@@ -5,14 +5,10 @@ import (
 	"encoding/binary"
 	"io"
 	"log"
-	"math"
 	"os"
-	"runtime"
-	"sync"
 	"time"
 
 	gzip "github.com/klauspost/pgzip"
-	"github.com/remeh/sizedwaitgroup"
 
 	"github.com/dustin/go-humanize"
 	"golang.org/x/crypto/blake2b"
@@ -112,20 +108,9 @@ func writeHeader(emptyDirs, files []FileEntry) (uint64, []byte) {
 	//Save end of header, so we can update offsets later
 	offsetsLocation := uint64(header.Len())
 
-	const ThreadedMode = false
-	if ThreadedMode {
-		//Write spacer for file offsets by block (experimental)
-		for _, file := range files {
-			blocks := int(math.Ceil(float64(file.Size) / float64(blockSize)))
-			for i := 0; i < blocks; i++ {
-				binary.Write(&header, binary.LittleEndian, uint64(0))
-			}
-		}
-	} else {
-		//Write spacer for file offsets
-		for range files {
-			binary.Write(&header, binary.LittleEndian, uint64(0))
-		}
+	// Reserve space for file offsets
+	for range files {
+		binary.Write(&header, binary.LittleEndian, uint64(0))
 	}
 
 	doLog(true, "Header size: %v", humanize.Bytes(uint64(header.Len())))
@@ -227,86 +212,4 @@ func writeEntries(offsetLoc uint64, bf *BufferedFile, files []FileEntry) {
 			log.Fatalf("writing offset failed: %v", err)
 		}
 	}
-}
-
-// WIP
-func writeEntriesThreaded(offsetLoc uint64, bf *BufferedFile, files []FileEntry) {
-
-	totalBlocks := 0
-	wg := sizedwaitgroup.New(runtime.NumCPU())
-	for _, entry := range files {
-
-		wg.Add()
-		go func(entry FileEntry) {
-			defer wg.Done()
-
-			file, err := os.Open(entry.SrcPath)
-			if err != nil {
-				if doForce {
-					//Soldier on even if read fails
-					doLog(false, "\nUnable to open file: %v (continuing)", entry.Path)
-					return
-				} else {
-					log.Fatalf("Unable to open file: %v", entry.Path)
-				}
-			}
-			entry.NumBlocks = uint64(math.Ceil(float64(entry.Size) / float64(blockSize)))
-			rbuf := make([]byte, blockSize)
-
-			for blockNum := uint64(0); blockNum < entry.NumBlocks; blockNum++ {
-				readBuf := bytes.NewBuffer(rbuf)
-				io.Copy(readBuf, file)
-
-				//Compress here
-
-				curPos := writeBlock(readBuf.Bytes(), bf)
-				entry.BlockOffset[blockNum] = offsetLoc + curPos
-
-				totalBlocks++
-			}
-
-		}(entry)
-	}
-	wg.Wait()
-
-	//End of BlockIndexOffset region
-	blockIndexOffset := totalBlocks * 8
-
-	//Shutup Compiler for the moment
-	if blockIndexOffset == 0 {
-		//
-	}
-
-	//Update blockOffsets in archive here
-	var writtenBlock uint64
-	for _, entry := range files {
-		for block := uint64(0); block < entry.NumBlocks; block++ {
-			newOffset := blockIndexOffset + int(entry.BlockOffset[block])
-			_, err := bf.Seek(int64(offsetLoc+writtenBlock), io.SeekStart)
-			if err != nil {
-				log.Fatal("Failed seeking within archive file.")
-			}
-			binary.Write(bf, binary.LittleEndian, uint64(newOffset))
-			writtenBlock++
-		}
-	}
-
-}
-
-var currentWritePos uint64
-var writeMutex sync.Mutex
-
-func writeBlock(data []byte, bf *BufferedFile) uint64 {
-	dataLen := len(data)
-
-	writeMutex.Lock()
-	defer writeMutex.Unlock()
-
-	currentWritePos += uint64(dataLen)
-
-	_, err := bf.Write(data)
-	if err != nil {
-		log.Fatalf("Unable to write block to archive: %v", err)
-	}
-	return currentWritePos
 }

@@ -21,8 +21,4 @@ type FileEntry struct {
 	Size     uint64
 	Mode     fs.FileMode
 	ModTime  time.Time
-
-	//Block mode
-	NumBlocks   uint64
-	BlockOffset []uint64
 }
