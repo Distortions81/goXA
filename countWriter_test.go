@@ -21,7 +21,7 @@ func (sw *shortWriter) Write(p []byte) (int, error) {
 
 func TestWriteStringNormal(t *testing.T) {
 	var buf bytes.Buffer
-	if err := WriteString(&buf, "hello"); err != nil {
+	if err := WriteLPString(&buf, "hello"); err != nil {
 		t.Fatalf("WriteString returned error: %v", err)
 	}
 	want := make([]byte, 2)
@@ -35,7 +35,7 @@ func TestWriteStringNormal(t *testing.T) {
 func TestWriteStringShortWrite(t *testing.T) {
 	var underlying bytes.Buffer
 	sw := &shortWriter{w: &underlying, max: 2}
-	if err := WriteString(sw, "hello"); err != nil {
+	if err := WriteLPString(sw, "hello"); err != nil {
 		t.Fatalf("WriteString returned error: %v", err)
 	}
 	want := make([]byte, 2)

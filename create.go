@@ -79,7 +79,7 @@ func writeHeader(emptyDirs, files []FileEntry) (uint64, []byte) {
 		if features&fModDates != 0 {
 			binary.Write(&header, binary.LittleEndian, int64(folder.ModTime.Unix()))
 		}
-		if err := WriteString(&header, folder.Path); err != nil {
+		if err := WriteLPString(&header, folder.Path); err != nil {
 			log.Fatalf("write string failed: %v", err)
 		}
 	}
@@ -94,12 +94,12 @@ func writeHeader(emptyDirs, files []FileEntry) (uint64, []byte) {
 		if features&fModDates != 0 {
 			binary.Write(&header, binary.LittleEndian, int64(file.ModTime.Unix()))
 		}
-		if err := WriteString(&header, file.Path); err != nil {
+		if err := WriteLPString(&header, file.Path); err != nil {
 			log.Fatalf("write string failed: %v", err)
 		}
 		header.WriteByte(file.Type)
 		if file.Type == entrySymlink || file.Type == entryHardlink {
-			if err := WriteString(&header, file.Linkname); err != nil {
+			if err := WriteLPString(&header, file.Linkname); err != nil {
 				log.Fatalf("write string failed: %v", err)
 			}
 		}
