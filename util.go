@@ -4,15 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"log"
 	"os"
 	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
 	"time"
-
-	"golang.org/x/crypto/blake2b"
 )
 
 func fileExists(filePath string) (bool, error) {
@@ -29,20 +26,6 @@ func fileExists(filePath string) (bool, error) {
 func removeExtension(filename string) string {
 	extension := filepath.Ext(filename)
 	return filename[:len(filename)-len(extension)]
-}
-
-func Blake2b512FromPtr(dataPtr *[]byte) ([]byte, error) {
-	// Create a new BLAKE2b-512 hasher (no key)
-	h, err := blake2b.New512(nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Feed it the bytes
-	h.Write(*dataPtr)
-
-	// Return the digest
-	return h.Sum(nil), nil
 }
 
 func doLog(verbose bool, format string, args ...interface{}) {
