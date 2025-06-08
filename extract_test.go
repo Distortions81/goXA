@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestHandleFileDirCreationFailure(t *testing.T) {
+func TestExtractFileDirCreationFailure(t *testing.T) {
 	tmp := t.TempDir()
 
 	// create a file that will act as the destination root
@@ -25,7 +25,7 @@ func TestHandleFileDirCreationFailure(t *testing.T) {
 
 	item := FileEntry{Path: filepath.Join("sub", "file.txt"), Offset: 1}
 
-	_ = handleFile(destFile+string(os.PathSeparator), 0, &item, &progressData{})
+	_ = extractFile(destFile+string(os.PathSeparator), 0, &item, &progressData{})
 
 	if _, err := os.Stat(filepath.Join(tmp, "destfile", "sub")); err == nil {
 		t.Fatalf("directory should not be created")
