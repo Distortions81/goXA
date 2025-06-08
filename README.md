@@ -13,7 +13,7 @@ GoXA is a gopher-friendly archiver written in Go. It's quick and simple, and sti
 - [x] Empty directory support
 - [x] Fully documented binary format ([file-format.md](file-format.md))
 - [x] Optional support for symlinks and other special files
-- [x] Clean, dependency-free Go code
+- [x] Clean Go code with minimal dependencies
 
 ## File Format
 
@@ -21,7 +21,7 @@ See [file-format.md](file-format.md) for the full binary format.
 
 ## Install
 
-With Go 1.20+:
+With Go 1.24+:
 
 ```bash
 go install github.com/Distortions81/goXA@latest
@@ -67,6 +67,7 @@ Paths default to relative. Using `a` when extracting restores absolute paths.
 |------|-------------|
 | `-arc=` | Archive file name |
 | `-stdout` | Output archive to stdout |
+| `-files` | Comma-separated list of files and directories to extract |
 | `-progress=false` | Disable progress display |
 
 Progress shows transfer speed and the current file being processed.
