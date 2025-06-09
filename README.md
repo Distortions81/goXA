@@ -94,6 +94,13 @@ goxa l -arc=mybackup.goxa
 - [ ] Archive comment field
 - [ ] Encrypted archives
 
+## Continuous Integration
+
+The **Generate default.pgo** workflow runs tests on every push to `main` and
+uploads a `default.pgo` artifact. The release workflow retrieves this profile
+when building tagged releases and compiles with `-pgo=default.pgo` for
+Profile Guided Optimization.
+
 ## Security Notes
 
 - Paths are sanitized during extraction, but `-a` lets archives write wherever they like. Use with care on unknown files.

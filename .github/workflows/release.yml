@@ -18,6 +18,22 @@ jobs:
       with:
         go-version: '1.24'
 
+    - name: Install GitHub CLI
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gh
+
+    - name: Download PGO profile
+      env:
+        GH_TOKEN: ${{ secrets.GH_PAT }}
+      run: |
+        RUN_ID=$(gh run list \
+          --workflow "Generate default.pgo" \
+          --commit ${{ github.sha }} \
+          --json databaseId \
+          -q '.[0].databaseId')
+        gh run download "$RUN_ID" -n default.pgo
+
     - name: Build and zip binaries
       run: |
         mkdir -p dist build
@@ -41,6 +57,7 @@ jobs:
           build_dir="build/${os}_${arch}"
           mkdir -p "$build_dir"
           GOOS=$os GOARCH=$arch go build \
+            -pgo=default.pgo \
             -o "$build_dir/$bin_name" \
             -ldflags="-w" \
             -gcflags="all=-l=4"
