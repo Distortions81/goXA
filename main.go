@@ -39,6 +39,7 @@ func main() {
 	flagSet.StringVar(&archivePath, "arc", defaultArchiveName, "archive file name (extension not required)")
 	flagSet.BoolVar(&toStdOut, "stdout", false, "output archive data to stdout")
 	flagSet.BoolVar(&progress, "progress", true, "show progress bar")
+	flagSet.StringVar(&compression, "comp", "gzip", "compression: gzip|zstd|lz4|s2|snappy|brotli|none")
 	flagSet.StringVar(&sel, "files", "", "comma-separated list of files and directories to extract")
 	flagSet.Parse(os.Args[2:])
 
@@ -85,6 +86,24 @@ func main() {
 		cmd = cmd[:len(cmd)-1]
 	}
 
+	switch strings.ToLower(compression) {
+	case "gzip":
+	case "zstd":
+		features.Set(fZstd)
+	case "lz4":
+		features.Set(fLZ4)
+	case "s2":
+		features.Set(fS2)
+	case "snappy":
+		features.Set(fSnappy)
+	case "brotli":
+		features.Set(fBrotli)
+	case "none":
+		features.Set(fNoCompress)
+	default:
+		log.Fatalf("Unknown compression: %s", compression)
+	}
+
 	if len(cmd) == 0 {
 		showUsage()
 		log.Fatal("No mode specified")
@@ -114,7 +133,7 @@ func main() {
 }
 
 func showUsage() {
-	fmt.Println("Usage: goxa [c|l|x][apmsniveo] -arc=arcFile [input paths/files...] or [destination]")
+	fmt.Println("Usage: goxa [c|l|x][apmsniveo] -arc=arcFile [-comp=alg] [input paths/files...] or [destination]")
 	fmt.Println("Output archive to stdout: -stdout, No progress bar: -progress=false")
 	fmt.Println("\nModes:")
 	fmt.Println("  c = Create a new archive. Requires input paths or files")
@@ -131,6 +150,7 @@ func showUsage() {
 	fmt.Print("  o = Special files          ")
 	fmt.Println("  v = Verbose logging")
 	fmt.Print("  f = Force (overwrite files and ignore read errors)")
+	fmt.Println("  -comp=gzip|zstd|lz4|s2|snappy|brotli|none")
 	fmt.Println()
 	fmt.Println("  goxa c -arc=arcFile myStuff		(similar to zip)")
 	fmt.Println("  goxa cpmi -arc=arcFile myStuff	(similar to tar -czf)")

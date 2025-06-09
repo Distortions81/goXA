@@ -9,6 +9,7 @@ var (
 	archivePath                              string
 	verboseMode, doForce, toStdOut, progress bool
 	features                                 BitFlags
+	compression                              string
 	extractList                              []string
 )
 

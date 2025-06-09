@@ -8,11 +8,36 @@ import (
 	"os"
 	"time"
 
-	gzip "github.com/klauspost/pgzip"
-
+	brotli "github.com/andybalholm/brotli"
 	"github.com/dustin/go-humanize"
+	"github.com/golang/snappy"
+	"github.com/klauspost/compress/s2"
+	"github.com/klauspost/compress/zstd"
+	gzip "github.com/klauspost/pgzip"
+	lz4 "github.com/pierrec/lz4/v4"
 	"golang.org/x/crypto/blake2b"
 )
+
+func compressor(w io.Writer) io.WriteCloser {
+	switch {
+	case features.IsSet(fZstd):
+		zw, err := zstd.NewWriter(w)
+		if err != nil {
+			log.Fatalf("zstd init failed: %v", err)
+		}
+		return zw
+	case features.IsSet(fLZ4):
+		return lz4.NewWriter(w)
+	case features.IsSet(fS2):
+		return s2.NewWriter(w)
+	case features.IsSet(fSnappy):
+		return snappy.NewBufferedWriter(w)
+	case features.IsSet(fBrotli):
+		return brotli.NewWriter(w)
+	default:
+		return gzip.NewWriter(w)
+	}
+}
 
 func create(inputPaths []string) error {
 
@@ -184,12 +209,12 @@ func writeEntries(offsetLoc uint64, bf *BufferedFile, files []FileEntry) {
 			written = entry.Size
 		} else {
 			cw := &countingWriter{w: bf}
-			gw := gzip.NewWriter(cw)
-			if _, err := io.Copy(gw, br); err != nil {
-				log.Fatalf("gzip copy failed: %v", err)
+			zw := compressor(cw)
+			if _, err := io.Copy(zw, br); err != nil {
+				log.Fatalf("compress copy failed: %v", err)
 			}
-			if err := gw.Close(); err != nil {
-				log.Fatalf("gzip close failed: %v", err)
+			if err := zw.Close(); err != nil {
+				log.Fatalf("compress close failed: %v", err)
 			}
 			written = uint64(cw.Count())
 		}
