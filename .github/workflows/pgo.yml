@@ -1,0 +1,30 @@
+name: Generate default.pgo
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  pgo:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - name: Run tests with CPU profile
+        run: |
+          go test ./... -cpuprofile=cpu.pprof
+      - name: Convert to PGO
+        run: |
+          go tool preprofile -i cpu.pprof -o default.pgo
+      - name: Upload PGO profile
+        uses: actions/upload-artifact@v4
+        with:
+          name: default.pgo
+          path: default.pgo
+          if-no-files-found: error
+
