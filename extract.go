@@ -472,6 +472,9 @@ func extractFile(destination string, lfeat BitFlags, item *FileEntry, p *progres
 	if err := bf.Close(); err != nil {
 		log.Fatalf("extract: close failed: %v", err)
 	}
+	if lfeat.IsSet(fModDates) {
+		os.Chtimes(finalPath, item.ModTime, item.ModTime)
+	}
 
 	if lfeat.IsSet(fChecksums) {
 		if bytes.Equal(hashSum, expectedChecksum) {
