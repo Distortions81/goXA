@@ -251,7 +251,13 @@ func extract(destinations []string, listOnly bool) {
 				log.Fatalf("extract: invalid path %v", item.Path)
 			}
 		}
-		os.MkdirAll(dirPath, perms)
+		if err := os.MkdirAll(dirPath, perms); err != nil {
+			if doForce {
+				doLog(false, "unable to create directory %v: %v", dirPath, err)
+				continue
+			}
+			log.Fatalf("extract: unable to create directory %v: %v", dirPath, err)
+		}
 	}
 	arc.Close()
 
@@ -302,7 +308,14 @@ func extractFile(destination string, lfeat BitFlags, item *FileEntry, p *progres
 				log.Fatalf("invalid path: %v", item.Path)
 			}
 		}
-		os.MkdirAll(filepath.Dir(finalPath), os.ModePerm)
+		if err := os.MkdirAll(filepath.Dir(finalPath), os.ModePerm); err != nil {
+			if doForce {
+				doLog(false, "unable to create directory %v: %v", filepath.Dir(finalPath), err)
+				skippedFiles.Add(1)
+				return nil
+			}
+			log.Fatalf("extract: unable to create directory %v: %v", filepath.Dir(finalPath), err)
+		}
 		if doForce {
 			os.RemoveAll(finalPath)
 		}
@@ -333,7 +346,14 @@ func extractFile(destination string, lfeat BitFlags, item *FileEntry, p *progres
 
 	//Make directories
 	dir := filepath.Dir(finalPath)
-	os.MkdirAll(dir, os.ModePerm)
+	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+		if doForce {
+			doLog(false, "unable to create directory %v: %v", dir, err)
+			skippedFiles.Add(1)
+			return nil
+		}
+		log.Fatalf("extract: unable to create directory %v: %v", dir, err)
+	}
 
 	//Set file perms, if needed
 	filePerm := os.FileMode(0644)
