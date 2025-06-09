@@ -1,4 +1,4 @@
-# GoXA Archive Format (v1)
+# GoXA Archive Format (v1 & v2)
 
 This document provides a compact description of the binary format used by the `goxa` archiver. All integer fields are little-endian.
 
@@ -79,6 +79,32 @@ For every file:
 [Offset Table]
 [Checksums and Data]
 ```
+
+## Version 2 Additions
+
+Version 2 archives introduce block mode indicated by the `fBlock` flag. Two new
+fields are appended to the header:
+
+```
+[Block Size: uint32]
+[Trailer Offset: uint64]
+```
+
+Files are compressed in fixed-size blocks (default 512&nbsp;KiB). After all file
+data comes a trailer containing a block index for each file followed by a 32‑byte
+checksum of the trailer.
+
+Trailer layout:
+
+```
+[Block Count: uint32]
+[Block Offsets and Sizes...]
+[Trailer Checksum]
+```
+
+A 32‑byte checksum of the header (including the trailer offset) is stored at the
+end of the header. Offsets in both the header and trailer are absolute within the
+archive.
 
 ### Notes
 - Directories that contain files are implied; only empty ones are listed.
