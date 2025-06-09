@@ -12,7 +12,7 @@ const (
 
 // Features
 const (
-	fNone = 1 << iota
+	fNone BitFlags = 1 << iota
 	fAbsolutePaths
 	fPermissions
 	fModDates
@@ -20,12 +20,17 @@ const (
 	fNoCompress
 	fIncludeInvis
 	fSpecialFiles
+	fZstd
+	fLZ4
+	fS2
+	fSnappy
+	fBrotli
 
 	fTop //Do not use, move or delete
 )
 
 var (
-	flagNames = []string{"None", "Absolute Paths", "Permissions", "Mod Dates", "Checksums", "No Compress", "Include Invis", "Special Files", "Unknown"}
+	flagNames = []string{"None", "Absolute Paths", "Permissions", "Mod Dates", "Checksums", "No Compress", "Include Invis", "Special Files", "Zstd", "LZ4", "S2", "Snappy", "Brotli", "Unknown"}
 )
 
 // Entry Types

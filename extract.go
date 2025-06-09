@@ -16,10 +16,40 @@ import (
 	"sync/atomic"
 	"time"
 
+	brotli "github.com/andybalholm/brotli"
 	"github.com/dustin/go-humanize"
+	"github.com/golang/snappy"
+	"github.com/klauspost/compress/s2"
+	"github.com/klauspost/compress/zstd"
+	lz4 "github.com/pierrec/lz4/v4"
 	"github.com/remeh/sizedwaitgroup"
 	"golang.org/x/crypto/blake2b"
 )
+
+func decompressor(r io.Reader, flags BitFlags) (io.ReadCloser, error) {
+	switch {
+	case flags.IsSet(fZstd):
+		zr, err := zstd.NewReader(r)
+		if err != nil {
+			return nil, err
+		}
+		return zr.IOReadCloser(), nil
+	case flags.IsSet(fLZ4):
+		return io.NopCloser(lz4.NewReader(r)), nil
+	case flags.IsSet(fS2):
+		return io.NopCloser(s2.NewReader(r)), nil
+	case flags.IsSet(fSnappy):
+		return io.NopCloser(snappy.NewReader(r)), nil
+	case flags.IsSet(fBrotli):
+		return io.NopCloser(brotli.NewReader(r)), nil
+	default:
+		gr, err := gzip.NewReader(r)
+		if err != nil {
+			return nil, err
+		}
+		return gr, nil
+	}
+}
 
 var skippedFiles, checksumCount atomic.Int64
 
@@ -381,18 +411,18 @@ func extractFile(destination string, lfeat BitFlags, item *FileEntry, p *progres
 
 	var src io.Reader = arcB
 	if lfeat.IsNotSet(fNoCompress) {
-		gzReader, err := gzip.NewReader(arcB)
+		dec, err := decompressor(arcB, lfeat)
 		if err != nil {
 			if doForce {
-				doLog(false, "gzip error: Unable to create reader: %v :: %v", item.Path, err)
+				doLog(false, "decompress error: Unable to create reader: %v :: %v", item.Path, err)
 				closeFile()
 				return nil
 			}
 			closeFile()
-			log.Fatalf("gzip error: Unable to create reader: %v :: %v", item.Path, err)
+			log.Fatalf("decompress error: Unable to create reader: %v :: %v", item.Path, err)
 		}
-		defer gzReader.Close()
-		src = gzReader
+		defer dec.Close()
+		src = dec
 	}
 
 	src = progressReader{r: src, p: p}

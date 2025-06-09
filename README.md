@@ -7,7 +7,7 @@ GoXA is a gopher-friendly archiver written in Go. It's quick and simple, and sti
 ## Features
 
 - [x] Fast archive creation and extraction
-- [x] Optional gzip compression
+- [x] Multiple compression formats (gzip, zstd, lz4, s2, snappy, brotli)
 - [x] Optional BLAKE2b-256 checksums
 - [x] Preserve permissions and modification times
 - [x] Empty directory support
@@ -69,6 +69,7 @@ Paths default to relative. Using `a` when extracting restores absolute paths.
 | `-stdout` | Output archive to stdout |
 | `-files` | Comma-separated list of files and directories to extract |
 | `-progress=false` | Disable progress display |
+| `-comp=` | Compression algorithm (gzip, zstd, lz4, s2, snappy, brotli, none) |
 
 Progress shows transfer speed and the current file being processed.
 
@@ -88,7 +89,7 @@ goxa l -arc=mybackup.goxa
 - [x] Add modes for non-files (symlinks, devices)
 - [ ] Random-access extraction mode
 - [ ] Multi-threaded archive optimization
-- [ ] Additional compression formats
+- [x] Additional compression formats
 - [ ] Go 1.24+ os.Root directory jails
 - [ ] Archive signatures for optional additional security
 - [ ] Archive comment field

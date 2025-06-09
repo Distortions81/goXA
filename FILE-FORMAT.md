@@ -28,9 +28,14 @@ The header lists metadata for empty directories and files along with an offset t
 | `fPermissions`  | 0x4   | Preserve permissions                      |
 | `fModDates`     | 0x8   | Preserve modification times               |
 | `fChecksums`    | 0x10  | Include BLAKE2b-256 checksums             |
-| `fNoCompress`   | 0x20  | Disable gzip compression                  |
+| `fNoCompress`   | 0x20  | Disable compression                       |
 | `fIncludeInvis` | 0x40  | Include hidden files                      |
 | `fSpecialFiles` | 0x80  | Archive symlinks and other special files  |
+| `fZstd`         | 0x100 | Use zstd compression                      |
+| `fLZ4`          | 0x200 | Use lz4 compression                       |
+| `fS2`           | 0x400 | Use s2 compression                        |
+| `fSnappy`       | 0x800 | Use snappy compression                    |
+| `fBrotli`       | 0x1000| Use brotli compression                    |
 
 Multiple flags may be combined.
 
@@ -63,7 +68,7 @@ Immediately after the file entries, an 8‑byte offset is stored for each file. 
 
 For every file:
 1. Optional 32‑byte BLAKE2b checksum when `fChecksums` is set.
-2. File contents, gzip compressed unless `fNoCompress` is set.
+2. File contents, compressed according to the compression flag. Gzip is used by default when no flag is set.
 
 ### Example Layout
 
