@@ -8,6 +8,7 @@ import (
 	"strings"
 	"syscall"
 	"testing"
+	"time"
 )
 
 type fileSpec struct {
@@ -219,5 +220,54 @@ func TestSymlinkAndHardlink(t *testing.T) {
 	}
 	if _, err := os.Lstat(filepath.Join(base, "hard.txt")); err != nil {
 		t.Fatalf("hardlink missing: %v", err)
+	}
+}
+
+func TestModDatePreservation(t *testing.T) {
+	tempDir := t.TempDir()
+	root := filepath.Join(tempDir, "root")
+	filePath := filepath.Join(root, "file.txt")
+	dirPath := filepath.Join(root, "empty")
+	if err := os.MkdirAll(dirPath, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	content := []byte("hi")
+	if err := os.WriteFile(filePath, content, 0o644); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+	modTime := time.Now().Add(-time.Hour).UTC().Truncate(time.Second)
+	os.Chtimes(filePath, modTime, modTime)
+	os.Chtimes(dirPath, modTime, modTime)
+
+	archivePath = filepath.Join(tempDir, "test.goxa")
+	features = fModDates
+	toStdOut = false
+	doForce = false
+
+	if err := create([]string{root}); err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+
+	os.RemoveAll(root)
+	dest := filepath.Join(tempDir, "out")
+	os.MkdirAll(dest, 0o755)
+	features = fModDates
+	extract([]string{dest}, false)
+
+	base := filepath.Join(dest, filepath.Base(root))
+	info, err := os.Stat(filepath.Join(base, "file.txt"))
+	if err != nil {
+		t.Fatalf("stat file: %v", err)
+	}
+	if info.ModTime().UTC().Truncate(time.Second) != modTime {
+		t.Fatalf("file mod time mismatch: got %v want %v", info.ModTime(), modTime)
+	}
+
+	dInfo, err := os.Stat(filepath.Join(base, "empty"))
+	if err != nil {
+		t.Fatalf("stat dir: %v", err)
+	}
+	if dInfo.ModTime().UTC().Truncate(time.Second) != modTime {
+		t.Fatalf("dir mod time mismatch: got %v want %v", dInfo.ModTime(), modTime)
 	}
 }
