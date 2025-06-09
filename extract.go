@@ -95,7 +95,7 @@ func extract(destinations []string, listOnly bool) {
 	if err := binary.Read(arc, binary.LittleEndian, &readVersion); err != nil {
 		log.Fatalf("extract: failed to read version: %v", err)
 	}
-	if readVersion != version {
+	if readVersion != version1 && readVersion != version2 {
 		log.Fatalf("extract: Archive is of an unsupported version: %v", readVersion)
 	}
 
@@ -104,6 +104,17 @@ func extract(destinations []string, listOnly bool) {
 		log.Fatalf("extract: failed to read feature flags: %v", err)
 	}
 	showFeatures(lfeat)
+
+	var blkSize uint32 = blockSize
+	var trailerOffset uint64
+	if readVersion >= version2 {
+		if err := binary.Read(arc, binary.LittleEndian, &blkSize); err != nil {
+			log.Fatalf("extract: failed to read block size: %v", err)
+		}
+		if err := binary.Read(arc, binary.LittleEndian, &trailerOffset); err != nil {
+			log.Fatalf("extract: failed to read trailer offset: %v", err)
+		}
+	}
 
 	//Empty Directories
 	var numEmptyDirs uint64
@@ -209,6 +220,47 @@ func extract(destinations []string, listOnly bool) {
 			log.Fatalf("extract: failed to read file offset: %v", err)
 		}
 		fileList[n].Offset = fileOffset
+	}
+
+	if readVersion >= version2 {
+		var hdrSum [checksumSize]byte
+		if _, err := io.ReadFull(arc, hdrSum[:]); err != nil {
+			log.Fatalf("extract: failed to read header checksum: %v", err)
+		}
+		hdrBytes := writeHeaderV2(dirList, fileList, trailerOffset, lfeat)
+		expect := hdrBytes[len(hdrBytes)-checksumSize:]
+		if !bytes.Equal(expect, hdrSum[:]) {
+			log.Fatalf("extract: header checksum mismatch")
+		}
+
+		if _, err := arc.Seek(int64(trailerOffset), io.SeekStart); err != nil {
+			log.Fatalf("extract: seek trailer: %v", err)
+		}
+		for i := range fileList {
+			var count uint32
+			if err := binary.Read(arc, binary.LittleEndian, &count); err != nil {
+				log.Fatalf("extract: read block count: %v", err)
+			}
+			blocks := make([]Block, count)
+			for b := uint32(0); b < count; b++ {
+				if err := binary.Read(arc, binary.LittleEndian, &blocks[b].Offset); err != nil {
+					log.Fatalf("extract: read block offset: %v", err)
+				}
+				if err := binary.Read(arc, binary.LittleEndian, &blocks[b].Size); err != nil {
+					log.Fatalf("extract: read block size: %v", err)
+				}
+			}
+			fileList[i].Blocks = blocks
+		}
+		var tSum [checksumSize]byte
+		if _, err := io.ReadFull(arc, tSum[:]); err != nil {
+			log.Fatalf("extract: read trailer checksum: %v", err)
+		}
+		trailerBytes := writeTrailer(fileList)
+		expectT := trailerBytes[len(trailerBytes)-checksumSize:]
+		if !bytes.Equal(expectT, tSum[:]) {
+			log.Fatalf("extract: trailer checksum mismatch")
+		}
 	}
 
 	doLog(false, "Read index: %v files.", len(fileList))
@@ -409,44 +461,93 @@ func extractFile(destination string, lfeat BitFlags, item *FileEntry, p *progres
 		}
 	}
 
-	var src io.Reader = arcB
-	if lfeat.IsNotSet(fNoCompress) {
-		dec, err := decompressor(arcB, lfeat)
-		if err != nil {
-			if doForce {
-				doLog(false, "decompress error: Unable to create reader: %v :: %v", item.Path, err)
-				closeFile()
-				return nil
-			}
-			closeFile()
-			log.Fatalf("decompress error: Unable to create reader: %v :: %v", item.Path, err)
-		}
-		defer dec.Close()
-		src = dec
-	}
-
-	src = progressReader{r: src, p: p}
-
 	var writer io.Writer = bf
 	var hashSum []byte
 	if lfeat.IsSet(fChecksums) {
 		hasher, _ := blake2b.New256(nil)
-		multiWriter := io.MultiWriter(bf, hasher)
-		writer = multiWriter
-
-		_, err = io.CopyN(writer, src, int64(item.Size))
-		if err == nil {
-			hashSum = hasher.Sum(nil)
-		}
-	} else {
-		_, err = io.CopyN(writer, src, int64(item.Size))
-	}
-
-	if err != nil {
-		if doForce {
-			doLog(false, "Unable to write data: %v :: %v", item.Path, err)
+		writer = io.MultiWriter(bf, hasher)
+		if lfeat.IsSet(fBlock) {
+			for _, b := range item.Blocks {
+				if _, err := arcB.Seek(int64(b.Offset), io.SeekStart); err != nil {
+					log.Fatalf("seek block: %v", err)
+				}
+				r := io.LimitReader(arcB, int64(b.Size))
+				if lfeat.IsNotSet(fNoCompress) {
+					dec, err := decompressor(r, lfeat)
+					if err != nil {
+						log.Fatalf("decompress setup: %v", err)
+					}
+					r = dec
+					_, err = io.Copy(writer, progressReader{r: r, p: p})
+					dec.Close()
+				} else {
+					_, err = io.Copy(writer, progressReader{r: r, p: p})
+				}
+				if err != nil {
+					log.Fatalf("copy block: %v", err)
+				}
+			}
 		} else {
-			log.Fatalf("Unable to write data to file: %v :: %v", item.Path, err)
+			var src io.Reader = arcB
+			if lfeat.IsNotSet(fNoCompress) {
+				dec, err := decompressor(arcB, lfeat)
+				if err != nil {
+					log.Fatalf("decompress error: Unable to create reader: %v :: %v", item.Path, err)
+				}
+				defer dec.Close()
+				src = dec
+			}
+			src = progressReader{r: src, p: p}
+			_, err = io.CopyN(writer, src, int64(item.Size))
+			if err != nil {
+				if doForce {
+					doLog(false, "Unable to write data: %v :: %v", item.Path, err)
+				} else {
+					log.Fatalf("Unable to write data to file: %v :: %v", item.Path, err)
+				}
+			}
+		}
+		hashSum = hasher.Sum(nil)
+	} else {
+		if lfeat.IsSet(fBlock) {
+			for _, b := range item.Blocks {
+				if _, err := arcB.Seek(int64(b.Offset), io.SeekStart); err != nil {
+					log.Fatalf("seek block: %v", err)
+				}
+				r := io.LimitReader(arcB, int64(b.Size))
+				if lfeat.IsNotSet(fNoCompress) {
+					dec, err := decompressor(r, lfeat)
+					if err != nil {
+						log.Fatalf("decompress setup: %v", err)
+					}
+					_, err = io.Copy(writer, progressReader{r: dec, p: p})
+					dec.Close()
+				} else {
+					_, err = io.Copy(writer, progressReader{r: r, p: p})
+				}
+				if err != nil {
+					log.Fatalf("copy block: %v", err)
+				}
+			}
+		} else {
+			var src io.Reader = arcB
+			if lfeat.IsNotSet(fNoCompress) {
+				dec, err := decompressor(arcB, lfeat)
+				if err != nil {
+					log.Fatalf("decompress error: Unable to create reader: %v :: %v", item.Path, err)
+				}
+				defer dec.Close()
+				src = dec
+			}
+			src = progressReader{r: src, p: p}
+			_, err = io.CopyN(writer, src, int64(item.Size))
+			if err != nil {
+				if doForce {
+					doLog(false, "Unable to write data: %v :: %v", item.Path, err)
+				} else {
+					log.Fatalf("Unable to write data to file: %v :: %v", item.Path, err)
+				}
+			}
 		}
 	}
 	if err := bf.Close(); err != nil {
