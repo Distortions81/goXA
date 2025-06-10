@@ -176,7 +176,7 @@ func TestBlockArchiveLargeFiles(t *testing.T) {
 	specs := setupLargeBlockTree(t, root)
 
 	archivePath = filepath.Join(tempDir, "test.goxa")
-	features = fBlock | fNoCompress
+	features = fNoCompress
 	version = version2
 	toStdOut = false
 	doForce = false

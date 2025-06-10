@@ -38,7 +38,6 @@ func TestCLIEndToEnd(t *testing.T) {
 	archive := filepath.Join(tempDir, "test.goxa")
 
 	resetGlobals()
-	features.Set(fBlock)
 	os.Args = []string{"goxa", "c", "-arc=" + archive, "-progress=false", root}
 	main()
 
@@ -48,7 +47,6 @@ func TestCLIEndToEnd(t *testing.T) {
 	}
 
 	resetGlobals()
-	features.Set(fBlock)
 	os.Args = []string{"goxa", "x", "-arc=" + archive, "-progress=false", dest}
 	main()
 
