@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -65,6 +66,9 @@ func create(inputPaths []string) error {
 	emptyDirs, files, err := walkPaths(inputPaths)
 	if err != nil {
 		return err
+	}
+	if len(emptyDirs) > maxEntries || len(files) > maxEntries {
+		return fmt.Errorf("too many entries: %d dirs, %d files", len(emptyDirs), len(files))
 	}
 
 	if version >= version2 && features.IsSet(fBlock) {
@@ -388,6 +392,9 @@ func writeEntriesV2(headerLen int, bf *BufferedFile, files []FileEntry) uint64 {
 					}
 					cOffset += uint64(cw.Count())
 					blocks = append(blocks, Block{Offset: bOff, Size: uint32(cw.Count())})
+				}
+				if len(blocks) > maxBlocks {
+					log.Fatalf("create: too many blocks for %s", entry.Path)
 				}
 			}
 			if err == io.EOF {
