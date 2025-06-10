@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	crand "crypto/rand"
 	"fmt"
 	"io/fs"
 	"os"
@@ -28,6 +29,15 @@ func setupTestTree(t *testing.T, root string) []fileSpec {
 		{rel: ".hiddendir/hfile.txt", data: []byte("hidden2"), perm: 0o600},
 		{rel: "rootfile.txt", data: []byte("root"), perm: 0o664},
 	}
+
+	// Add a large file spanning multiple blocks to ensure block encoding and
+	// decoding works correctly. The contents are random to avoid
+	// compression artifacts.
+	big := make([]byte, 3*1024*1024) // 3MiB
+	if _, err := crand.Read(big); err != nil {
+		t.Fatalf("rand: %v", err)
+	}
+	files = append(files, fileSpec{rel: "dir1/big.bin", data: big, perm: 0o600})
 
 	for _, f := range files {
 		full := filepath.Join(root, f.rel)
