@@ -73,10 +73,10 @@ func create(inputPaths []string) error {
 		blockSize = defaultBlockSize
 	}
 
-	header := writeHeaderV2(emptyDirs, files, 0, 0, features, compType)
+	header := writeHeader(emptyDirs, files, 0, 0, features, compType)
 	headerLen := len(header)
 	bf.Write(header)
-	trailerOffset := writeEntriesV2(headerLen, bf, files)
+	trailerOffset := writeEntries(headerLen, bf, files)
 	trailer := writeTrailer(files)
 	bf.Write(trailer)
 	if err := bf.Flush(); err != nil {
@@ -86,7 +86,7 @@ func create(inputPaths []string) error {
 	if err != nil {
 		log.Fatalf("create: os.Create: %v", err)
 	}
-	finalHeader := writeHeaderV2(emptyDirs, files, trailerOffset, uint64(info.Size()), features, compType)
+	finalHeader := writeHeader(emptyDirs, files, trailerOffset, uint64(info.Size()), features, compType)
 	if len(finalHeader) != headerLen {
 		log.Fatalf("header size mismatch")
 	}
@@ -102,162 +102,7 @@ func create(inputPaths []string) error {
 	return nil
 }
 
-func writeHeader(emptyDirs, files []FileEntry) (uint64, []byte) {
-	var header bytes.Buffer
-
-	numFiles := len(files)
-
-	//Start
-	binary.Write(&header, binary.LittleEndian, []byte(magic))
-	binary.Write(&header, binary.LittleEndian, uint16(version))
-	binary.Write(&header, binary.LittleEndian, features)
-
-	//Empty dir info
-	binary.Write(&header, binary.LittleEndian, uint64(len(emptyDirs)))
-	for _, folder := range emptyDirs {
-
-		if features&fPermissions != 0 {
-			binary.Write(&header, binary.LittleEndian, uint32(folder.Mode))
-		}
-		if features&fModDates != 0 {
-			binary.Write(&header, binary.LittleEndian, int64(folder.ModTime.Unix()))
-		}
-		if err := WriteLPString(&header, folder.Path); err != nil {
-			log.Fatalf("write string failed: %v", err)
-		}
-	}
-
-	//File info
-	binary.Write(&header, binary.LittleEndian, uint64(numFiles))
-	for _, file := range files {
-		binary.Write(&header, binary.LittleEndian, uint64(file.Size))
-		if features&fPermissions != 0 {
-			binary.Write(&header, binary.LittleEndian, uint32(file.Mode))
-		}
-		if features&fModDates != 0 {
-			binary.Write(&header, binary.LittleEndian, int64(file.ModTime.Unix()))
-		}
-		if err := WriteLPString(&header, file.Path); err != nil {
-			log.Fatalf("write string failed: %v", err)
-		}
-		header.WriteByte(file.Type)
-		if file.Type == entrySymlink || file.Type == entryHardlink {
-			if err := WriteLPString(&header, file.Linkname); err != nil {
-				log.Fatalf("write string failed: %v", err)
-			}
-		}
-	}
-
-	//Save end of header, so we can update offsets later
-	offsetsLocation := uint64(header.Len())
-
-	// Reserve space for file offsets
-	for range files {
-		binary.Write(&header, binary.LittleEndian, uint64(0))
-	}
-
-	doLog(true, "Header size: %v", humanize.Bytes(uint64(header.Len())))
-	return offsetsLocation, header.Bytes()
-}
-
-func writeEntries(offsetLoc uint64, bf *BufferedFile, files []FileEntry) {
-	cOffset := offsetLoc + uint64(len(files))*8
-	offsets := make([]uint64, len(files))
-
-	h, err := blake2b.New256(nil)
-	if err != nil {
-		log.Fatalf("blake2b init failed: %v", err)
-	}
-
-	var totalBytes int64
-	for _, entry := range files {
-		totalBytes += int64(entry.Size)
-	}
-
-	p, done, finished := progressTicker(&progressData{total: totalBytes, speedWindowSize: time.Second * 5})
-	bf.progress = p
-	bf.doCount = true
-	defer func() {
-		close(done)
-		<-finished
-	}()
-
-	for i, entry := range files {
-		p.file.Store(entry.Path)
-
-		if entry.Type != entryFile {
-			offsets[i] = 0
-			continue
-		}
-
-		file, err := os.Open(entry.SrcPath)
-		if err != nil {
-			if doForce {
-				//Soldier on even if read fails
-				doLog(false, "\nUnable to open file: %v (continuing)", entry.Path)
-				continue
-			} else {
-				log.Fatalf("Unable to open file: %v", entry.Path)
-			}
-		}
-		// Compute checksum first without counting progress
-		var checksum []byte
-		if features.IsSet(fChecksums) {
-			h.Reset()
-			if _, err := io.Copy(h, file); err != nil {
-				log.Fatalf("checksum compute failed: %v", err)
-			}
-			checksum = h.Sum(nil)
-			if _, err := file.Seek(0, io.SeekStart); err != nil {
-				log.Fatalf("seek reset failed: %v", err)
-			}
-			if _, err := bf.Write(checksum); err != nil {
-				log.Fatalf("writing checksum failed: %v", err)
-			}
-		}
-
-		br := NewBufferedFile(file, writeBuffer, p)
-
-		// Write file data (compressed or not)
-		var written uint64
-		if features.IsSet(fNoCompress) {
-			if _, err := io.Copy(bf, br); err != nil {
-				log.Fatalf("copy failed: %v", err)
-			}
-			written = entry.Size
-		} else {
-			cw := &countingWriter{w: bf}
-			zw := compressor(cw)
-			if _, err := io.Copy(zw, br); err != nil {
-				log.Fatalf("compress copy failed: %v", err)
-			}
-			if err := zw.Close(); err != nil {
-				log.Fatalf("compress close failed: %v", err)
-			}
-			written = uint64(cw.Count())
-		}
-
-		br.Close()
-
-		offsets[i] = cOffset
-		cOffset += written
-		if features.IsSet(fChecksums) {
-			cOffset += checksumSize
-		}
-	}
-
-	// Seek back and write offset table
-	if _, err := bf.Seek(int64(offsetLoc), io.SeekStart); err != nil {
-		log.Fatalf("seek to offset %d failed: %v", offsetLoc, err)
-	}
-	for _, off := range offsets {
-		if err := binary.Write(bf, binary.LittleEndian, off); err != nil {
-			log.Fatalf("writing offset failed: %v", err)
-		}
-	}
-}
-
-func writeHeaderV2(emptyDirs, files []FileEntry, trailerOffset, arcSize uint64, flags BitFlags, cType uint8) []byte {
+func writeHeader(emptyDirs, files []FileEntry, trailerOffset, arcSize uint64, flags BitFlags, cType uint8) []byte {
 	var header bytes.Buffer
 
 	binary.Write(&header, binary.LittleEndian, []byte(magic))
@@ -301,62 +146,13 @@ func writeHeaderV2(emptyDirs, files []FileEntry, trailerOffset, arcSize uint64, 
 		}
 	}
 	// File offsets are tracked in the trailer only
-
 	h, _ := blake2b.New256(nil)
 	h.Write(header.Bytes())
 	header.Write(h.Sum(nil))
 	return header.Bytes()
 }
 
-// writeHeaderLegacy generates the header for the previous unreleased v2 format.
-func writeHeaderLegacy(emptyDirs, files []FileEntry, trailerOffset uint64, flags BitFlags) []byte {
-	var header bytes.Buffer
-
-	binary.Write(&header, binary.LittleEndian, []byte(magic))
-	binary.Write(&header, binary.LittleEndian, uint16(version))
-	binary.Write(&header, binary.LittleEndian, flags)
-	binary.Write(&header, binary.LittleEndian, blockSize)
-	binary.Write(&header, binary.LittleEndian, trailerOffset)
-
-	binary.Write(&header, binary.LittleEndian, uint64(len(emptyDirs)))
-	for _, folder := range emptyDirs {
-		if flags.IsSet(fPermissions) {
-			binary.Write(&header, binary.LittleEndian, uint32(folder.Mode))
-		}
-		if flags.IsSet(fModDates) {
-			binary.Write(&header, binary.LittleEndian, int64(folder.ModTime.Unix()))
-		}
-		if err := WriteLPString(&header, folder.Path); err != nil {
-			log.Fatalf("write string failed: %v", err)
-		}
-	}
-
-	binary.Write(&header, binary.LittleEndian, uint64(len(files)))
-	for _, file := range files {
-		binary.Write(&header, binary.LittleEndian, uint64(file.Size))
-		if flags.IsSet(fPermissions) {
-			binary.Write(&header, binary.LittleEndian, uint32(file.Mode))
-		}
-		if flags.IsSet(fModDates) {
-			binary.Write(&header, binary.LittleEndian, int64(file.ModTime.Unix()))
-		}
-		if err := WriteLPString(&header, file.Path); err != nil {
-			log.Fatalf("write string failed: %v", err)
-		}
-		header.WriteByte(file.Type)
-		if file.Type == entrySymlink || file.Type == entryHardlink {
-			if err := WriteLPString(&header, file.Linkname); err != nil {
-				log.Fatalf("write string failed: %v", err)
-			}
-		}
-	}
-	h, _ := blake2b.New256(nil)
-	h.Write(header.Bytes())
-	header.Write(h.Sum(nil))
-	return header.Bytes()
-}
-
-func writeEntriesV2(headerLen int, bf *BufferedFile, files []FileEntry) uint64 {
+func writeEntries(headerLen int, bf *BufferedFile, files []FileEntry) uint64 {
 	h, err := blake2b.New256(nil)
 	if err != nil {
 		log.Fatalf("blake2b init failed: %v", err)

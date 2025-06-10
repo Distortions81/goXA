@@ -260,7 +260,7 @@ func extract(destinations []string, listOnly bool) {
 			log.Fatalf("extract: failed to read header checksum: %v", err)
 		}
 		var hdrBytes []byte
-		hdrBytes = writeHeaderV2(dirList, fileList, trailerOffset, arcSize, lfeat, ctype)
+		hdrBytes = writeHeader(dirList, fileList, trailerOffset, arcSize, lfeat, ctype)
 		expect := hdrBytes[len(hdrBytes)-checksumSize:]
 		if !bytes.Equal(expect, hdrSum[:]) {
 			log.Fatalf("extract: header checksum mismatch")
