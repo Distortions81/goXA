@@ -9,6 +9,7 @@ var (
 	archivePath                              string
 	verboseMode, doForce, toStdOut, progress bool
 	features                                 BitFlags
+	useArchiveFlags                          bool
 	compression                              string
 	extractList                              []string
 	version                                  uint16 = version2

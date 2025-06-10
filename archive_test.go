@@ -70,12 +70,12 @@ func TestArchiveScenarios(t *testing.T) {
 	}{
 		{"rel_compress", 0, 0, false, false},
 		{"rel_nocompress", fNoCompress, 0, false, false},
-		{"rel_invis", fIncludeInvis, 0, true, false},
+		{"rel_invis", fIncludeInvis, fIncludeInvis, true, false},
 		{"abs_compress", fAbsolutePaths, fAbsolutePaths, false, false},
 		{"abs_nocompress", fAbsolutePaths | fNoCompress, fAbsolutePaths, false, false},
-		{"abs_invis", fAbsolutePaths | fIncludeInvis, fAbsolutePaths, true, false},
-		{"rel_all_flags", fPermissions | fChecksums | fIncludeInvis | fNoCompress, 0, true, true},
-		{"abs_all_flags", fAbsolutePaths | fPermissions | fChecksums | fIncludeInvis | fNoCompress, fAbsolutePaths, true, true},
+		{"abs_invis", fAbsolutePaths | fIncludeInvis, fAbsolutePaths | fIncludeInvis, true, false},
+		{"rel_all_flags", fPermissions | fChecksums | fIncludeInvis | fNoCompress, fPermissions | fIncludeInvis, true, true},
+		{"abs_all_flags", fAbsolutePaths | fPermissions | fChecksums | fIncludeInvis | fNoCompress, fAbsolutePaths | fPermissions | fIncludeInvis, true, true},
 	}
 
 	for _, tc := range cases {

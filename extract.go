@@ -105,6 +105,29 @@ func extract(destinations []string, listOnly bool) {
 	}
 	showFeatures(lfeat)
 
+	if useArchiveFlags {
+		features |= lfeat
+	} else {
+		missing := ""
+		if lfeat.IsSet(fPermissions) && features.IsNotSet(fPermissions) {
+			missing += "p"
+		}
+		if lfeat.IsSet(fModDates) && features.IsNotSet(fModDates) {
+			missing += "m"
+		}
+		if lfeat.IsSet(fSpecialFiles) && features.IsNotSet(fSpecialFiles) {
+			missing += "o"
+		}
+		if lfeat.IsSet(fIncludeInvis) && features.IsNotSet(fIncludeInvis) {
+			missing += "i"
+		}
+		if missing != "" {
+			doLog(false, "Archive uses flags '%s'. Rerun with these flags or 'u' to auto-enable.", missing)
+			arc.Close()
+			return
+		}
+	}
+
 	var blkSize uint32 = blockSize
 	var trailerOffset uint64
 	if readVersion >= version2 {
