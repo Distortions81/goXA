@@ -10,7 +10,7 @@ GoXA is a friendly archiver written in Go. It's fast and straightforward, though
 - [x] Multiple compression formats (gzip, zstd, lz4, s2, snappy, brotli; defaults to gzip)
 - [x] Optional BLAKE2b-256 checksums
 - [x] Preserve permissions and modification times
-- [x] Fully documented binary format ([file-format.md](file-format.md))
+- [x] Fully documented binary format ([FILE-FORMAT.md](FILE-FORMAT.md))
 - [x] Optional support for symlinks and other special files
 - [x] Block-based format for fast extraction (single block when uncompressed)
 - [x] Pure Go code with no runtime dependencies once compiled.
