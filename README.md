@@ -2,7 +2,7 @@
 <img src="https://github.com/Distortions81/goXA/blob/main/Xango.png?raw=true" alt="Xango the Archivist" width="300"/>
 
 ## Xango the Pangolin Archivist
-GoXA is a gopher-friendly archiver written in Go. It's quick and simple, but still young—please report any bumps you find.
+GoXA is a friendly archiver written in Go. It's fast and straightforward, though still maturing—please report any issues you find.
 
 ## Features
 
@@ -12,6 +12,7 @@ GoXA is a gopher-friendly archiver written in Go. It's quick and simple, but sti
 - [x] Preserve permissions and modification times
 - [x] Fully documented binary format ([file-format.md](file-format.md))
 - [x] Optional support for symlinks and other special files
+- [x] Block-based format for fast extraction (single block when uncompressed)
 - [x] Pure Go code with no runtime dependencies once compiled.
 
 ## File Format

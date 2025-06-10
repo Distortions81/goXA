@@ -1,4 +1,4 @@
-# GoXA Archive Format (v1 & v2)
+# GoXA Archive Format (v2)
 
 This document provides a compact description of the binary format used by the `goxa` archiver. All integer fields are little-endian.
 
@@ -7,17 +7,19 @@ This document provides a compact description of the binary format used by the `g
 ```
 [Header]
 [Per-file data]
+[Trailer]
 ```
 
-The header contains metadata for empty directories and files along with an offset table. Actual file contents follow the header.
+The header contains metadata for empty directories and files. Actual file contents follow the header and end with a trailer containing the block index.
 
 ### Header
 - Magic bytes `GOXA`
 - Version (uint16)
 - Feature flags (uint32)
+- Block size (`uint32`)
+- Trailer offset (`uint64`)
 - Empty directory entries
 - File entries
-- Offset table (uint64 per file)
 
 ### Feature Flags
 
@@ -46,7 +48,9 @@ Multiple flags may be combined.
 [Empty Dir Count: uint64]
 [Empty Dir Entries...]
 ```
-Each entry optionally stores mode and mod time (controlled by flags) followed by path length and the UTF‑8 path.
+Each entry optionally stores mode and mod time (controlled by flags) followed by
+`[Path Length: uint16][UTF‑8 Path]`. Paths longer than 65,535 bytes cannot be
+stored.
 
 ### Files
 
@@ -55,15 +59,11 @@ Each entry optionally stores mode and mod time (controlled by flags) followed by
 [File Entries...]
 ```
 Each file entry contains:
-- Uncompressed size (uint64)
-- Optional mode and mod time
-- Path length and UTF‑8 path
-- Type byte (file, symlink, hardlink, etc.)
-- Link target for links
-
-### Offset Table
-
-Immediately after the file entries, an 8‑byte offset is stored for each file. These absolute offsets point into the data section.
+* Uncompressed size (`uint64`)
+* Optional mode (`uint32`) and mod time (`int64`)
+* `[Path Length: uint16][UTF‑8 Path]`
+* Type byte (`0`=file, `1`=symlink, `2`=hardlink, `3`=other)
+* `[Link Target Length: uint16][Target]` for links
 
 ### Per-file Data
 
@@ -77,32 +77,35 @@ For every file:
 [Magic][Version][Flags]
 [Empty Dir Count][Dirs]
 [File Count][Files]
-[Offset Table]
 [Checksums and Data]
+[Trailer]
 ```
 
-## Version 2 Additions
+## Trailer Format
 
-Version 2 archives introduce block mode indicated by the `fBlock` flag. The header includes two additional fields:
+Archives use block mode indicated by the `fBlock` flag. The header includes the block size and trailer offset fields:
 
 ```
 [Block Size: uint32]
 [Trailer Offset: uint64]
 ```
 
-Files are compressed in fixed-size blocks (default 512&nbsp;KiB). After all file data comes a trailer containing a block index for each file followed by a 32‑byte checksum of the trailer.
+Files are compressed in fixed-size blocks (default 512&nbsp;KiB). When
+`fNoCompress` is set the block size becomes `0` and each file is stored as a
+single block. After all file data comes a trailer containing a block index for
+each file followed by a 32‑byte BLAKE2b‑256 checksum of the trailer.
 
 Trailer layout:
 
 ```
 [Block Count: uint32]
-[Block Offsets and Sizes...]
-[Trailer Checksum]
+[ [Offset uint64][Size uint32] ... ]
+[Trailer Checksum: 32 bytes]
 ```
 
-A 32‑byte checksum of the header (including the trailer offset) is stored at the
-end of the header. Offsets in both the header and trailer are absolute within the
-archive.
+A 32‑byte BLAKE2b‑256 checksum of the header (including the trailer offset) is
+stored at the end of the header. Offsets in both the header and trailer are
+absolute within the archive.
 
 ### Notes
 - Directories that contain files are implied; only empty ones are listed.
