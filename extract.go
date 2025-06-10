@@ -285,7 +285,7 @@ func extract(destinations []string, listOnly bool) {
 		if !isSelected(item.Path) {
 			continue
 		}
-		perms := os.FileMode(0644)
+		perms := os.FileMode(0755)
 		if lfeat.IsSet(fPermissions) {
 			perms = item.Mode
 		}
