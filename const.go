@@ -10,6 +10,14 @@ const (
 	defaultArchiveName = "archive.goxa"
 	checksumSize       = 32
 	defaultBlockSize   = 512 * 1024 // 512KiB
+	// maxEntries limits how many file or directory entries can be
+	// allocated when reading an archive. This prevents huge memory
+	// allocations on corrupted archives.
+	maxEntries = 1_000_000
+	// maxBlocks limits how many blocks can be assigned to a single file.
+	// A block is at most blockSize bytes, so any count above the file's
+	// theoretical maximum indicates corruption.
+	maxBlocks = 1_000_000
 )
 
 // Features

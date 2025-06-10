@@ -114,12 +114,22 @@ func extract(destinations []string, listOnly bool) {
 		if err := binary.Read(arc, binary.LittleEndian, &trailerOffset); err != nil {
 			log.Fatalf("extract: failed to read trailer offset: %v", err)
 		}
+		info, err := arc.file.Stat()
+		if err != nil {
+			log.Fatalf("extract: stat archive: %v", err)
+		}
+		if trailerOffset > uint64(info.Size()) {
+			log.Fatalf("extract: trailer offset beyond file size: %d", trailerOffset)
+		}
 	}
 
 	//Empty Directories
 	var numEmptyDirs uint64
 	if err := binary.Read(arc, binary.LittleEndian, &numEmptyDirs); err != nil {
 		log.Fatalf("extract: failed to read empty directory count: %v", err)
+	}
+	if numEmptyDirs > maxEntries {
+		log.Fatalf("extract: directory count too large: %d", numEmptyDirs)
 	}
 
 	dirList := make([]FileEntry, numEmptyDirs)
@@ -150,6 +160,9 @@ func extract(destinations []string, listOnly bool) {
 	var numFiles uint64
 	if err := binary.Read(arc, binary.LittleEndian, &numFiles); err != nil {
 		log.Fatalf("extract: failed to read file count: %v", err)
+	}
+	if numFiles > maxEntries {
+		log.Fatalf("extract: file count too large: %d", numFiles)
 	}
 
 	fileList := make([]FileEntry, numFiles)
@@ -240,6 +253,15 @@ func extract(destinations []string, listOnly bool) {
 			var count uint32
 			if err := binary.Read(arc, binary.LittleEndian, &count); err != nil {
 				log.Fatalf("extract: read block count: %v", err)
+			}
+			// Each block is at most blkSize bytes. Anything larger than
+			// the theoretical maximum for this file signals corruption.
+			maxCount := fileList[i].Size/uint64(blkSize) + 1
+			if maxCount > uint64(maxBlocks) {
+				maxCount = uint64(maxBlocks)
+			}
+			if uint64(count) > maxCount {
+				log.Fatalf("extract: block count too large: %d", count)
 			}
 			blocks := make([]Block, count)
 			for b := uint32(0); b < count; b++ {
