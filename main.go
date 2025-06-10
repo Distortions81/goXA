@@ -104,6 +104,11 @@ func main() {
 		log.Fatalf("Unknown compression: %s", compression)
 	}
 
+	// Version 2 archives require block mode; enable it by default.
+	if version >= version2 {
+		features.Set(fBlock)
+	}
+
 	if len(cmd) == 0 {
 		showUsage()
 		log.Fatal("No mode specified")
