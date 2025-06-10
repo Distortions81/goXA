@@ -10,10 +10,9 @@ GoXA is a gopher-friendly archiver written in Go. It's quick and simple, and sti
 - [x] Multiple compression formats (gzip, zstd, lz4, s2, snappy, brotli)
 - [x] Optional BLAKE2b-256 checksums
 - [x] Preserve permissions and modification times
-- [x] Empty directory support
 - [x] Fully documented binary format ([file-format.md](file-format.md))
 - [x] Optional support for symlinks and other special files
-- [x] Clean Go code with minimal dependencies
+- [x] Pure go code, no dependencies once compiled.
 
 ## File Format
 
@@ -49,18 +48,18 @@ goxa [mode] [flags] -arc=archiveFile [paths...]
 
 | Flag | Description |
 |------|-------------|
-| `a` | Store absolute paths |
-| `p` | Preserve permissions |
-| `m` | Preserve modification times |
+| `a` | Absolute paths |
+| `p` | File permissions |
+| `m` | Modification times |
 | `s` | Enable BLAKE2b checksums |
 | `n` | Disable compression |
-| `i` | Include hidden files |
-| `o` | Include special files |
-| `u` | Use flags stored in archive |
+| `i` | Hidden files |
+| `o` | Special files |
+| `u` | Use flags from archive |
 | `v` | Verbose logging |
-| `f` | Force overwrite / ignore errors |
+| `f` | Overwrite files / ignore read errors |
 
-Paths default to relative. Using `a` when extracting restores absolute paths. By default extraction does not restore permissions, modification times, hidden files, or special files unless `p`, `m`, `i`, or `o` are specified (or `u` to use the archive flags).
+Paths default to relative. Using `a` when extracting restores absolute paths if archived with them. By default extraction does not restore permissions, modification times, hidden files, or special files unless `p`, `m`, `i`, or `o` are specified (or `u` to use flags from archive).
 
 ### Extra Flags
 
@@ -80,7 +79,7 @@ Progress shows transfer speed and the current file being processed.
 goxa c -arc=mybackup.goxa myStuff/
 goxa capmsif -arc=mybackup.goxa ~/
 goxa x -arc=mybackup.goxa
-goxa xu -arc=mybackup.goxa     # use archive flags
+goxa xu -arc=mybackup.goxa     # use flags in archive (aka auto)
 goxa l -arc=mybackup.goxa
 ```
 
@@ -89,27 +88,17 @@ goxa l -arc=mybackup.goxa
 - [x] Format documentation
 - [x] Working relative path support
 - [x] Add modes for non-files (symlinks, devices)
-- [ ] Random-access extraction mode
 - [ ] Multi-threaded archive optimization
-- [x] Additional compression formats
-- [ ] Go 1.24+ os.Root directory jails
 - [ ] Archive signatures for optional additional security
 - [ ] Archive comment field
 - [ ] Encrypted archives
 
-## Continuous Integration
-
-The **Generate default.pgo** workflow runs tests on every push to `main` and
-uploads a `default.pgo` artifact. The release workflow retrieves this profile
-when building tagged releases and compiles with `-pgo=default.pgo` for
-Profile Guided Optimization.
-
 ## Security Notes
 
-- Paths are sanitized during extraction, but `-a` lets archives write wherever they like. Use with care on unknown files.
-- Symlinks are not resolved, so sneaky links can sidestep your destination folder.
-- Size fields use `int64`; absurdly huge or corrupted sizes might crash the extractor.
-- The flag parser shortens the options string as it goes; unusual flags might confuse it.
+- Paths are sanitized during extraction, but -a 'absolute paths' lets archives write wherever they like. Use with care on unknown files.
+- When using -o 'special files' symlinks are not resolved, so sneaky links can sidestep your destination folder.
+- The -u 'Use flags from in archive' uses whatever flags were used to create the archive. This can allow absolute paths, permissions, mod dates and special files. Use with care on unknown files.
+- Size fields use 'int64'; so maximum file size is 9223 petabytes.
 
 ## License
 
