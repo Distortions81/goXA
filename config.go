@@ -11,6 +11,7 @@ var (
 	features                                 BitFlags
 	useArchiveFlags                          bool
 	compression                              string
+	compType                                 uint8 = compGzip
 	extractList                              []string
 	version                                  uint16 = version2
 	blockSize                                uint32 = defaultBlockSize

@@ -42,3 +42,13 @@ const (
 	entryHardlink
 	entryOther
 )
+
+// Compression Types
+const (
+	compGzip uint8 = iota
+	compZstd
+	compLZ4
+	compS2
+	compSnappy
+	compBrotli
+)

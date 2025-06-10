@@ -19,20 +19,20 @@ import (
 )
 
 func compressor(w io.Writer) io.WriteCloser {
-	switch {
-	case features.IsSet(fZstd):
+	switch compType {
+	case compZstd:
 		zw, err := zstd.NewWriter(w)
 		if err != nil {
 			log.Fatalf("zstd init failed: %v", err)
 		}
 		return zw
-	case features.IsSet(fLZ4):
+	case compLZ4:
 		return lz4.NewWriter(w)
-	case features.IsSet(fS2):
+	case compS2:
 		return s2.NewWriter(w)
-	case features.IsSet(fSnappy):
+	case compSnappy:
 		return snappy.NewBufferedWriter(w)
-	case features.IsSet(fBrotli):
+	case compBrotli:
 		return brotli.NewWriter(w)
 	default:
 		return gzip.NewWriter(w)
@@ -73,13 +73,20 @@ func create(inputPaths []string) error {
 		blockSize = defaultBlockSize
 	}
 
-	header := writeHeaderV2(emptyDirs, files, 0, features)
+	header := writeHeaderV2(emptyDirs, files, 0, 0, features, compType)
 	headerLen := len(header)
 	bf.Write(header)
 	trailerOffset := writeEntriesV2(headerLen, bf, files)
 	trailer := writeTrailer(files)
 	bf.Write(trailer)
-	finalHeader := writeHeaderV2(emptyDirs, files, trailerOffset, features)
+	if err := bf.Flush(); err != nil {
+		log.Fatalf("flush: %v", err)
+	}
+	info, err := bf.file.Stat()
+	if err != nil {
+		log.Fatalf("create: os.Create: %v", err)
+	}
+	finalHeader := writeHeaderV2(emptyDirs, files, trailerOffset, uint64(info.Size()), features, compType)
 	if len(finalHeader) != headerLen {
 		log.Fatalf("header size mismatch")
 	}
@@ -87,11 +94,6 @@ func create(inputPaths []string) error {
 		log.Fatalf("seek start: %v", err)
 	}
 	bf.Write(finalHeader)
-
-	info, err := bf.file.Stat()
-	if err != nil {
-		log.Fatalf("create: os.Create: %v", err)
-	}
 
 	if err := bf.Close(); err != nil {
 		log.Fatalf("create: close failed: %v", err)
@@ -255,7 +257,59 @@ func writeEntries(offsetLoc uint64, bf *BufferedFile, files []FileEntry) {
 	}
 }
 
-func writeHeaderV2(emptyDirs, files []FileEntry, trailerOffset uint64, flags BitFlags) []byte {
+func writeHeaderV2(emptyDirs, files []FileEntry, trailerOffset, arcSize uint64, flags BitFlags, cType uint8) []byte {
+	var header bytes.Buffer
+
+	binary.Write(&header, binary.LittleEndian, []byte(magic))
+	binary.Write(&header, binary.LittleEndian, uint16(version))
+	binary.Write(&header, binary.LittleEndian, flags)
+	binary.Write(&header, binary.LittleEndian, cType)
+	binary.Write(&header, binary.LittleEndian, blockSize)
+	binary.Write(&header, binary.LittleEndian, trailerOffset)
+	binary.Write(&header, binary.LittleEndian, arcSize)
+
+	binary.Write(&header, binary.LittleEndian, uint64(len(emptyDirs)))
+	for _, folder := range emptyDirs {
+		if flags.IsSet(fPermissions) {
+			binary.Write(&header, binary.LittleEndian, uint32(folder.Mode))
+		}
+		if flags.IsSet(fModDates) {
+			binary.Write(&header, binary.LittleEndian, int64(folder.ModTime.Unix()))
+		}
+		if err := WriteLPString(&header, folder.Path); err != nil {
+			log.Fatalf("write string failed: %v", err)
+		}
+	}
+
+	binary.Write(&header, binary.LittleEndian, uint64(len(files)))
+	for _, file := range files {
+		binary.Write(&header, binary.LittleEndian, uint64(file.Size))
+		if flags.IsSet(fPermissions) {
+			binary.Write(&header, binary.LittleEndian, uint32(file.Mode))
+		}
+		if flags.IsSet(fModDates) {
+			binary.Write(&header, binary.LittleEndian, int64(file.ModTime.Unix()))
+		}
+		if err := WriteLPString(&header, file.Path); err != nil {
+			log.Fatalf("write string failed: %v", err)
+		}
+		header.WriteByte(file.Type)
+		if file.Type == entrySymlink || file.Type == entryHardlink {
+			if err := WriteLPString(&header, file.Linkname); err != nil {
+				log.Fatalf("write string failed: %v", err)
+			}
+		}
+	}
+	// File offsets are tracked in the trailer only
+
+	h, _ := blake2b.New256(nil)
+	h.Write(header.Bytes())
+	header.Write(h.Sum(nil))
+	return header.Bytes()
+}
+
+// writeHeaderLegacy generates the header for the previous unreleased v2 format.
+func writeHeaderLegacy(emptyDirs, files []FileEntry, trailerOffset uint64, flags BitFlags) []byte {
 	var header bytes.Buffer
 
 	binary.Write(&header, binary.LittleEndian, []byte(magic))
@@ -296,8 +350,6 @@ func writeHeaderV2(emptyDirs, files []FileEntry, trailerOffset uint64, flags Bit
 			}
 		}
 	}
-	// File offsets are tracked in the trailer only
-
 	h, _ := blake2b.New256(nil)
 	h.Write(header.Bytes())
 	header.Write(h.Sum(nil))

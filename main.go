@@ -90,18 +90,20 @@ func main() {
 
 	switch strings.ToLower(compression) {
 	case "gzip":
+		compType = compGzip
 	case "zstd":
-		features.Set(fZstd)
+		compType = compZstd
 	case "lz4":
-		features.Set(fLZ4)
+		compType = compLZ4
 	case "s2":
-		features.Set(fS2)
+		compType = compS2
 	case "snappy":
-		features.Set(fSnappy)
+		compType = compSnappy
 	case "brotli":
-		features.Set(fBrotli)
+		compType = compBrotli
 	case "none":
 		features.Set(fNoCompress)
+		compType = compGzip
 	default:
 		log.Fatalf("Unknown compression: %s", compression)
 	}
