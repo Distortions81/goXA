@@ -34,7 +34,7 @@ func TestAllCompressions(t *testing.T) {
 			}
 
 			archivePath = filepath.Join(tempDir, "test.goxa")
-			features = tc.flag | fBlock
+			features = tc.flag
 			version = version2
 			toStdOut = false
 			doForce = false
@@ -49,7 +49,7 @@ func TestAllCompressions(t *testing.T) {
 				t.Fatalf("mkdir dest: %v", err)
 			}
 
-			features = tc.flag | fBlock
+			features = tc.flag
 			extract([]string{dest}, false)
 
 			extracted := filepath.Join(dest, filepath.Base(root), "file.txt")

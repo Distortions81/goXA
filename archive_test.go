@@ -81,7 +81,6 @@ func TestArchiveScenarios(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			features = 0
-			features.Set(fBlock)
 			version = version2
 
 			tempDir := t.TempDir()
@@ -109,7 +108,6 @@ func TestArchiveScenarios(t *testing.T) {
 
 			os.RemoveAll(root)
 			features = 0
-			features.Set(fBlock)
 			features |= tc.extractFlags
 
 			var dest string
@@ -163,7 +161,6 @@ func TestArchiveParentRelative(t *testing.T) {
 
 	archivePath = filepath.Join(tempDir, "test.goxa")
 	features = 0
-	features.Set(fBlock)
 	version = version2
 	toStdOut = false
 	doForce = false
@@ -207,7 +204,7 @@ func TestSymlinkAndHardlink(t *testing.T) {
 	os.Link(orig, filepath.Join(root, "hard.txt"))
 
 	archivePath = filepath.Join(tempDir, "test.goxa")
-	features = fSpecialFiles | fBlock
+	features = fSpecialFiles
 	version = version2
 	toStdOut = false
 	doForce = false
@@ -219,7 +216,7 @@ func TestSymlinkAndHardlink(t *testing.T) {
 	os.RemoveAll(root)
 	dest := filepath.Join(tempDir, "out")
 	os.MkdirAll(dest, 0o755)
-	features = fSpecialFiles | fBlock
+	features = fSpecialFiles
 	extract([]string{dest}, false)
 
 	base := filepath.Join(dest, filepath.Base(root))
@@ -249,7 +246,7 @@ func TestModDatePreservation(t *testing.T) {
 	os.Chtimes(dirPath, modTime, modTime)
 
 	archivePath = filepath.Join(tempDir, "test.goxa")
-	features = fModDates | fBlock
+	features = fModDates
 	toStdOut = false
 	doForce = false
 
@@ -260,7 +257,7 @@ func TestModDatePreservation(t *testing.T) {
 	os.RemoveAll(root)
 	dest := filepath.Join(tempDir, "out")
 	os.MkdirAll(dest, 0o755)
-	features = fModDates | fBlock
+	features = fModDates
 	extract([]string{dest}, false)
 
 	base := filepath.Join(dest, filepath.Base(root))

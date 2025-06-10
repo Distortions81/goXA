@@ -38,7 +38,6 @@ The header contains metadata for empty directories and files. Actual file conten
 | `fS2`           | 0x400 | Use s2 compression                        |
 | `fSnappy`       | 0x800 | Use snappy compression                    |
 | `fBrotli`       | 0x1000| Use brotli compression                    |
-| `fBlock`        | 0x2000| Enable block mode (v2 archives)           |
 
 Multiple flags may be combined.
 
@@ -83,7 +82,7 @@ For every file:
 
 ## Trailer Format
 
-Archives use block mode indicated by the `fBlock` flag. The header includes the block size and trailer offset fields:
+Version 2 archives always use block mode. The header includes the block size and trailer offset fields:
 
 ```
 [Block Size: uint32]

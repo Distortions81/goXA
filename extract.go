@@ -137,6 +137,7 @@ func extract(destinations []string, listOnly bool) {
 		if err := binary.Read(arc, binary.LittleEndian, &trailerOffset); err != nil {
 			log.Fatalf("extract: failed to read trailer offset: %v", err)
 		}
+		blockSize = blkSize
 	}
 
 	//Empty Directories
@@ -507,10 +508,11 @@ func extractFile(destination string, lfeat BitFlags, item *FileEntry, p *progres
 
 	var writer io.Writer = bf
 	var hashSum []byte
+	hasBlocks := len(item.Blocks) > 0
 	if lfeat.IsSet(fChecksums) {
 		hasher, _ := blake2b.New256(nil)
 		writer = io.MultiWriter(bf, hasher)
-		if lfeat.IsSet(fBlock) {
+		if hasBlocks {
 			for _, b := range item.Blocks {
 				if _, err := arcB.Seek(int64(b.Offset), io.SeekStart); err != nil {
 					log.Fatalf("seek block: %v", err)
@@ -556,7 +558,7 @@ func extractFile(destination string, lfeat BitFlags, item *FileEntry, p *progres
 		}
 		hashSum = hasher.Sum(nil)
 	} else {
-		if lfeat.IsSet(fBlock) {
+		if hasBlocks {
 			for _, b := range item.Blocks {
 				if _, err := arcB.Seek(int64(b.Offset), io.SeekStart); err != nil {
 					log.Fatalf("seek block: %v", err)
