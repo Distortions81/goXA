@@ -23,6 +23,7 @@ func TestUnicodeFilenames(t *testing.T) {
 
 	archivePath = filepath.Join(tempDir, "test.goxa")
 	features = 0
+	version = version1
 	toStdOut = false
 	doForce = false
 
