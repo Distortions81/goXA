@@ -310,6 +310,9 @@ func extract(destinations []string, listOnly bool) {
 			}
 			log.Fatalf("extract: unable to create directory %v: %v", dirPath, err)
 		}
+		if lfeat.IsSet(fModDates) {
+			os.Chtimes(dirPath, item.ModTime, item.ModTime)
+		}
 	}
 	arc.Close()
 
