@@ -82,10 +82,9 @@ func TestArchiveScenarios(t *testing.T) {
 	for _, ver := range []uint16{version1, version2} {
 		for _, tc := range cases {
 			t.Run(fmt.Sprintf("v%v_%s", ver, tc.name), func(t *testing.T) {
+				features = 0
 				if ver == version2 {
 					features.Set(fBlock)
-				} else {
-					features.Clear(fBlock)
 				}
 				version = ver
 
@@ -102,7 +101,7 @@ func TestArchiveScenarios(t *testing.T) {
 				archivePath = filepath.Join(tempDir, "test.goxa")
 				toStdOut = false
 				doForce = false
-				features = tc.createFlags | features
+				features |= tc.createFlags
 
 				cwd, _ := os.Getwd()
 				os.Chdir(tempDir)
@@ -113,7 +112,11 @@ func TestArchiveScenarios(t *testing.T) {
 				}
 
 				os.RemoveAll(root)
-				features = tc.extractFlags | features
+				features = 0
+				if ver == version2 {
+					features.Set(fBlock)
+				}
+				features |= tc.extractFlags
 
 				var dest string
 				if tc.extractFlags.IsSet(fAbsolutePaths) {
@@ -167,6 +170,7 @@ func TestArchiveParentRelative(t *testing.T) {
 
 	archivePath = filepath.Join(tempDir, "test.goxa")
 	features = 0
+	version = version1
 	toStdOut = false
 	doForce = false
 
@@ -210,6 +214,7 @@ func TestSymlinkAndHardlink(t *testing.T) {
 
 	archivePath = filepath.Join(tempDir, "test.goxa")
 	features = fSpecialFiles
+	version = version1
 	toStdOut = false
 	doForce = false
 
