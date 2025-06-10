@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"strings"
@@ -24,7 +23,6 @@ type largeSpec struct {
 func setupLargeBlockTree(t *testing.T, root string) []largeSpec {
 	old := syscall.Umask(0)
 	defer syscall.Umask(old)
-	rand.Seed(1)
 	specs := make([]largeSpec, 0, 3010)
 	for i := 0; i < 3000; i++ {
 		size := (i%20 + 1) * 1024

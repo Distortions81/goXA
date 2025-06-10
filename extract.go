@@ -502,12 +502,15 @@ func extractFile(destination string, lfeat BitFlags, item *FileEntry, p *progres
 					}
 					r = dec
 					_, err = io.Copy(writer, progressReader{r: r, p: p})
+					if err != nil {
+						log.Fatalf("copy block: %v", err)
+					}
 					dec.Close()
 				} else {
 					_, err = io.Copy(writer, progressReader{r: r, p: p})
-				}
-				if err != nil {
-					log.Fatalf("copy block: %v", err)
+					if err != nil {
+						log.Fatalf("copy block: %v", err)
+					}
 				}
 			}
 		} else {
@@ -544,6 +547,9 @@ func extractFile(destination string, lfeat BitFlags, item *FileEntry, p *progres
 						log.Fatalf("decompress setup: %v", err)
 					}
 					_, err = io.Copy(writer, progressReader{r: dec, p: p})
+					if err != nil {
+						log.Fatalf("copy block: %v", err)
+					}
 					dec.Close()
 				} else {
 					_, err = io.Copy(writer, progressReader{r: r, p: p})
