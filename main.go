@@ -76,6 +76,8 @@ func main() {
 			features.Set(fIncludeInvis)
 		case 'o':
 			features.Set(fSpecialFiles)
+		case 'u':
+			useArchiveFlags = true
 		case 'v':
 			verboseMode = true
 		case 'f':
@@ -138,7 +140,7 @@ func main() {
 }
 
 func showUsage() {
-	fmt.Println("Usage: goxa [c|l|x][apmsniveo] -arc=arcFile [-comp=alg] [input paths/files...] or [destination]")
+	fmt.Println("Usage: goxa [c|l|x][apmsniveou] -arc=arcFile [-comp=alg] [input paths/files...] or [destination]")
 	fmt.Println("Output archive to stdout: -stdout, No progress bar: -progress=false")
 	fmt.Println("\nModes:")
 	fmt.Println("  c = Create a new archive. Requires input paths or files")
@@ -153,6 +155,7 @@ func showUsage() {
 	fmt.Print("  n = No-compression	")
 	fmt.Println("  i = Include dotfiles")
 	fmt.Print("  o = Special files          ")
+	fmt.Println("  u = Use archive flags")
 	fmt.Println("  v = Verbose logging")
 	fmt.Print("  f = Force (overwrite files and ignore read errors)")
 	fmt.Println("  -comp=gzip|zstd|lz4|s2|snappy|brotli|none")

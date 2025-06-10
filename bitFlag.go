@@ -32,12 +32,38 @@ func showFeatures(flags BitFlags) {
 	for x := 0; 1<<x < fTop; x++ {
 		if flags.IsSet(1 << x) {
 			if flagStr != "" {
-				flagStr = flagStr + ", "
+				flagStr += ", "
 			}
-			flagStr = flagStr + flagNames[x]
+			flagStr += flagNames[x]
 		}
 	}
 	if flagStr != "" {
-		doLog(false, "Archive Flags: %v", flagStr)
+		doLog(false, "Archive Flags: %v (%s)", flagStr, flagLetters(flags))
 	}
+}
+
+func flagLetters(flags BitFlags) string {
+	out := ""
+	if flags.IsSet(fAbsolutePaths) {
+		out += "a"
+	}
+	if flags.IsSet(fPermissions) {
+		out += "p"
+	}
+	if flags.IsSet(fModDates) {
+		out += "m"
+	}
+	if flags.IsSet(fChecksums) {
+		out += "s"
+	}
+	if flags.IsSet(fNoCompress) {
+		out += "n"
+	}
+	if flags.IsSet(fIncludeInvis) {
+		out += "i"
+	}
+	if flags.IsSet(fSpecialFiles) {
+		out += "o"
+	}
+	return out
 }

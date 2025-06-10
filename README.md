@@ -56,10 +56,11 @@ goxa [mode] [flags] -arc=archiveFile [paths...]
 | `n` | Disable compression |
 | `i` | Include hidden files |
 | `o` | Include special files |
+| `u` | Use flags stored in archive |
 | `v` | Verbose logging |
 | `f` | Force overwrite / ignore errors |
 
-Paths default to relative. Using `a` when extracting restores absolute paths.
+Paths default to relative. Using `a` when extracting restores absolute paths. By default extraction does not restore permissions, modification times, hidden files, or special files unless `p`, `m`, `i`, or `o` are specified (or `u` to use the archive flags).
 
 ### Extra Flags
 
@@ -79,6 +80,7 @@ Progress shows transfer speed and the current file being processed.
 goxa c -arc=mybackup.goxa myStuff/
 goxa capmsif -arc=mybackup.goxa ~/
 goxa x -arc=mybackup.goxa
+goxa xu -arc=mybackup.goxa     # use archive flags
 goxa l -arc=mybackup.goxa
 ```
 
