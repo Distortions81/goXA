@@ -9,16 +9,17 @@ import (
 
 func TestAllCompressions(t *testing.T) {
 	cases := []struct {
-		name string
-		flag BitFlags
+		name  string
+		ctype uint8
+		flag  BitFlags
 	}{
-		{"gzip", 0},
-		{"zstd", fZstd},
-		{"lz4", fLZ4},
-		{"s2", fS2},
-		{"snappy", fSnappy},
-		{"brotli", fBrotli},
-		{"none", fNoCompress},
+		{"gzip", compGzip, 0},
+		{"zstd", compZstd, 0},
+		{"lz4", compLZ4, 0},
+		{"s2", compS2, 0},
+		{"snappy", compSnappy, 0},
+		{"brotli", compBrotli, 0},
+		{"none", compGzip, fNoCompress},
 	}
 
 	for _, tc := range cases {
@@ -35,6 +36,7 @@ func TestAllCompressions(t *testing.T) {
 
 			archivePath = filepath.Join(tempDir, "test.goxa")
 			features = tc.flag
+			compType = tc.ctype
 			version = version2
 			toStdOut = false
 			doForce = false
@@ -50,6 +52,7 @@ func TestAllCompressions(t *testing.T) {
 			}
 
 			features = tc.flag
+			compType = tc.ctype
 			extract([]string{dest}, false)
 
 			extracted := filepath.Join(dest, filepath.Base(root), "file.txt")

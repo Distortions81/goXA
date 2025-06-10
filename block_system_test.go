@@ -76,14 +76,26 @@ func parseArchive(t *testing.T, path string) []FileEntry {
 	if err := binary.Read(arc, binary.LittleEndian, &flags); err != nil {
 		t.Fatalf("read flags: %v", err)
 	}
+	var ctype uint8
 	var blkSize uint32 = blockSize
 	var trailerOff uint64
+	var arcSize uint64
+	if ver >= version2 {
+		if err := binary.Read(arc, binary.LittleEndian, &ctype); err != nil {
+			t.Fatalf("read compression type: %v", err)
+		}
+	}
 	if ver >= version2 {
 		if err := binary.Read(arc, binary.LittleEndian, &blkSize); err != nil {
 			t.Fatalf("read block size: %v", err)
 		}
 		if err := binary.Read(arc, binary.LittleEndian, &trailerOff); err != nil {
 			t.Fatalf("read trailer offset: %v", err)
+		}
+	}
+	if ver >= version2 {
+		if err := binary.Read(arc, binary.LittleEndian, &arcSize); err != nil {
+			t.Fatalf("read archive size: %v", err)
 		}
 	}
 

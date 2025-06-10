@@ -12,12 +12,14 @@ This document provides a compact description of the binary format used by the `g
 
 The header contains metadata for empty directories and files. Actual file contents follow the header and end with a trailer containing the block index.
 
-### Header
+-### Header
 - Magic bytes `GOXA`
 - Version (uint16)
 - Feature flags (uint32)
+- Compression type (`uint8`)
 - Block size (`uint32`)
 - Trailer offset (`uint64`)
+- Archive size (`uint64`)
 - Empty directory entries
 - File entries
 
@@ -33,11 +35,6 @@ The header contains metadata for empty directories and files. Actual file conten
 | `fNoCompress`   | 0x20  | Disable compression                       |
 | `fIncludeInvis` | 0x40  | Include hidden files                      |
 | `fSpecialFiles` | 0x80  | Archive symlinks and other special files  |
-| `fZstd`         | 0x100 | Use zstd compression                      |
-| `fLZ4`          | 0x200 | Use lz4 compression                       |
-| `fS2`           | 0x400 | Use s2 compression                        |
-| `fSnappy`       | 0x800 | Use snappy compression                    |
-| `fBrotli`       | 0x1000| Use brotli compression                    |
 
 Multiple flags may be combined.
 
@@ -68,12 +65,13 @@ Each file entry contains:
 
 For every file:
 1. Optional 32‑byte BLAKE2b checksum when `fChecksums` is set.
-2. File contents, compressed according to the compression flag. Gzip is used by default when no flag is set.
+2. File contents, compressed according to the compression type. Gzip is used by default when compression is enabled and no other type is selected.
 
 ### Example Layout
 
 ```
-[Magic][Version][Flags]
+[Magic][Version][Flags][CompType]
+[Block Size][Trailer Offset][Archive Size]
 [Empty Dir Count][Dirs]
 [File Count][Files]
 [Checksums and Data]
@@ -82,7 +80,7 @@ For every file:
 
 ## Trailer Format
 
-Version 2 archives always use block mode. The header includes the block size and trailer offset fields:
+Version 2 archives always use block mode. The header includes the block size, trailer offset, and archive size fields:
 
 ```
 [Block Size: uint32]

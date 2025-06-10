@@ -26,21 +26,21 @@ import (
 	"golang.org/x/crypto/blake2b"
 )
 
-func decompressor(r io.Reader, flags BitFlags) (io.ReadCloser, error) {
-	switch {
-	case flags.IsSet(fZstd):
+func decompressor(r io.Reader, cType uint8) (io.ReadCloser, error) {
+	switch cType {
+	case compZstd:
 		zr, err := zstd.NewReader(r)
 		if err != nil {
 			return nil, err
 		}
 		return zr.IOReadCloser(), nil
-	case flags.IsSet(fLZ4):
+	case compLZ4:
 		return io.NopCloser(lz4.NewReader(r)), nil
-	case flags.IsSet(fS2):
+	case compS2:
 		return io.NopCloser(s2.NewReader(r)), nil
-	case flags.IsSet(fSnappy):
+	case compSnappy:
 		return io.NopCloser(snappy.NewReader(r)), nil
-	case flags.IsSet(fBrotli):
+	case compBrotli:
 		return io.NopCloser(brotli.NewReader(r)), nil
 	default:
 		gr, err := gzip.NewReader(r)
@@ -105,6 +105,13 @@ func extract(destinations []string, listOnly bool) {
 	}
 	showFeatures(lfeat)
 
+	ctype := compGzip
+	if readVersion >= version2 {
+		if err := binary.Read(arc, binary.LittleEndian, &ctype); err != nil {
+			log.Fatalf("extract: failed to read compression type: %v", err)
+		}
+	}
+
 	if useArchiveFlags {
 		features |= lfeat
 	} else {
@@ -130,6 +137,7 @@ func extract(destinations []string, listOnly bool) {
 
 	var blkSize uint32 = blockSize
 	var trailerOffset uint64
+	var arcSize uint64
 	if readVersion >= version2 {
 		if err := binary.Read(arc, binary.LittleEndian, &blkSize); err != nil {
 			log.Fatalf("extract: failed to read block size: %v", err)
@@ -138,6 +146,15 @@ func extract(destinations []string, listOnly bool) {
 			log.Fatalf("extract: failed to read trailer offset: %v", err)
 		}
 		blockSize = blkSize
+	}
+	if readVersion >= version2 {
+		if err := binary.Read(arc, binary.LittleEndian, &arcSize); err != nil {
+			log.Fatalf("extract: failed to read archive size: %v", err)
+		}
+		info, _ := arc.file.Stat()
+		if uint64(info.Size()) != arcSize {
+			log.Fatalf("extract: archive size mismatch")
+		}
 	}
 
 	//Empty Directories
@@ -242,7 +259,8 @@ func extract(destinations []string, listOnly bool) {
 		if _, err := io.ReadFull(arc, hdrSum[:]); err != nil {
 			log.Fatalf("extract: failed to read header checksum: %v", err)
 		}
-		hdrBytes := writeHeaderV2(dirList, fileList, trailerOffset, lfeat)
+		var hdrBytes []byte
+		hdrBytes = writeHeaderV2(dirList, fileList, trailerOffset, arcSize, lfeat, ctype)
 		expect := hdrBytes[len(hdrBytes)-checksumSize:]
 		if !bytes.Equal(expect, hdrSum[:]) {
 			log.Fatalf("extract: header checksum mismatch")
@@ -347,7 +365,7 @@ func extract(destinations []string, listOnly bool) {
 			wg.Add()
 			go func(item *FileEntry) {
 				defer wg.Done()
-				_ = extractFile(destination, lfeat, item, p)
+				_ = extractFile(destination, lfeat, ctype, item, p)
 			}(&fileList[f])
 		}
 		wg.Wait()
@@ -356,7 +374,7 @@ func extract(destinations []string, listOnly bool) {
 			if !isSelected(fileList[f].Path) {
 				continue
 			}
-			_ = extractFile(destination, lfeat, &fileList[f], p)
+			_ = extractFile(destination, lfeat, ctype, &fileList[f], p)
 		}
 	}
 
@@ -365,7 +383,7 @@ func extract(destinations []string, listOnly bool) {
 	}
 }
 
-func extractFile(destination string, lfeat BitFlags, item *FileEntry, p *progressData) error {
+func extractFile(destination string, lfeat BitFlags, ctype uint8, item *FileEntry, p *progressData) error {
 	if item.Type == entryOther {
 		return nil
 	}
@@ -519,7 +537,7 @@ func extractFile(destination string, lfeat BitFlags, item *FileEntry, p *progres
 				}
 				r := io.LimitReader(arcB, int64(b.Size))
 				if lfeat.IsNotSet(fNoCompress) {
-					dec, err := decompressor(r, lfeat)
+					dec, err := decompressor(r, ctype)
 					if err != nil {
 						log.Fatalf("decompress setup: %v", err)
 					}
@@ -539,7 +557,7 @@ func extractFile(destination string, lfeat BitFlags, item *FileEntry, p *progres
 		} else {
 			var src io.Reader = arcB
 			if lfeat.IsNotSet(fNoCompress) {
-				dec, err := decompressor(arcB, lfeat)
+				dec, err := decompressor(arcB, ctype)
 				if err != nil {
 					log.Fatalf("decompress error: Unable to create reader: %v :: %v", item.Path, err)
 				}
@@ -565,7 +583,7 @@ func extractFile(destination string, lfeat BitFlags, item *FileEntry, p *progres
 				}
 				r := io.LimitReader(arcB, int64(b.Size))
 				if lfeat.IsNotSet(fNoCompress) {
-					dec, err := decompressor(r, lfeat)
+					dec, err := decompressor(r, ctype)
 					if err != nil {
 						log.Fatalf("decompress setup: %v", err)
 					}
@@ -584,7 +602,7 @@ func extractFile(destination string, lfeat BitFlags, item *FileEntry, p *progres
 		} else {
 			var src io.Reader = arcB
 			if lfeat.IsNotSet(fNoCompress) {
-				dec, err := decompressor(arcB, lfeat)
+				dec, err := decompressor(arcB, ctype)
 				if err != nil {
 					log.Fatalf("decompress error: Unable to create reader: %v :: %v", item.Path, err)
 				}
