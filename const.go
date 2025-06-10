@@ -1,13 +1,15 @@
 package main
 
 const (
-	magic   = "GOXA"
-	version = 1
+	magic    = "GOXA"
+	version1 = 1
+	version2 = 2
 
 	readBuffer         = 1000 * 1000 * 1 //MiB
 	writeBuffer        = readBuffer
 	defaultArchiveName = "archive.goxa"
 	checksumSize       = 32
+	defaultBlockSize   = 512 * 1024 // 512KiB
 )
 
 // Features
@@ -25,12 +27,13 @@ const (
 	fS2
 	fSnappy
 	fBrotli
+	fBlock
 
 	fTop //Do not use, move or delete
 )
 
 var (
-	flagNames = []string{"None", "Absolute Paths", "Permissions", "Mod Dates", "Checksums", "No Compress", "Include Invis", "Special Files", "Zstd", "LZ4", "S2", "Snappy", "Brotli", "Unknown"}
+	flagNames = []string{"None", "Absolute Paths", "Permissions", "Mod Dates", "Checksums", "No Compress", "Include Invis", "Special Files", "Zstd", "LZ4", "S2", "Snappy", "Brotli", "Block", "Unknown"}
 )
 
 // Entry Types

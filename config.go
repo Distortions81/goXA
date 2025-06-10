@@ -11,6 +11,8 @@ var (
 	features                                 BitFlags
 	compression                              string
 	extractList                              []string
+	version                                  uint16 = version2
+	blockSize                                uint32 = defaultBlockSize
 )
 
 type FileEntry struct {
@@ -22,4 +24,10 @@ type FileEntry struct {
 	Size     uint64
 	Mode     fs.FileMode
 	ModTime  time.Time
+	Blocks   []Block
+}
+
+type Block struct {
+	Offset uint64
+	Size   uint32
 }
