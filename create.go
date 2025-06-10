@@ -67,26 +67,26 @@ func create(inputPaths []string) error {
 		return err
 	}
 
-	if version >= version2 && features.IsSet(fBlock) {
-		header := writeHeaderV2(emptyDirs, files, 0, features)
-		headerLen := len(header)
-		bf.Write(header)
-		trailerOffset := writeEntriesV2(headerLen, bf, files)
-		trailer := writeTrailer(files)
-		bf.Write(trailer)
-		finalHeader := writeHeaderV2(emptyDirs, files, trailerOffset, features)
-		if len(finalHeader) != headerLen {
-			log.Fatalf("header size mismatch")
-		}
-		if _, err := bf.Seek(0, io.SeekStart); err != nil {
-			log.Fatalf("seek start: %v", err)
-		}
-		bf.Write(finalHeader)
-	} else {
-		offsetsLoc, header := writeHeader(emptyDirs, files)
-		bf.Write(header)
-		writeEntries(offsetsLoc, bf, files)
+	if features.IsSet(fNoCompress) {
+		blockSize = 0
+	} else if blockSize == 0 {
+		blockSize = defaultBlockSize
 	}
+
+	header := writeHeaderV2(emptyDirs, files, 0, features)
+	headerLen := len(header)
+	bf.Write(header)
+	trailerOffset := writeEntriesV2(headerLen, bf, files)
+	trailer := writeTrailer(files)
+	bf.Write(trailer)
+	finalHeader := writeHeaderV2(emptyDirs, files, trailerOffset, features)
+	if len(finalHeader) != headerLen {
+		log.Fatalf("header size mismatch")
+	}
+	if _, err := bf.Seek(0, io.SeekStart); err != nil {
+		log.Fatalf("seek start: %v", err)
+	}
+	bf.Write(finalHeader)
 
 	info, err := bf.file.Stat()
 	if err != nil {
@@ -296,9 +296,7 @@ func writeHeaderV2(emptyDirs, files []FileEntry, trailerOffset uint64, flags Bit
 			}
 		}
 	}
-	for _, file := range files {
-		binary.Write(&header, binary.LittleEndian, file.Offset)
-	}
+	// File offsets are tracked in the trailer only
 
 	h, _ := blake2b.New256(nil)
 	h.Write(header.Bytes())
@@ -326,7 +324,10 @@ func writeEntriesV2(headerLen int, bf *BufferedFile, files []FileEntry) uint64 {
 	}()
 
 	cOffset := uint64(headerLen)
-	buf := make([]byte, blockSize)
+	var buf []byte
+	if blockSize > 0 {
+		buf = make([]byte, blockSize)
+	}
 
 	for i := range files {
 		entry := &files[i]
@@ -367,37 +368,61 @@ func writeEntriesV2(headerLen int, bf *BufferedFile, files []FileEntry) uint64 {
 
 		br := NewBufferedFile(f, writeBuffer, p)
 		var blocks []Block
-		for {
-			n, err := io.ReadFull(br, buf)
-			if n > 0 {
-				bOff := cOffset
-				if features.IsSet(fNoCompress) {
-					if _, err := bf.Write(buf[:n]); err != nil {
-						log.Fatalf("copy failed: %v", err)
-					}
-					cOffset += uint64(n)
-					blocks = append(blocks, Block{Offset: bOff, Size: uint32(n)})
-				} else {
-					cw := &countingWriter{w: bf}
-					zw := compressor(cw)
-					if _, err := zw.Write(buf[:n]); err != nil {
-						log.Fatalf("compress copy failed: %v", err)
-					}
-					if err := zw.Close(); err != nil {
-						log.Fatalf("compress close failed: %v", err)
-					}
-					cOffset += uint64(cw.Count())
-					blocks = append(blocks, Block{Offset: bOff, Size: uint32(cw.Count())})
+
+		if blockSize == 0 {
+			bOff := cOffset
+			var written uint64
+			if features.IsSet(fNoCompress) {
+				if _, err := io.Copy(bf, br); err != nil {
+					log.Fatalf("copy failed: %v", err)
 				}
+				written = entry.Size
+			} else {
+				cw := &countingWriter{w: bf}
+				zw := compressor(cw)
+				if _, err := io.Copy(zw, br); err != nil {
+					log.Fatalf("compress copy failed: %v", err)
+				}
+				if err := zw.Close(); err != nil {
+					log.Fatalf("compress close failed: %v", err)
+				}
+				written = uint64(cw.Count())
 			}
-			if err == io.EOF {
-				break
-			}
-			if err == io.ErrUnexpectedEOF {
-				break
-			}
-			if err != nil {
-				log.Fatalf("read block failed: %v", err)
+			cOffset += written
+			blocks = append(blocks, Block{Offset: bOff, Size: uint32(written)})
+		} else {
+			for {
+				n, err := io.ReadFull(br, buf)
+				if n > 0 {
+					bOff := cOffset
+					if features.IsSet(fNoCompress) {
+						if _, err := bf.Write(buf[:n]); err != nil {
+							log.Fatalf("copy failed: %v", err)
+						}
+						cOffset += uint64(n)
+						blocks = append(blocks, Block{Offset: bOff, Size: uint32(n)})
+					} else {
+						cw := &countingWriter{w: bf}
+						zw := compressor(cw)
+						if _, err := zw.Write(buf[:n]); err != nil {
+							log.Fatalf("compress copy failed: %v", err)
+						}
+						if err := zw.Close(); err != nil {
+							log.Fatalf("compress close failed: %v", err)
+						}
+						cOffset += uint64(cw.Count())
+						blocks = append(blocks, Block{Offset: bOff, Size: uint32(cw.Count())})
+					}
+				}
+				if err == io.EOF {
+					break
+				}
+				if err == io.ErrUnexpectedEOF {
+					break
+				}
+				if err != nil {
+					log.Fatalf("read block failed: %v", err)
+				}
 			}
 		}
 		br.Close()

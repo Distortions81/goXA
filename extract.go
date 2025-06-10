@@ -236,15 +236,6 @@ func extract(destinations []string, listOnly bool) {
 		return
 	}
 
-	//File offsets
-	for n := uint64(0); n < numFiles; n++ {
-		var fileOffset uint64
-		if err := binary.Read(arc, binary.LittleEndian, &fileOffset); err != nil {
-			log.Fatalf("extract: failed to read file offset: %v", err)
-		}
-		fileList[n].Offset = fileOffset
-	}
-
 	if readVersion >= version2 {
 		var hdrSum [checksumSize]byte
 		if _, err := io.ReadFull(arc, hdrSum[:]); err != nil {
@@ -274,6 +265,13 @@ func extract(destinations []string, listOnly bool) {
 				}
 			}
 			fileList[i].Blocks = blocks
+			if len(blocks) > 0 {
+				off := blocks[0].Offset
+				if lfeat.IsSet(fChecksums) {
+					off -= checksumSize
+				}
+				fileList[i].Offset = off
+			}
 		}
 		var tSum [checksumSize]byte
 		if _, err := io.ReadFull(arc, tSum[:]); err != nil {

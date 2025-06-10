@@ -136,11 +136,6 @@ func parseArchive(t *testing.T, path string) []FileEntry {
 		}
 		files[i] = FileEntry{Path: path, Size: size, Mode: fs.FileMode(mode), ModTime: time.Unix(mt, 0).UTC(), Type: typ}
 	}
-	for i := range files {
-		if err := binary.Read(arc, binary.LittleEndian, &files[i].Offset); err != nil {
-			t.Fatalf("read offset: %v", err)
-		}
-	}
 	if ver >= version2 {
 		var hdrSum [checksumSize]byte
 		if _, err := io.ReadFull(arc, hdrSum[:]); err != nil {
@@ -164,6 +159,9 @@ func parseArchive(t *testing.T, path string) []FileEntry {
 				}
 			}
 			files[i].Blocks = blocks
+			if len(blocks) > 0 {
+				files[i].Offset = blocks[0].Offset
+			}
 		}
 	}
 	return files
@@ -195,7 +193,12 @@ func TestBlockArchiveLargeFiles(t *testing.T) {
 			}
 		}
 		if strings.HasPrefix(f.Path, "big/") {
-			exp := int((f.Size + uint64(blockSize) - 1) / uint64(blockSize))
+			var exp int
+			if blockSize == 0 {
+				exp = 1
+			} else {
+				exp = int((f.Size + uint64(blockSize) - 1) / uint64(blockSize))
+			}
 			if len(f.Blocks) != exp {
 				t.Fatalf("big file %s expected %d blocks, got %d", f.Path, exp, len(f.Blocks))
 			}
