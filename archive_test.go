@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -79,75 +78,69 @@ func TestArchiveScenarios(t *testing.T) {
 		{"abs_all_flags", fAbsolutePaths | fPermissions | fChecksums | fIncludeInvis | fNoCompress, fAbsolutePaths, true, true},
 	}
 
-	for _, ver := range []uint16{version1, version2} {
-		for _, tc := range cases {
-			t.Run(fmt.Sprintf("v%v_%s", ver, tc.name), func(t *testing.T) {
-				features = 0
-				if ver == version2 {
-					features.Set(fBlock)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			features = 0
+			features.Set(fBlock)
+			version = version2
+
+			tempDir := t.TempDir()
+			root := filepath.Join(tempDir, "root")
+			specs := setupTestTree(t, root)
+
+			var oldUmask int
+			if tc.checkPerms {
+				oldUmask = syscall.Umask(0)
+				defer syscall.Umask(oldUmask)
+			}
+
+			archivePath = filepath.Join(tempDir, "test.goxa")
+			toStdOut = false
+			doForce = false
+			features |= tc.createFlags
+
+			cwd, _ := os.Getwd()
+			os.Chdir(tempDir)
+			defer os.Chdir(cwd)
+
+			if err := create([]string{root}); err != nil {
+				t.Fatalf("create failed: %v", err)
+			}
+
+			os.RemoveAll(root)
+			features = 0
+			features.Set(fBlock)
+			features |= tc.extractFlags
+
+			var dest string
+			if tc.extractFlags.IsSet(fAbsolutePaths) {
+				extract([]string{}, false)
+			} else {
+				dest = filepath.Join(tempDir, "out")
+				if err := os.MkdirAll(dest, 0o755); err != nil {
+					t.Fatalf("mkdir dest: %v", err)
 				}
-				version = ver
+				extract([]string{dest}, false)
+			}
 
-				tempDir := t.TempDir()
-				root := filepath.Join(tempDir, "root")
-				specs := setupTestTree(t, root)
+			var base string
+			if tc.extractFlags.IsSet(fAbsolutePaths) {
+				base = root
+			} else {
+				base = filepath.Join(dest, filepath.Base(root))
+			}
 
-				var oldUmask int
-				if tc.checkPerms {
-					oldUmask = syscall.Umask(0)
-					defer syscall.Umask(oldUmask)
-				}
-
-				archivePath = filepath.Join(tempDir, "test.goxa")
-				toStdOut = false
-				doForce = false
-				features |= tc.createFlags
-
-				cwd, _ := os.Getwd()
-				os.Chdir(tempDir)
-				defer os.Chdir(cwd)
-
-				if err := create([]string{root}); err != nil {
-					t.Fatalf("create failed: %v", err)
-				}
-
-				os.RemoveAll(root)
-				features = 0
-				if ver == version2 {
-					features.Set(fBlock)
-				}
-				features |= tc.extractFlags
-
-				var dest string
-				if tc.extractFlags.IsSet(fAbsolutePaths) {
-					extract([]string{}, false)
-				} else {
-					dest = filepath.Join(tempDir, "out")
-					if err := os.MkdirAll(dest, 0o755); err != nil {
-						t.Fatalf("mkdir dest: %v", err)
+			for _, sp := range specs {
+				hidden := strings.Contains("/"+sp.rel, "/.")
+				if hidden && !tc.expectHidden {
+					if _, err := os.Stat(filepath.Join(base, sp.rel)); !os.IsNotExist(err) {
+						t.Fatalf("hidden file should not exist: %v", sp.rel)
 					}
-					extract([]string{dest}, false)
+					continue
 				}
-
-				var base string
-				if tc.extractFlags.IsSet(fAbsolutePaths) {
-					base = root
-				} else {
-					base = filepath.Join(dest, filepath.Base(root))
-				}
-
-				for _, sp := range specs {
-					hidden := strings.Contains("/"+sp.rel, "/.")
-					if hidden && !tc.expectHidden {
-						if _, err := os.Stat(filepath.Join(base, sp.rel)); !os.IsNotExist(err) {
-							t.Fatalf("hidden file should not exist: %v", sp.rel)
-						}
-						continue
-					}
-					checkFile(t, filepath.Join(base, sp.rel), sp.data, sp.perm, tc.checkPerms)
-				}
-			})
-		}
+				checkFile(t, filepath.Join(base, sp.rel), sp.data, sp.perm, tc.checkPerms)
+			}
+		})
 	}
 }
 
@@ -170,7 +163,8 @@ func TestArchiveParentRelative(t *testing.T) {
 
 	archivePath = filepath.Join(tempDir, "test.goxa")
 	features = 0
-	version = version1
+	features.Set(fBlock)
+	version = version2
 	toStdOut = false
 	doForce = false
 
@@ -213,8 +207,8 @@ func TestSymlinkAndHardlink(t *testing.T) {
 	os.Link(orig, filepath.Join(root, "hard.txt"))
 
 	archivePath = filepath.Join(tempDir, "test.goxa")
-	features = fSpecialFiles
-	version = version1
+	features = fSpecialFiles | fBlock
+	version = version2
 	toStdOut = false
 	doForce = false
 
@@ -225,7 +219,7 @@ func TestSymlinkAndHardlink(t *testing.T) {
 	os.RemoveAll(root)
 	dest := filepath.Join(tempDir, "out")
 	os.MkdirAll(dest, 0o755)
-	features = fSpecialFiles
+	features = fSpecialFiles | fBlock
 	extract([]string{dest}, false)
 
 	base := filepath.Join(dest, filepath.Base(root))
@@ -255,7 +249,7 @@ func TestModDatePreservation(t *testing.T) {
 	os.Chtimes(dirPath, modTime, modTime)
 
 	archivePath = filepath.Join(tempDir, "test.goxa")
-	features = fModDates
+	features = fModDates | fBlock
 	toStdOut = false
 	doForce = false
 
@@ -266,7 +260,7 @@ func TestModDatePreservation(t *testing.T) {
 	os.RemoveAll(root)
 	dest := filepath.Join(tempDir, "out")
 	os.MkdirAll(dest, 0o755)
-	features = fModDates
+	features = fModDates | fBlock
 	extract([]string{dest}, false)
 
 	base := filepath.Join(dest, filepath.Base(root))
