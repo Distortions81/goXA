@@ -9,7 +9,7 @@ This document provides a compact description of the binary format used by the `g
 [Per-file data]
 ```
 
-The header lists metadata for empty directories and files along with an offset table. Actual file contents follow the header.
+The header contains metadata for empty directories and files along with an offset table. Actual file contents follow the header.
 
 ### Header
 - Magic bytes `GOXA`
@@ -36,6 +36,7 @@ The header lists metadata for empty directories and files along with an offset t
 | `fS2`           | 0x400 | Use s2 compression                        |
 | `fSnappy`       | 0x800 | Use snappy compression                    |
 | `fBrotli`       | 0x1000| Use brotli compression                    |
+| `fBlock`        | 0x2000| Enable block mode (v2 archives)           |
 
 Multiple flags may be combined.
 
@@ -82,17 +83,14 @@ For every file:
 
 ## Version 2 Additions
 
-Version 2 archives introduce block mode indicated by the `fBlock` flag. Two new
-fields are appended to the header:
+Version 2 archives introduce block mode indicated by the `fBlock` flag. The header includes two additional fields:
 
 ```
 [Block Size: uint32]
 [Trailer Offset: uint64]
 ```
 
-Files are compressed in fixed-size blocks (default 512&nbsp;KiB). After all file
-data comes a trailer containing a block index for each file followed by a 32‑byte
-checksum of the trailer.
+Files are compressed in fixed-size blocks (default 512&nbsp;KiB). After all file data comes a trailer containing a block index for each file followed by a 32‑byte checksum of the trailer.
 
 Trailer layout:
 
