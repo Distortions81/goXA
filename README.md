@@ -11,7 +11,7 @@ GoXA is a gopher-friendly archiver written in Go. It's quick and simple, and sti
 - [x] Optional BLAKE2b-256 checksums
 - [x] Preserve permissions and modification times
 - [x] Empty directory support
-- [x] Fully documented binary format ([file-format.md](file-format.md))
+- [x] Fully documented binary format ([FILE-FORMAT.md](FILE-FORMAT.md))
 - [x] Optional support for symlinks and other special files
 - [x] Clean, dependency-free Go code
 
