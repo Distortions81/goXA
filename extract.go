@@ -285,7 +285,7 @@ func extract(destinations []string, listOnly bool) {
 		if !isSelected(item.Path) {
 			continue
 		}
-		perms := os.FileMode(0644)
+		perms := os.FileMode(0755)
 		if lfeat.IsSet(fPermissions) {
 			perms = item.Mode
 		}
@@ -309,6 +309,9 @@ func extract(destinations []string, listOnly bool) {
 				continue
 			}
 			log.Fatalf("extract: unable to create directory %v: %v", dirPath, err)
+		}
+		if lfeat.IsSet(fModDates) {
+			os.Chtimes(dirPath, item.ModTime, item.ModTime)
 		}
 	}
 	arc.Close()
