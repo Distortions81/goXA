@@ -86,10 +86,10 @@ func main() {
 		cmd = cmd[:len(cmd)-1]
 	}
 
-        switch strings.ToLower(compression) {
-        case "gzip":
-        case "zstd":
-                features.Set(fZstd)
+	switch strings.ToLower(compression) {
+	case "gzip":
+	case "zstd":
+		features.Set(fZstd)
 	case "lz4":
 		features.Set(fLZ4)
 	case "s2":
@@ -101,13 +101,13 @@ func main() {
 	case "none":
 		features.Set(fNoCompress)
 	default:
-                log.Fatalf("Unknown compression: %s", compression)
-        }
+		log.Fatalf("Unknown compression: %s", compression)
+	}
 
-       // Version 2 archives require block mode; enable it by default.
-       if version >= version2 {
-               features.Set(fBlock)
-       }
+	// Version 2 archives require block mode; enable it by default.
+	if version >= version2 {
+		features.Set(fBlock)
+	}
 
 	if len(cmd) == 0 {
 		showUsage()
