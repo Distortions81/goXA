@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# This does some real-world testing and go test checks of goxa
+
 # Temporary working directory for the test
 TMPDIR=$(mktemp -d)
 trap 'rm -rf "$TMPDIR"' EXIT
@@ -84,3 +86,5 @@ if [ "$orig_sum" != "$extr_sum" ]; then
 fi
 
 echo "archive create/extract large test passed"
+
+go test
