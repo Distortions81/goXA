@@ -179,6 +179,7 @@ func create(inputPaths []string) error {
 			if toStdOut {
 				log.Fatalf("FEC encoding not supported with stdout")
 			}
+			doLog(false, "FEC encoding archive")
 			if err := encodeWithFEC(tmpPath, archivePath); err != nil {
 				log.Fatalf("fec encode: %v", err)
 			}
@@ -212,8 +213,10 @@ func create(inputPaths []string) error {
 				dst = f
 			}
 			if encode == "b32" {
+				doLog(false, "Base32 encoding archive")
 				encW = base32.NewEncoder(base32.StdEncoding, dst)
 			} else {
+				doLog(false, "Base64 encoding archive")
 				encW = base64.NewEncoder(base64.StdEncoding, dst)
 			}
 

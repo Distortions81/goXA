@@ -13,6 +13,7 @@ import (
 const fecMagic = "GOXAFEC"
 
 func encodeWithFEC(inPath, outPath string) error {
+	doLog(false, "FEC encoding archive")
 	data, err := os.ReadFile(inPath)
 	if err != nil {
 		return err
@@ -68,6 +69,7 @@ func encodeWithFEC(inPath, outPath string) error {
 }
 
 func decodeWithFEC(name string) (string, func(), error) {
+	doLog(false, "FEC decoding archive")
 	f, err := os.Open(name)
 	if err != nil {
 		return "", nil, err

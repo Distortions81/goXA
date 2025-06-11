@@ -111,6 +111,11 @@ func decodeIfNeeded(name string) (string, func(), error) {
 	if encode == "" {
 		return name, func() {}, nil
 	}
+	if encode == "b32" {
+		doLog(false, "Base32 decoding archive")
+	} else if encode == "b64" {
+		doLog(false, "Base64 decoding archive")
+	}
 	f, err := os.Open(name)
 	if err != nil {
 		return "", nil, err
