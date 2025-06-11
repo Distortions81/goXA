@@ -36,10 +36,12 @@ func main() {
 	cmd := strings.ToLower(os.Args[1])
 	flagSet := flag.NewFlagSet("goxa", flag.ExitOnError)
 	var sel string
+	var format string
 	flagSet.StringVar(&archivePath, "arc", defaultArchiveName, "archive file name (extension not required)")
 	flagSet.BoolVar(&toStdOut, "stdout", false, "output archive data to stdout")
 	flagSet.BoolVar(&progress, "progress", true, "show progress bar")
 	flagSet.StringVar(&compression, "comp", "gzip", "compression: gzip|zstd|lz4|s2|snappy|brotli|none")
+	flagSet.StringVar(&format, "format", "goxa", "archive format: tar|goxa")
 	flagSet.StringVar(&sel, "files", "", "comma-separated list of files and directories to extract")
 	flagSet.Parse(os.Args[2:])
 
@@ -56,7 +58,15 @@ func main() {
 
 	//Clean up archive name
 	archivePath = removeExtension(archivePath)
-	archivePath = archivePath + ".goxa"
+	if strings.ToLower(format) == "tar" {
+		if features.IsNotSet(fNoCompress) {
+			archivePath += ".tar.gz"
+		} else {
+			archivePath += ".tar"
+		}
+	} else {
+		archivePath = archivePath + ".goxa"
+	}
 
 	//Options
 	for _, letter := range cmd {
@@ -116,8 +126,17 @@ func main() {
 	//Modes
 	switch cmd[0] {
 	case 'c':
+		if strings.ToLower(format) == "tar" {
+			if err := createTar(flagSet.Args()); err != nil {
+				log.Fatalf("tar create failed: %v", err)
+			}
+			return
+		}
 		create(flagSet.Args())
 	case 'l':
+		if strings.ToLower(format) == "tar" {
+			log.Fatalf("list not supported for tar format")
+		}
 		extract(flagSet.Args(), true)
 	case 'x':
 		if archivePath == defaultArchiveName {
@@ -127,6 +146,16 @@ func main() {
 			if features.IsSet(fAbsolutePaths) {
 				log.Fatal("Destination specified in conjunction with absolute path mode, stopping.")
 			}
+		}
+		if strings.ToLower(format) == "tar" {
+			dest := ""
+			if len(flagSet.Args()) > 0 {
+				dest = flagSet.Args()[0]
+			}
+			if err := extractTar(dest); err != nil {
+				log.Fatalf("tar extract failed: %v", err)
+			}
+			return
 		}
 		extract(flagSet.Args(), false)
 	default:
@@ -156,6 +185,7 @@ func showUsage() {
 	fmt.Println("  v = Verbose logging")
 	fmt.Print("  f = Force (overwrite files and ignore read errors)")
 	fmt.Println("  -comp=gzip|zstd|lz4|s2|snappy|brotli|none")
+	fmt.Println("  -format=tar|goxa")
 	fmt.Println()
 	fmt.Println("  goxa c -arc=arcFile myStuff		(similar to zip)")
 	fmt.Println("  goxa cpmi -arc=arcFile myStuff	(similar to tar -czf)")
