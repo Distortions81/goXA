@@ -133,7 +133,11 @@ func extract(destinations []string, listOnly bool, jsonList bool) {
 	cleanup := func() {}
 	if encode != "" {
 		var err error
-		arcPath, cleanup, err = decodeIfNeeded(archivePath)
+		if encode == "fec" {
+			arcPath, cleanup, err = decodeWithFEC(archivePath)
+		} else {
+			arcPath, cleanup, err = decodeIfNeeded(archivePath)
+		}
 		if err != nil {
 			log.Fatalf("extract: decode failed: %v", err)
 		}

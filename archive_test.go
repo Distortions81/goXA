@@ -279,7 +279,7 @@ func TestModDatePreservation(t *testing.T) {
 }
 
 func TestBaseEncoding(t *testing.T) {
-	cases := []struct{ enc string }{{"b64"}, {"b32"}}
+	cases := []struct{ enc string }{{"b64"}, {"b32"}, {"fec"}}
 	for _, tc := range cases {
 		tempDir := t.TempDir()
 		root := filepath.Join(tempDir, "root")

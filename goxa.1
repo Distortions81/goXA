@@ -92,9 +92,9 @@ Archive format (goxa or tar).
 .TP
 .B -version
 Print version and exit.
-.SS BASE32/BASE64
-Filenames ending with \fB.b32\fP or \fB.b64\fP are encoded using
-Base32 or Base64 and automatically decoded on extract or list.
+.SS BASE32/BASE64/FEC
+Filenames ending with \fB.b32\fP, \fB.b64\fP or \fB.fec\fP are encoded using
+Base32, Base64 or Reed-Solomon FEC and automatically decoded on extract or list.
 .SH EXAMPLES
 .nf
 goxa c -arc=backup.goxa mydir/
@@ -102,6 +102,8 @@ goxa capmsf -arc=backup.goxa ~/docs
 goxa x -arc=backup.goxa
 goxa c -arc=backup.goxa.b64 mydir/
 goxa x -arc=backup.goxa.b64
+goxa c -arc=backup.goxa.fec mydir/
+goxa x -arc=backup.goxa.fec
 .fi
 .SH SEE ALSO
 tar(1), gzip(1)

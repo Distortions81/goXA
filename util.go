@@ -36,7 +36,7 @@ func removeExtension(filename string) string {
 	return filename[:len(filename)-len(extension)]
 }
 
-// detectEncodingFromExt checks for .b32 or .b64 suffixes.
+// detectEncodingFromExt checks for .b32, .b64 or .fec suffixes.
 // It returns the filename without the encoding extension and the encoding type.
 func detectEncodingFromExt(name string) (string, string) {
 	lower := strings.ToLower(name)
@@ -45,6 +45,9 @@ func detectEncodingFromExt(name string) (string, string) {
 	}
 	if strings.HasSuffix(lower, ".b64") {
 		return name[:len(name)-4], "b64"
+	}
+	if strings.HasSuffix(lower, ".fec") {
+		return name[:len(name)-4], "fec"
 	}
 	return name, ""
 }
@@ -99,7 +102,7 @@ func hasKnownArchiveExt(name string) bool {
 	return strings.HasSuffix(lower, ".tar.gz") || strings.HasSuffix(lower, ".tar.xz") || strings.HasSuffix(lower, ".tar") || strings.HasSuffix(lower, ".goxa")
 }
 
-// decodeIfNeeded decodes a base32 or base64 encoded archive to a temporary file
+// decodeIfNeeded decodes a Base32, Base64 or FEC encoded archive to a temporary file
 // and returns the new filename and a cleanup function.
 func decodeIfNeeded(name string) (string, func(), error) {
 	if encode == "" {
@@ -121,6 +124,10 @@ func decodeIfNeeded(name string) (string, func(), error) {
 		r = base32.NewDecoder(base32.StdEncoding, f)
 	} else if encode == "b64" {
 		r = base64.NewDecoder(base64.StdEncoding, f)
+	} else if encode == "fec" {
+		f.Close()
+		os.Remove(tmp.Name())
+		return decodeWithFEC(name)
 	}
 	if _, err := io.Copy(tmp, r); err != nil {
 		tmp.Close()

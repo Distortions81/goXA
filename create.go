@@ -175,38 +175,51 @@ func create(inputPaths []string) error {
 
 	if encode != "" {
 		outFile.Close()
-		src, err := os.Open(tmpPath)
-		if err != nil {
-			log.Fatalf("temp reopen: %v", err)
-		}
-		defer os.Remove(tmpPath)
-
-		var dst io.Writer
-		var encW io.WriteCloser
-		if toStdOut {
-			dst = os.Stdout
-		} else {
-			f, err := os.Create(archivePath)
-			if err != nil {
-				log.Fatalf("create output: %v", err)
+		if encode == "fec" {
+			if toStdOut {
+				log.Fatalf("FEC encoding not supported with stdout")
 			}
-			defer f.Close()
-			dst = f
-		}
-		if encode == "b32" {
-			encW = base32.NewEncoder(base32.StdEncoding, dst)
-		} else {
-			encW = base64.NewEncoder(base64.StdEncoding, dst)
-		}
-		if _, err := io.Copy(encW, src); err != nil {
-			log.Fatalf("encode copy: %v", err)
-		}
-		encW.Close()
-		src.Close()
-
-		if !toStdOut {
+			if err := encodeWithFEC(tmpPath, archivePath); err != nil {
+				log.Fatalf("fec encode: %v", err)
+			}
+			os.Remove(tmpPath)
 			if st, err := os.Stat(archivePath); err == nil {
 				info = st
+			}
+		} else {
+			src, err := os.Open(tmpPath)
+			if err != nil {
+				log.Fatalf("temp reopen: %v", err)
+			}
+			defer os.Remove(tmpPath)
+
+			var dst io.Writer
+			var encW io.WriteCloser
+			if toStdOut {
+				dst = os.Stdout
+			} else {
+				f, err := os.Create(archivePath)
+				if err != nil {
+					log.Fatalf("create output: %v", err)
+				}
+				defer f.Close()
+				dst = f
+			}
+			if encode == "b32" {
+				encW = base32.NewEncoder(base32.StdEncoding, dst)
+			} else {
+				encW = base64.NewEncoder(base64.StdEncoding, dst)
+			}
+			if _, err := io.Copy(encW, src); err != nil {
+				log.Fatalf("encode copy: %v", err)
+			}
+			encW.Close()
+			src.Close()
+
+			if !toStdOut {
+				if st, err := os.Stat(archivePath); err == nil {
+					info = st
+				}
 			}
 		}
 	}
