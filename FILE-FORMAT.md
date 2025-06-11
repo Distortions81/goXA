@@ -17,6 +17,8 @@ The header contains metadata for empty directories and files. Actual file conten
 - Version (uint16)
 - Feature flags (uint32)
 - Compression type (`uint8`)
+- Checksum type (`uint8`)
+- Checksum length (`uint8`)
 - Block size (`uint32`)
 - Trailer offset (`uint64`)
 - Archive size (`uint64`)
@@ -31,7 +33,7 @@ The header contains metadata for empty directories and files. Actual file conten
 | `fAbsolutePaths`| 0x2   | Store absolute paths                      |
 | `fPermissions`  | 0x4   | Preserve permissions                      |
 | `fModDates`     | 0x8   | Preserve modification times               |
-| `fChecksums`    | 0x10  | Include BLAKE2b-256 checksums             |
+| `fChecksums`    | 0x10  | Include checksums                         |
 | `fNoCompress`   | 0x20  | Disable compression                       |
 | `fIncludeInvis` | 0x40  | Include hidden files                      |
 | `fSpecialFiles` | 0x80  | Archive symlinks and other special files  |
@@ -64,7 +66,7 @@ Each file entry contains:
 ### Per-file Data
 
 For every file:
-1. Optional 32‑byte BLAKE2b checksum when `fChecksums` is set.
+1. Optional checksum (length given in the header) when `fChecksums` is set.
 2. File contents, compressed according to the compression type. Gzip is used by default when compression is enabled and no other type is selected.
 
 ### Example Layout
@@ -90,18 +92,18 @@ Version 2 archives always use block mode. The header includes the block size, tr
 Files are compressed in fixed-size blocks (default 512&nbsp;KiB). When
 `fNoCompress` is set the block size becomes `0` and each file is stored as a
 single block. After all file data comes a trailer containing a block index for
-each file followed by a 32‑byte BLAKE2b‑256 checksum of the trailer.
+each file followed by a checksum of the trailer.
 
 Trailer layout:
 
 ```
 [Block Count: uint32]
 [ [Offset uint64][Size uint32] ... ]
-[Trailer Checksum: 32 bytes]
+[Trailer Checksum: checksum length from header]
 ```
 
-A 32‑byte BLAKE2b‑256 checksum of the header (including the trailer offset) is
-stored at the end of the header. Offsets in both the header and trailer are
+A checksum of the header (including the trailer offset) is stored at the end of
+the header. Offsets in both the header and trailer are
 absolute within the archive.
 
 ### Notes

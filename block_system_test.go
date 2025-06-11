@@ -84,6 +84,13 @@ func parseArchive(t *testing.T, path string) []FileEntry {
 		if err := binary.Read(arc, binary.LittleEndian, &ctype); err != nil {
 			t.Fatalf("read compression type: %v", err)
 		}
+		var csum uint8
+		if err := binary.Read(arc, binary.LittleEndian, &csum); err != nil {
+			t.Fatalf("read checksum type: %v", err)
+		}
+		if err := binary.Read(arc, binary.LittleEndian, &checksumLength); err != nil {
+			t.Fatalf("read checksum length: %v", err)
+		}
 	}
 	if ver >= version2 {
 		if err := binary.Read(arc, binary.LittleEndian, &blkSize); err != nil {
@@ -149,8 +156,8 @@ func parseArchive(t *testing.T, path string) []FileEntry {
 		files[i] = FileEntry{Path: path, Size: size, Mode: fs.FileMode(mode), ModTime: time.Unix(mt, 0).UTC(), Type: typ}
 	}
 	if ver >= version2 {
-		var hdrSum [checksumSize]byte
-		if _, err := io.ReadFull(arc, hdrSum[:]); err != nil {
+		hdrSum := make([]byte, checksumLength)
+		if _, err := io.ReadFull(arc, hdrSum); err != nil {
 			t.Fatalf("read header checksum: %v", err)
 		}
 		if _, err := arc.Seek(int64(trailerOff), io.SeekStart); err != nil {

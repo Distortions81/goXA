@@ -23,7 +23,6 @@ import (
 	"github.com/klauspost/compress/zstd"
 	lz4 "github.com/pierrec/lz4/v4"
 	"github.com/remeh/sizedwaitgroup"
-	"golang.org/x/crypto/blake2b"
 )
 
 func decompressor(r io.Reader, cType uint8) (io.ReadCloser, error) {
@@ -109,6 +108,12 @@ func extract(destinations []string, listOnly bool) {
 	if readVersion >= version2 {
 		if err := binary.Read(arc, binary.LittleEndian, &ctype); err != nil {
 			log.Fatalf("extract: failed to read compression type: %v", err)
+		}
+		if err := binary.Read(arc, binary.LittleEndian, &checksumType); err != nil {
+			log.Fatalf("extract: failed to read checksum type: %v", err)
+		}
+		if err := binary.Read(arc, binary.LittleEndian, &checksumLength); err != nil {
+			log.Fatalf("extract: failed to read checksum length: %v", err)
 		}
 	}
 
@@ -255,14 +260,14 @@ func extract(destinations []string, listOnly bool) {
 	}
 
 	if readVersion >= version2 {
-		var hdrSum [checksumSize]byte
-		if _, err := io.ReadFull(arc, hdrSum[:]); err != nil {
+		hdrSum := make([]byte, checksumLength)
+		if _, err := io.ReadFull(arc, hdrSum); err != nil {
 			log.Fatalf("extract: failed to read header checksum: %v", err)
 		}
 		var hdrBytes []byte
 		hdrBytes = writeHeader(dirList, fileList, trailerOffset, arcSize, lfeat, ctype)
-		expect := hdrBytes[len(hdrBytes)-checksumSize:]
-		if !bytes.Equal(expect, hdrSum[:]) {
+		expect := hdrBytes[len(hdrBytes)-int(checksumLength):]
+		if !bytes.Equal(expect, hdrSum) {
 			log.Fatalf("extract: header checksum mismatch")
 		}
 
@@ -287,18 +292,18 @@ func extract(destinations []string, listOnly bool) {
 			if len(blocks) > 0 {
 				off := blocks[0].Offset
 				if lfeat.IsSet(fChecksums) {
-					off -= checksumSize
+					off -= uint64(checksumLength)
 				}
 				fileList[i].Offset = off
 			}
 		}
-		var tSum [checksumSize]byte
-		if _, err := io.ReadFull(arc, tSum[:]); err != nil {
+		tSum := make([]byte, checksumLength)
+		if _, err := io.ReadFull(arc, tSum); err != nil {
 			log.Fatalf("extract: read trailer checksum: %v", err)
 		}
 		trailerBytes := writeTrailer(fileList)
-		expectT := trailerBytes[len(trailerBytes)-checksumSize:]
-		if !bytes.Equal(expectT, tSum[:]) {
+		expectT := trailerBytes[len(trailerBytes)-int(checksumLength):]
+		if !bytes.Equal(expectT, tSum) {
 			log.Fatalf("extract: trailer checksum mismatch")
 		}
 	}
@@ -510,7 +515,7 @@ func extractFile(destination string, lfeat BitFlags, ctype uint8, item *FileEntr
 	bf.doCount = true
 
 	//Read checksum
-	var expectedChecksum = make([]byte, checksumSize)
+	expectedChecksum := make([]byte, checksumLength)
 	if lfeat.IsSet(fChecksums) {
 		if _, err := io.ReadFull(arcB, expectedChecksum); err != nil {
 			if doForce {
@@ -528,7 +533,7 @@ func extractFile(destination string, lfeat BitFlags, ctype uint8, item *FileEntr
 	var hashSum []byte
 	hasBlocks := len(item.Blocks) > 0
 	if lfeat.IsSet(fChecksums) {
-		hasher, _ := blake2b.New256(nil)
+		hasher := newHasher(checksumType)
 		writer = io.MultiWriter(bf, hasher)
 		if hasBlocks {
 			for _, b := range item.Blocks {
@@ -575,6 +580,10 @@ func extractFile(destination string, lfeat BitFlags, ctype uint8, item *FileEntr
 			}
 		}
 		hashSum = hasher.Sum(nil)
+		if len(hashSum) < int(checksumLength) {
+			pad := make([]byte, int(checksumLength)-len(hashSum))
+			hashSum = append(hashSum, pad...)
+		}
 	} else {
 		if hasBlocks {
 			for _, b := range item.Blocks {

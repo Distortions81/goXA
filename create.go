@@ -15,7 +15,6 @@ import (
 	"github.com/klauspost/compress/zstd"
 	gzip "github.com/klauspost/pgzip"
 	lz4 "github.com/pierrec/lz4/v4"
-	"golang.org/x/crypto/blake2b"
 )
 
 func compressor(w io.Writer) io.WriteCloser {
@@ -109,6 +108,8 @@ func writeHeader(emptyDirs, files []FileEntry, trailerOffset, arcSize uint64, fl
 	binary.Write(&header, binary.LittleEndian, uint16(version))
 	binary.Write(&header, binary.LittleEndian, flags)
 	binary.Write(&header, binary.LittleEndian, cType)
+	binary.Write(&header, binary.LittleEndian, checksumType)
+	binary.Write(&header, binary.LittleEndian, checksumLength)
 	binary.Write(&header, binary.LittleEndian, blockSize)
 	binary.Write(&header, binary.LittleEndian, trailerOffset)
 	binary.Write(&header, binary.LittleEndian, arcSize)
@@ -146,17 +147,19 @@ func writeHeader(emptyDirs, files []FileEntry, trailerOffset, arcSize uint64, fl
 		}
 	}
 	// File offsets are tracked in the trailer only
-	h, _ := blake2b.New256(nil)
+	h := newHasher(checksumType)
 	h.Write(header.Bytes())
-	header.Write(h.Sum(nil))
+	sum := h.Sum(nil)
+	if len(sum) < int(checksumLength) {
+		pad := make([]byte, int(checksumLength)-len(sum))
+		sum = append(sum, pad...)
+	}
+	header.Write(sum[:checksumLength])
 	return header.Bytes()
 }
 
 func writeEntries(headerLen int, bf *BufferedFile, files []FileEntry) uint64 {
-	h, err := blake2b.New256(nil)
-	if err != nil {
-		log.Fatalf("blake2b init failed: %v", err)
-	}
+	h := newHasher(checksumType)
 
 	var totalBytes int64
 	for _, entry := range files {
@@ -211,7 +214,7 @@ func writeEntries(headerLen int, bf *BufferedFile, files []FileEntry) uint64 {
 
 		entry.Offset = cOffset
 		if features.IsSet(fChecksums) {
-			cOffset += checksumSize
+			cOffset += uint64(checksumLength)
 		}
 
 		br := NewBufferedFile(f, writeBuffer, p)
@@ -289,8 +292,13 @@ func writeTrailer(files []FileEntry) []byte {
 			binary.Write(&trailer, binary.LittleEndian, b.Size)
 		}
 	}
-	h, _ := blake2b.New256(nil)
+	h := newHasher(checksumType)
 	h.Write(trailer.Bytes())
-	trailer.Write(h.Sum(nil))
+	sum := h.Sum(nil)
+	if len(sum) < int(checksumLength) {
+		pad := make([]byte, int(checksumLength)-len(sum))
+		sum = append(sum, pad...)
+	}
+	trailer.Write(sum[:checksumLength])
 	return trailer.Bytes()
 }
