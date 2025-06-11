@@ -101,9 +101,18 @@ Treat changed files as fatal errors.
 .TP
 .B -version
 Print version and exit.
-.SS BASE32/BASE64
-Filenames ending with \fB.b32\fP or \fB.b64\fP are encoded using
-Base32 or Base64 and automatically decoded on extract or list.
+.TP
+.BI -fec-data= NUM
+Number of FEC data shards (default 10).
+.TP
+.BI -fec-parity= NUM
+Number of FEC parity shards (default 3).
+.TP
+.BI -fec-level= LEVEL
+FEC redundancy preset: low, medium or high.
+.SS BASE32/BASE64/FEC
+Filenames ending with \fB.b32\fP or \fB.b64\fP are encoded using Base32 or Base64.
+FEC archives use the \fB.goxaf\fP extension and are automatically decoded on extract or list.
 .SH EXAMPLES
 .nf
 goxa c -arc=backup.goxa mydir/
@@ -111,6 +120,10 @@ goxa capmsf -arc=backup.goxa ~/docs
 goxa x -arc=backup.goxa
 goxa c -arc=backup.goxa.b64 mydir/
 goxa x -arc=backup.goxa.b64
+goxa c -arc=backup.goxaf mydir/
+goxa c -arc=backup.goxaf -fec-parity=5 mydir/
+goxa c -arc=backup.goxaf -fec-level=high mydir/
+goxa x -arc=backup.goxaf
 .fi
 .SH SEE ALSO
 tar(1), gzip(1)

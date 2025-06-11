@@ -72,12 +72,31 @@ func main() {
 	flagSet.StringVar(&speedOpt, "speed", "fastest", "compression speed: fastest|default|better|best")
 	flagSet.StringVar(&format, "format", "goxa", "archive format: tar|goxa")
 	flagSet.StringVar(&sel, "files", "", "comma-separated list of files and directories to extract")
+	var fecData int
+	var fecParity int
+	var fecLevel string
+	flagSet.IntVar(&fecData, "fec-data", fecDataShards, "FEC data shards")
+	flagSet.IntVar(&fecParity, "fec-parity", fecParityShards, "FEC parity shards")
+	flagSet.StringVar(&fecLevel, "fec-level", "", "FEC redundancy preset: low|medium|high")
 	flagSet.IntVar(&fileRetries, "retries", 3, "retries when file changes during read (0=never give up)")
 	flagSet.IntVar(&fileRetryDelay, "retrydelay", 5, "delay between retries in seconds")
 	flagSet.BoolVar(&failOnChange, "failonchange", false, "treat file change after retries as fatal")
 	var showVer bool
 	flagSet.BoolVar(&showVer, "version", false, "print version and exit")
 	flagSet.Parse(os.Args[2:])
+	switch fecLevel {
+	case "low":
+		fecDataShards, fecParityShards = 10, 3
+	case "medium":
+		fecDataShards, fecParityShards = 8, 4
+	case "high":
+		fecDataShards, fecParityShards = 5, 5
+	case "":
+		fecDataShards = fecData
+		fecParityShards = fecParity
+	default:
+		log.Fatalf("invalid fec-level: %s", fecLevel)
+	}
 	if showVer {
 		fmt.Println(version)
 		return
@@ -290,7 +309,10 @@ func showUsage() {
 	fmt.Println("  -retrydelay=N   Delay between retries in seconds")
 	fmt.Println("  -failonchange   Treat changed files as fatal errors")
 	fmt.Println("  -version        Print version and exit")
-	fmt.Println("  (append .b32 or .b64 to -arc for Base32 or Base64 encoding)")
+	fmt.Println("  -fec-data=N     FEC data shards (default 10)")
+	fmt.Println("  -fec-parity=N   FEC parity shards (default 3)")
+	fmt.Println("  -fec-level=L    FEC redundancy preset (low, medium, high)")
+	fmt.Println("  (append .b32 or .b64 to -arc for Base32/64 output; use .goxaf for FEC)")
 
 	fmt.Println("\nExamples:")
 	fmt.Println("  goxa -version                                 # print version")
@@ -301,4 +323,7 @@ func showUsage() {
 	fmt.Println("  goxa x -arc=mybackup.tar.xz                   # extract tar.xz")
 	fmt.Println("  goxa c -arc=mybackup.goxa.b64 myStuff/        # create Base64 encoded")
 	fmt.Println("  goxa x -arc=mybackup.goxa.b64                 # extract encoded archive")
+	fmt.Println("  goxa c -arc=mybackup.goxaf myStuff/           # create FEC encoded")
+	fmt.Println("  goxa c -arc=mybackup.goxaf -fec-parity=5 myStuff/ # FEC with extra redundancy")
+	fmt.Println("  goxa x -arc=mybackup.goxaf                    # extract FEC archive")
 }

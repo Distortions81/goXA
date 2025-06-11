@@ -20,6 +20,8 @@ var (
 	extractList                              []string
 	version                                  uint16 = version2
 	blockSize                                uint32 = defaultBlockSize
+	fecDataShards                            int    = 10
+	fecParityShards                          int    = 3
 	fileRetries                              int    = 3
 	fileRetryDelay                           int    = 5
 	failOnChange                             bool   = false
