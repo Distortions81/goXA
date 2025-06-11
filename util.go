@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -10,6 +12,10 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"compress/gzip"
+
+	"github.com/ulikunitz/xz"
 )
 
 func fileExists(filePath string) (bool, error) {
@@ -26,6 +32,114 @@ func fileExists(filePath string) (bool, error) {
 func removeExtension(filename string) string {
 	extension := filepath.Ext(filename)
 	return filename[:len(filename)-len(extension)]
+}
+
+// detectFormatFromExt inspects the archive filename to infer the format.
+// It returns "tar" or "goxa" and whether the tar archive is uncompressed.
+func detectFormatFromExt(name string) (string, bool) {
+	lower := strings.ToLower(name)
+	tarUseXz = false
+	if strings.HasSuffix(lower, ".tar.gz") {
+		return "tar", false
+	}
+	if strings.HasSuffix(lower, ".tar.xz") {
+		tarUseXz = true
+		return "tar", false
+	}
+	if strings.HasSuffix(lower, ".tar") {
+		return "tar", true
+	}
+	if strings.HasSuffix(lower, ".goxa") {
+		return "goxa", false
+	}
+	return "", false
+}
+
+// stripArchiveExt removes a known archive extension from name.
+func stripArchiveExt(name string) string {
+	lower := strings.ToLower(name)
+	switch {
+	case strings.HasSuffix(lower, ".tar.gz"):
+		return name[:len(name)-len(".tar.gz")]
+	case strings.HasSuffix(lower, ".tar.xz"):
+		return name[:len(name)-len(".tar.xz")]
+	case strings.HasSuffix(lower, ".tar"):
+		return name[:len(name)-len(".tar")]
+	case strings.HasSuffix(lower, ".goxa"):
+		return name[:len(name)-len(".goxa")]
+	default:
+		return name
+	}
+}
+
+func hasKnownArchiveExt(name string) bool {
+	lower := strings.ToLower(name)
+	return strings.HasSuffix(lower, ".tar.gz") || strings.HasSuffix(lower, ".tar.xz") || strings.HasSuffix(lower, ".tar") || strings.HasSuffix(lower, ".goxa")
+}
+
+// detectTarHeader reports whether buf appears to be a tar archive by checking
+// for the ustar magic at the expected offset.
+func detectTarHeader(buf []byte) bool {
+	if len(buf) < 262 {
+		return false
+	}
+	return string(buf[257:262]) == "ustar"
+}
+
+// detectFormatFromHeader attempts to identify the archive format based on the
+// file's magic bytes. The returned bool indicates success.
+func detectFormatFromHeader(name string) (string, bool, bool) {
+	f, err := os.Open(name)
+	if err != nil {
+		return "", false, false
+	}
+	defer f.Close()
+
+	hdr := make([]byte, 6)
+	n, _ := io.ReadFull(f, hdr)
+	hdr = hdr[:n]
+
+	if n >= 4 && string(hdr[:4]) == magic {
+		return "goxa", false, true
+	}
+
+	if n >= 2 && hdr[0] == 0x1f && hdr[1] == 0x8b { // gzip
+		if _, err := f.Seek(0, io.SeekStart); err == nil {
+			gr, err := gzip.NewReader(f)
+			if err == nil {
+				buf := make([]byte, 512)
+				m, _ := io.ReadFull(gr, buf)
+				gr.Close()
+				if detectTarHeader(buf[:m]) {
+					return "tar", false, true
+				}
+			}
+		}
+	}
+
+	if n >= 6 && bytes.Equal(hdr, []byte{0xfd, 0x37, 0x7a, 0x58, 0x5a, 0x00}) { // xz
+		if _, err := f.Seek(0, io.SeekStart); err == nil {
+			xr, err := xz.NewReader(f)
+			if err == nil {
+				buf := make([]byte, 512)
+				m, _ := io.ReadFull(xr, buf)
+				if detectTarHeader(buf[:m]) {
+					tarUseXz = true
+					return "tar", false, true
+				}
+			}
+		}
+	}
+
+	if _, err := f.Seek(0, io.SeekStart); err == nil {
+		buf := make([]byte, 512)
+		m, _ := io.ReadFull(f, buf)
+		if detectTarHeader(buf[:m]) {
+			return "tar", true, true
+		}
+	}
+
+	return "", false, false
 }
 
 func doLog(verbose bool, format string, args ...interface{}) {

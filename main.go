@@ -34,14 +34,46 @@ func main() {
 		return
 	}
 	cmd := strings.ToLower(os.Args[1])
+	cmdLetter := cmd[0]
+	opts := ""
+	if len(cmd) > 1 {
+		opts = cmd[1:]
+	}
 	flagSet := flag.NewFlagSet("goxa", flag.ExitOnError)
 	var sel string
+	var format string
 	flagSet.StringVar(&archivePath, "arc", defaultArchiveName, "archive file name (extension not required)")
 	flagSet.BoolVar(&toStdOut, "stdout", false, "output archive data to stdout")
 	flagSet.BoolVar(&progress, "progress", true, "show progress bar")
-	flagSet.StringVar(&compression, "comp", "gzip", "compression: gzip|zstd|lz4|s2|snappy|brotli|none")
+	flagSet.StringVar(&compression, "comp", "gzip", "compression: gzip|zstd|lz4|s2|snappy|brotli|xz|none")
+	flagSet.StringVar(&format, "format", "goxa", "archive format: tar|goxa")
 	flagSet.StringVar(&sel, "files", "", "comma-separated list of files and directories to extract")
 	flagSet.Parse(os.Args[2:])
+
+	detFmt, noComp := detectFormatFromExt(archivePath)
+	if detFmt != "" {
+		format = detFmt
+		if detFmt == "tar" {
+			if noComp {
+				features.Set(fNoCompress)
+			} else {
+				features.Clear(fNoCompress)
+			}
+		}
+	}
+
+	if cmdLetter != 'c' {
+		if fFmt, fNoComp, ok := detectFormatFromHeader(archivePath); ok {
+			format = fFmt
+			if fFmt == "tar" {
+				if fNoComp {
+					features.Set(fNoCompress)
+				} else {
+					features.Clear(fNoCompress)
+				}
+			}
+		}
+	}
 
 	if sel != "" {
 		parts := strings.Split(sel, ",")
@@ -54,12 +86,10 @@ func main() {
 		}
 	}
 
-	//Clean up archive name
-	archivePath = removeExtension(archivePath)
-	archivePath = archivePath + ".goxa"
+	// Clean up archive name will occur after options are parsed
 
 	//Options
-	for _, letter := range cmd {
+	for _, letter := range opts {
 		switch letter {
 
 		case 'a':
@@ -85,7 +115,6 @@ func main() {
 		default:
 			continue
 		}
-		cmd = cmd[:len(cmd)-1]
 	}
 
 	switch strings.ToLower(compression) {
@@ -101,6 +130,12 @@ func main() {
 		compType = compSnappy
 	case "brotli":
 		compType = compBrotli
+	case "xz":
+		if strings.ToLower(format) == "tar" {
+			tarUseXz = true
+		} else {
+			log.Fatalf("Unknown compression: %s", compression)
+		}
 	case "none":
 		features.Set(fNoCompress)
 		compType = compGzip
@@ -108,16 +143,36 @@ func main() {
 		log.Fatalf("Unknown compression: %s", compression)
 	}
 
-	if len(cmd) == 0 {
-		showUsage()
-		log.Fatal("No mode specified")
+	if cmdLetter == 'c' && !hasKnownArchiveExt(archivePath) {
+		if strings.ToLower(format) == "tar" {
+			if features.IsNotSet(fNoCompress) {
+				if tarUseXz {
+					archivePath += ".tar.xz"
+				} else {
+					archivePath += ".tar.gz"
+				}
+			} else {
+				archivePath += ".tar"
+			}
+		} else {
+			archivePath += ".goxa"
+		}
 	}
 
 	//Modes
-	switch cmd[0] {
+	switch cmdLetter {
 	case 'c':
+		if strings.ToLower(format) == "tar" {
+			if err := createTar(flagSet.Args()); err != nil {
+				log.Fatalf("tar create failed: %v", err)
+			}
+			return
+		}
 		create(flagSet.Args())
 	case 'l':
+		if strings.ToLower(format) == "tar" {
+			log.Fatalf("list not supported for tar format")
+		}
 		extract(flagSet.Args(), true)
 	case 'x':
 		if archivePath == defaultArchiveName {
@@ -127,6 +182,16 @@ func main() {
 			if features.IsSet(fAbsolutePaths) {
 				log.Fatal("Destination specified in conjunction with absolute path mode, stopping.")
 			}
+		}
+		if strings.ToLower(format) == "tar" {
+			dest := ""
+			if len(flagSet.Args()) > 0 {
+				dest = flagSet.Args()[0]
+			}
+			if err := extractTar(dest); err != nil {
+				log.Fatalf("tar extract failed: %v", err)
+			}
+			return
 		}
 		extract(flagSet.Args(), false)
 	default:
@@ -155,7 +220,8 @@ func showUsage() {
 	fmt.Println("  u = Use archive flags")
 	fmt.Println("  v = Verbose logging")
 	fmt.Print("  f = Force (overwrite files and ignore read errors)")
-	fmt.Println("  -comp=gzip|zstd|lz4|s2|snappy|brotli|none")
+	fmt.Println("  -comp=gzip|zstd|lz4|s2|snappy|brotli|xz|none")
+	fmt.Println("  -format=tar|goxa")
 	fmt.Println()
 	fmt.Println("  goxa c -arc=arcFile myStuff		(similar to zip)")
 	fmt.Println("  goxa cpmi -arc=arcFile myStuff	(similar to tar -czf)")
