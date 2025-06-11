@@ -1,3 +1,9 @@
+<img src="https://github.com/Distortions81/goXA/blob/main/Xango.png?raw=true" alt="Xango the Archivist" width="300"/>
+
+### Xango the Pangolin Archivist
+
+"An archive isn’t only storage—it’s a promise to the future."
+
 # GoXA — Go eXpress Archive
 
 GoXA is a lightweight archiving tool written in Go. It can create, list and extract its own `.goxa` format or standard tar files. Compression and checksums are optional and you can stream archives directly to stdout.
