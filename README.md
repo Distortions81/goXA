@@ -126,6 +126,7 @@ MIT License.
 ## Author
 
 - https://github.com/Distortions81
+- AI-assisted contributions using OpenAI's ChatGPT
 
 ---
 
