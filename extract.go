@@ -161,7 +161,7 @@ func extract(destinations []string, listOnly bool, jsonList bool) {
 	if err := binary.Read(arc, binary.LittleEndian, &readVersion); err != nil {
 		log.Fatalf("extract: failed to read version: %v", err)
 	}
-	if readVersion != version1 && readVersion != version2 {
+	if readVersion != version1 && readVersion != version2 && readVersion != version3 {
 		log.Fatalf("extract: Archive is of an unsupported version: %v", readVersion)
 	}
 
@@ -300,8 +300,14 @@ func extract(destinations []string, listOnly bool, jsonList bool) {
 				log.Fatalf("extract: failed to read link target: %v", err)
 			}
 		}
+		var changedFlag uint8
+		if readVersion >= version3 {
+			if err := binary.Read(arc, binary.LittleEndian, &changedFlag); err != nil {
+				log.Fatalf("extract: failed to read changed flag: %v", err)
+			}
+		}
 
-		newEntry := FileEntry{Path: pathName, Size: fileSize, Mode: fs.FileMode(fileMode), ModTime: time.Unix(modTime, 0).UTC(), Type: ftype, Linkname: linkName}
+		newEntry := FileEntry{Path: pathName, Size: fileSize, Mode: fs.FileMode(fileMode), ModTime: time.Unix(modTime, 0).UTC(), Type: ftype, Linkname: linkName, Changed: changedFlag != 0}
 		fileList[n] = newEntry
 	}
 
@@ -535,6 +541,9 @@ func extractFile(arcPath, destination string, lfeat BitFlags, ctype uint8, item 
 	if item.Offset == 0 {
 		skippedFiles.Add(1)
 		return nil
+	}
+	if item.Changed {
+		doLog(false, "warning: %v changed during archiving", item.Path)
 	}
 	var err error
 	var finalPath string

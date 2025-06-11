@@ -74,6 +74,7 @@ func main() {
 	flagSet.StringVar(&sel, "files", "", "comma-separated list of files and directories to extract")
 	flagSet.IntVar(&fileRetries, "retries", 3, "retries when file changes during read (0=never give up)")
 	flagSet.IntVar(&fileRetryDelay, "retrydelay", 5, "delay between retries in seconds")
+	flagSet.BoolVar(&failOnChange, "failonchange", false, "treat file change after retries as fatal")
 	var showVer bool
 	flagSet.BoolVar(&showVer, "version", false, "print version and exit")
 	flagSet.Parse(os.Args[2:])
@@ -287,6 +288,7 @@ func showUsage() {
 	fmt.Println("  -format=FORMAT  Archive format (goxa or tar)")
 	fmt.Println("  -retries=N      Retries when a file changes during read (0=never give up)")
 	fmt.Println("  -retrydelay=N   Delay between retries in seconds")
+	fmt.Println("  -failonchange   Treat changed files as fatal errors")
 	fmt.Println("  -version        Print version and exit")
 	fmt.Println("  (append .b32 or .b64 to -arc for Base32 or Base64 encoding)")
 

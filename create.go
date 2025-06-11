@@ -259,6 +259,13 @@ func writeHeader(emptyDirs, files []FileEntry, trailerOffset, arcSize uint64, fl
 				log.Fatalf("write string failed: %v", err)
 			}
 		}
+		if version >= version3 {
+			if file.Changed {
+				header.WriteByte(1)
+			} else {
+				header.WriteByte(0)
+			}
+		}
 	}
 	// File offsets are tracked in the trailer only
 	h := newHasher(checksumType)
@@ -306,6 +313,7 @@ func writeEntries(headerLen int, bf *BufferedFile, files []FileEntry) ([]FileEnt
 		}
 
 		attempt := 0
+		hadChange := false
 	retryLoop:
 		for {
 			attempt++
@@ -424,6 +432,7 @@ func writeEntries(headerLen int, bf *BufferedFile, files []FileEntry) ([]FileEnt
 
 			statEnd, err := os.Stat(entry.SrcPath)
 			if err == nil && (statEnd.Size() != statStart.Size() || !statEnd.ModTime().Equal(statStart.ModTime())) {
+				hadChange = true
 				if fileRetries == 0 || attempt < fileRetries {
 					doLog(false, "\nFile changed during read: %v (retrying)", entry.Path)
 					if _, err := bf.Seek(int64(startOffset), io.SeekStart); err != nil {
@@ -432,6 +441,9 @@ func writeEntries(headerLen int, bf *BufferedFile, files []FileEntry) ([]FileEnt
 					cOffset = startOffset
 					time.Sleep(time.Duration(fileRetryDelay) * time.Second)
 					continue retryLoop
+				}
+				if failOnChange {
+					log.Fatalf("File changed during read: %v", entry.Path)
 				}
 				doLog(false, "\nFile changed during read: %v (skipping)", entry.Path)
 				if _, err := bf.Seek(int64(startOffset), io.SeekStart); err != nil {
@@ -444,6 +456,9 @@ func writeEntries(headerLen int, bf *BufferedFile, files []FileEntry) ([]FileEnt
 			entry.Size = uint64(statEnd.Size())
 			entry.ModTime = statEnd.ModTime()
 			entry.Blocks = blocks
+			if hadChange {
+				entry.Changed = true
+			}
 			newFiles = append(newFiles, *entry)
 			break retryLoop
 		}

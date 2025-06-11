@@ -90,6 +90,7 @@ Paths are stored relative by default. Use `a` to store and restore absolute path
 | `-format=` | Archive format (`goxa` or `tar`) |
 | `-retries=` | Retries when a file changes during read (0=never give up) |
 | `-retrydelay=` | Delay between retries in seconds |
+| `-failonchange` | Treat changed files as fatal errors |
 | `-version` | Print version and exit |
 
 Progress shows transfer speed and the current file being processed.

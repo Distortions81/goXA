@@ -18,10 +18,11 @@ var (
 	checksumLength                           uint8 = defaultChecksumLen
 	tarUseXz                                 bool
 	extractList                              []string
-	version                                  uint16 = version2
+	version                                  uint16 = version3
 	blockSize                                uint32 = defaultBlockSize
 	fileRetries                              int    = 3
 	fileRetryDelay                           int    = 5
+	failOnChange                             bool   = false
 )
 
 type FileEntry struct {
@@ -34,6 +35,7 @@ type FileEntry struct {
 	Mode     fs.FileMode
 	ModTime  time.Time
 	Blocks   []Block
+	Changed  bool
 }
 
 type Block struct {
