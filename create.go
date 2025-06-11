@@ -259,7 +259,7 @@ func writeHeader(emptyDirs, files []FileEntry, trailerOffset, arcSize uint64, fl
 				log.Fatalf("write string failed: %v", err)
 			}
 		}
-		if version >= version3 {
+		if version >= version2 {
 			if file.Changed {
 				header.WriteByte(1)
 			} else {

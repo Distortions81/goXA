@@ -161,7 +161,7 @@ func extract(destinations []string, listOnly bool, jsonList bool) {
 	if err := binary.Read(arc, binary.LittleEndian, &readVersion); err != nil {
 		log.Fatalf("extract: failed to read version: %v", err)
 	}
-	if readVersion != version1 && readVersion != version2 && readVersion != version3 {
+	if readVersion != version1 && readVersion != version2 {
 		log.Fatalf("extract: Archive is of an unsupported version: %v", readVersion)
 	}
 
@@ -301,7 +301,7 @@ func extract(destinations []string, listOnly bool, jsonList bool) {
 			}
 		}
 		var changedFlag uint8
-		if readVersion >= version3 {
+		if readVersion >= version2 {
 			if err := binary.Read(arc, binary.LittleEndian, &changedFlag); err != nil {
 				log.Fatalf("extract: failed to read changed flag: %v", err)
 			}

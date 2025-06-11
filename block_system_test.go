@@ -153,7 +153,13 @@ func parseArchive(t *testing.T, path string) []FileEntry {
 				t.Fatalf("read link: %v", err)
 			}
 		}
-		files[i] = FileEntry{Path: path, Size: size, Mode: fs.FileMode(mode), ModTime: time.Unix(mt, 0).UTC(), Type: typ}
+		var changed uint8
+		if ver >= version2 {
+			if err := binary.Read(arc, binary.LittleEndian, &changed); err != nil {
+				t.Fatalf("read changed flag: %v", err)
+			}
+		}
+		files[i] = FileEntry{Path: path, Size: size, Mode: fs.FileMode(mode), ModTime: time.Unix(mt, 0).UTC(), Type: typ, Changed: changed != 0}
 	}
 	if ver >= version2 {
 		hdrSum := make([]byte, checksumLength)

@@ -18,7 +18,7 @@ var (
 	checksumLength                           uint8 = defaultChecksumLen
 	tarUseXz                                 bool
 	extractList                              []string
-	version                                  uint16 = version3
+	version                                  uint16 = version2
 	blockSize                                uint32 = defaultBlockSize
 	fileRetries                              int    = 3
 	fileRetryDelay                           int    = 5
