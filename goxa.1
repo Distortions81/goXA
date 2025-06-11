@@ -114,17 +114,27 @@ FEC redundancy preset: \fBlow\fP (10 data / 3 parity), \fBmedium\fP (8 data / 4 
 FEC archives use Reed-Solomon coding to provide redundancy. Data shards contain the original bytes while parity shards allow recovery from missing or corrupted shards. For example, \fB-fec-data=10\fP and \fB-fec-parity=3\fP create 13 shards; any 10 shards are sufficient to reconstruct the archive. The \fB.goxaf\fP extension triggers automatic decoding during extraction or listing.
 .SS BASE32 AND BASE64
 When the archive name ends with \fB.b32\fP or \fB.b64\fP the output is Base32 or Base64 encoded. Extraction and listing automatically decode these files.
+.SH EXTENSIONS
+.TP
+.B .b32/.b64
+Base32 or Base64 encoded archive.
+.TP
+.B .goxaf
+FEC encoded archive.
+.TP
+.B .tar, .tar.gz
+Tar archive (gzipped if \fB.gz\fP).
+.TP
+.B .tar.xz
+Tar archive compressed with xz.
 .SH EXAMPLES
 .nf
-goxa c -arc=backup.goxa mydir/
-# using all flags
-goxa capmsf -arc=backup.goxa ~/docs
-# extract to folder
+goxa -version
+goxa c -arc=backup.goxa dir/
 goxa x -arc=backup.goxa
-# create Base64 encoded archive
-goxa c -arc=backup.goxa.b64 mydir/
-# FEC archive with extra parity
-goxa c -arc=backup.goxaf -fec-parity=5 mydir/
+goxa c -arc=backup.tar.gz dir/
+goxa c -arc=backup.goxa.b64 dir/
+goxa c -arc=backup.goxaf dir/
 .fi
 .SH SEE ALSO
 tar(1), gzip(1)
