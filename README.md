@@ -88,6 +88,9 @@ Paths are stored relative by default. Use `a` to store and restore absolute path
 | `-comp=` | Compression algorithm (gzip, zstd, lz4, s2, snappy, brotli, xz, none) |
 | `-speed=` | Compression speed (fastest, default, better, best) |
 | `-format=` | Archive format (`goxa` or `tar`) |
+| `-retries=` | Retries when a file changes during read (0=never give up) |
+| `-retrydelay=` | Delay between retries in seconds |
+| `-failonchange` | Treat changed files as fatal errors |
 | `-version` | Print version and exit |
 
 Progress shows transfer speed and the current file being processed.
