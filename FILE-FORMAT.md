@@ -12,7 +12,7 @@ This document provides a compact description of the binary format used by the `g
 
 The header contains metadata for empty directories and files. Actual file contents follow the header and end with a trailer containing the block index.
 
--### Header
+### Header
 - Magic bytes `GOXA`
 - Version (uint16)
 - Feature flags (uint32)
@@ -24,6 +24,27 @@ The header contains metadata for empty directories and files. Actual file conten
 - Archive size (`uint64`)
 - Empty directory entries
 - File entries
+
+### Compression Types
+
+| Value | Algorithm |
+|-------|-----------|
+| 0 | gzip |
+| 1 | zstd |
+| 2 | lz4 |
+| 3 | s2 |
+| 4 | snappy |
+| 5 | brotli |
+
+### Checksum Types
+
+| Value | Algorithm |
+|-------|-----------|
+| 0 | CRC32 |
+| 1 | CRC16 |
+| 2 | XXHash3 |
+| 3 | SHA‑256 |
+| 4 | Blake3 |
 
 ### Feature Flags
 

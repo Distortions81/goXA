@@ -7,13 +7,17 @@ GoXA is a friendly archiver written in Go. It's fast and straightforward, though
 ## Features
 
 - [x] Fast archive creation and extraction
-- [x] Multiple compression formats (gzip, zstd, lz4, s2, snappy, brotli; defaults to gzip)
+- [x] Multiple compression formats (gzip, zstd, lz4, s2, snappy, brotli, xz; defaults to gzip)
 - [x] Standard tar archive support (auto-detected from extension or archive header)
  - [x] Optional file checksums (crc16, crc32, xxhash, sha-256, or blake3)
 - [x] Preserve permissions and modification times
 - [x] Fully documented binary format ([FILE-FORMAT.md](FILE-FORMAT.md))
 - [x] Optional support for symlinks and other special files
 - [x] Block-based format for fast compression (single block when uncompressed)
+- [x] Automatic format detection from file extension or archive header
+- [x] Output archives directly to stdout for easy piping
+- [x] Selective extraction with the `-files` flag
+- [x] Progress bar showing transfer speed and current file
 - [x] Pure Go code with no runtime dependencies once compiled.
 - [x] Optional base32/base64 encoding via `.b32` or `.b64` file suffixes
 
@@ -72,10 +76,12 @@ Paths are stored relative by default. Use `a` to store and restore absolute path
 | `-stdout` | Output archive to stdout |
 | `-files` | Comma-separated list of files and directories to extract |
 | `-progress=false` | Disable progress display |
-| `-comp=` | Compression algorithm (gzip, zstd, lz4, s2, snappy, brotli, none) |
+| `-comp=` | Compression algorithm (gzip, zstd, lz4, s2, snappy, brotli, xz, none) |
 | `-format=` | Archive format (`goxa` or `tar`) |
 
 Progress shows transfer speed and the current file being processed.
+
+`xz` compression is only available when `-format=tar`.
 
 ### Examples
 
@@ -89,6 +95,8 @@ goxa c -arc=mybackup.tar.gz myStuff/
 goxa x -arc=mybackup.tar.gz
 goxa c -arc=mybackup.tar.xz myStuff/
 goxa x -arc=mybackup.tar.xz
+goxa c -arc=mybackup.goxa -stdout myStuff/ | ssh host "cat > backup.goxa"
+goxa x -arc=mybackup.goxa -files=file.txt,dir/
 ```
 
 ## Roadmap
