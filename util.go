@@ -55,8 +55,13 @@ func stripArchiveExt(name string) string {
 	case strings.HasSuffix(lower, ".goxa"):
 		return name[:len(name)-len(".goxa")]
 	default:
-		return removeExtension(name)
+		return name
 	}
+}
+
+func hasKnownArchiveExt(name string) bool {
+	lower := strings.ToLower(name)
+	return strings.HasSuffix(lower, ".tar.gz") || strings.HasSuffix(lower, ".tar") || strings.HasSuffix(lower, ".goxa")
 }
 
 func doLog(verbose bool, format string, args ...interface{}) {

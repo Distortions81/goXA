@@ -34,6 +34,11 @@ func main() {
 		return
 	}
 	cmd := strings.ToLower(os.Args[1])
+	cmdLetter := cmd[0]
+	opts := ""
+	if len(cmd) > 1 {
+		opts = cmd[1:]
+	}
 	flagSet := flag.NewFlagSet("goxa", flag.ExitOnError)
 	var sel string
 	var format string
@@ -56,7 +61,6 @@ func main() {
 			}
 		}
 	}
-	archivePath = stripArchiveExt(archivePath)
 
 	if sel != "" {
 		parts := strings.Split(sel, ",")
@@ -72,7 +76,7 @@ func main() {
 	// Clean up archive name will occur after options are parsed
 
 	//Options
-	for _, letter := range cmd {
+	for _, letter := range opts {
 		switch letter {
 
 		case 'a':
@@ -98,7 +102,6 @@ func main() {
 		default:
 			continue
 		}
-		cmd = cmd[:len(cmd)-1]
 	}
 
 	switch strings.ToLower(compression) {
@@ -121,24 +124,20 @@ func main() {
 		log.Fatalf("Unknown compression: %s", compression)
 	}
 
-	// finalize archive name with extension
-	if strings.ToLower(format) == "tar" {
-		if features.IsNotSet(fNoCompress) {
-			archivePath += ".tar.gz"
+	if cmdLetter == 'c' && !hasKnownArchiveExt(archivePath) {
+		if strings.ToLower(format) == "tar" {
+			if features.IsNotSet(fNoCompress) {
+				archivePath += ".tar.gz"
+			} else {
+				archivePath += ".tar"
+			}
 		} else {
-			archivePath += ".tar"
+			archivePath += ".goxa"
 		}
-	} else {
-		archivePath += ".goxa"
-	}
-
-	if len(cmd) == 0 {
-		showUsage()
-		log.Fatal("No mode specified")
 	}
 
 	//Modes
-	switch cmd[0] {
+	switch cmdLetter {
 	case 'c':
 		if strings.ToLower(format) == "tar" {
 			if err := createTar(flagSet.Args()); err != nil {
