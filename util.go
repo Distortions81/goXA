@@ -36,7 +36,7 @@ func removeExtension(filename string) string {
 	return filename[:len(filename)-len(extension)]
 }
 
-// detectEncodingFromExt checks for .b32, .b64 or .fec suffixes.
+// detectEncodingFromExt checks for .b32 or .b64 suffixes.
 // It returns the filename without the encoding extension and the encoding type.
 func detectEncodingFromExt(name string) (string, string) {
 	lower := strings.ToLower(name)
@@ -45,9 +45,6 @@ func detectEncodingFromExt(name string) (string, string) {
 	}
 	if strings.HasSuffix(lower, ".b64") {
 		return name[:len(name)-4], "b64"
-	}
-	if strings.HasSuffix(lower, ".fec") {
-		return name[:len(name)-4], "fec"
 	}
 	return name, ""
 }
@@ -72,6 +69,10 @@ func detectFormatFromExt(name string) (string, bool) {
 	if strings.HasSuffix(lower, ".tar") {
 		return "tar", true
 	}
+	if strings.HasSuffix(lower, ".goxaf") {
+		encode = "fec"
+		return "goxa", false
+	}
 	if strings.HasSuffix(lower, ".goxa") {
 		return "goxa", false
 	}
@@ -89,6 +90,8 @@ func stripArchiveExt(name string) string {
 		return name[:len(name)-len(".tar.xz")]
 	case strings.HasSuffix(lower, ".tar"):
 		return name[:len(name)-len(".tar")]
+	case strings.HasSuffix(lower, ".goxaf"):
+		return name[:len(name)-len(".goxaf")]
 	case strings.HasSuffix(lower, ".goxa"):
 		return name[:len(name)-len(".goxa")]
 	default:
@@ -99,7 +102,7 @@ func stripArchiveExt(name string) string {
 func hasKnownArchiveExt(name string) bool {
 	name, _ = detectEncodingFromExt(name)
 	lower := strings.ToLower(name)
-	return strings.HasSuffix(lower, ".tar.gz") || strings.HasSuffix(lower, ".tar.xz") || strings.HasSuffix(lower, ".tar") || strings.HasSuffix(lower, ".goxa")
+	return strings.HasSuffix(lower, ".tar.gz") || strings.HasSuffix(lower, ".tar.xz") || strings.HasSuffix(lower, ".tar") || strings.HasSuffix(lower, ".goxa") || strings.HasSuffix(lower, ".goxaf")
 }
 
 // decodeIfNeeded decodes a Base32, Base64 or FEC encoded archive to a temporary file

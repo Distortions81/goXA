@@ -291,7 +291,11 @@ func TestBaseEncoding(t *testing.T) {
 			t.Fatalf("write file: %v", err)
 		}
 
-		archivePath = filepath.Join(tempDir, "test.goxa."+tc.enc)
+		if tc.enc == "fec" {
+			archivePath = filepath.Join(tempDir, "test.goxaf")
+		} else {
+			archivePath = filepath.Join(tempDir, "test.goxa."+tc.enc)
+		}
 		encode = tc.enc
 		features = 0
 		version = version2
@@ -326,7 +330,7 @@ func TestFECParityOption(t *testing.T) {
 		t.Fatalf("write file: %v", err)
 	}
 
-	archivePath = filepath.Join(tempDir, "test.goxa.fec")
+	archivePath = filepath.Join(tempDir, "test.goxaf")
 	encode = "fec"
 	fecParityShards = 5
 	fecDataShards = 10

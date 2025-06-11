@@ -21,7 +21,7 @@ GoXA is a small archiver written in Go. It's quick and friendly, though still le
 - Selective extraction with `-files`
 - Progress bar with transfer speed and current file
 - Pure Go code—no runtime deps once built
-- Base32/64/FEC encoding when the archive filename ends with `.b32`, `.b64` or `.fec`
+- Base32/64/FEC encoding when the archive filename ends with `.b32`, `.b64` or `.goxaf`
 
 ## File Format
 
@@ -91,23 +91,25 @@ Paths are stored relative by default. Use `a` to store and restore absolute path
 | `-version` | Print version and exit |
 | `-fec-data=` | Number of FEC data shards |
 | `-fec-parity=` | Number of FEC parity shards |
+| `-fec-level=` | Redundancy preset: low, medium, high |
 
 Progress shows transfer speed and the current file being processed.
 Snappy does not support configurable compression levels; `-speed` has no effect when using snappy.
 
 ### Base32/Base64/FEC Archives
 
-Appending `.b32`, `.b64` or `.fec` to the archive filename encodes the output in Base32,
-Base64 or with Reed‑Solomon FEC. The same suffix triggers automatic decoding when extracting or
+Appending `.b32` or `.b64` to the archive filename encodes the output in Base32 or Base64.
+FEC archives use the `.goxaf` extension and are automatically decoded when extracting or
 listing. For example:
 
 ```bash
 goxa c -arc=mybackup.goxa.b64 myStuff/  # create Base64 encoded archive
 goxa x -arc=mybackup.goxa.b64           # extract encoded archive
 goxa c -arc=mybackup.goxa.b32 myStuff/  # create Base32 encoded archive
-goxa c -arc=mybackup.goxa.fec myStuff/  # create FEC encoded archive
-goxa x -arc=mybackup.goxa.fec           # extract FEC archive
-goxa c -arc=mybackup.goxa.fec -fec-parity=5 myStuff/  # FEC with extra redundancy
+goxa c -arc=mybackup.goxaf myStuff/         # create FEC encoded archive
+goxa x -arc=mybackup.goxaf                 # extract FEC archive
+goxa c -arc=mybackup.goxaf -fec-parity=5 myStuff/  # FEC with extra redundancy
+goxa c -arc=mybackup.goxaf -fec-level=high myStuff/  # preset high redundancy
 ```
 
 ### Examples

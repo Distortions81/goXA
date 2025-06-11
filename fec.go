@@ -9,7 +9,7 @@ import (
 	"github.com/klauspost/reedsolomon"
 )
 
-const fecMagic = "FEC1"
+const fecMagic = "GOXAFEC"
 
 func encodeWithFEC(inPath, outPath string) error {
 	data, err := os.ReadFile(inPath)
@@ -65,7 +65,7 @@ func decodeWithFEC(name string) (string, func(), error) {
 	}
 	defer f.Close()
 
-	hdr := make([]byte, 4)
+	hdr := make([]byte, len(fecMagic))
 	if _, err := io.ReadFull(f, hdr); err != nil {
 		return "", nil, err
 	}
