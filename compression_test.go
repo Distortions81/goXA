@@ -53,7 +53,7 @@ func TestAllCompressions(t *testing.T) {
 
 			features = tc.flag
 			compType = tc.ctype
-			extract([]string{dest}, false)
+			extract([]string{dest}, false, false)
 
 			extracted := filepath.Join(dest, filepath.Base(root), "file.txt")
 			out, err := os.ReadFile(extracted)

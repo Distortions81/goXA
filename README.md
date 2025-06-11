@@ -26,6 +26,8 @@ GoXA is a friendly archiver written in Go. It's fast and straightforward, though
 ## File Format
 
 See [FILE-FORMAT.md](FILE-FORMAT.md) for the full binary format.
+The JSON structure emitted by `j` mode is described in
+[JSON-LIST-FORMAT.md](JSON-LIST-FORMAT.md).
 
 ## Install
 
@@ -51,7 +53,7 @@ This creates the `goxa` binary.
 goxa [mode] [flags] -arc=archiveFile [paths...]
 ```
 
-`mode`: `c` (create), `l` (list), `x` (extract)
+`mode`: `c` (create), `l` (list), `j` (json list), `x` (extract)
 
 `flags`: any combination of:
 
@@ -98,6 +100,7 @@ goxa capmsif -arc=mybackup.goxa ~/
 goxa x -arc=mybackup.goxa
 goxa xu -arc=mybackup.goxa     # use flags in archive (aka auto)
 goxa l -arc=mybackup.goxa
+goxa j -arc=mybackup.goxa > listing.json
 goxa c -arc=mybackup.tar.gz myStuff/
 goxa x -arc=mybackup.tar.gz
 goxa c -arc=mybackup.tar.xz myStuff/

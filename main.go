@@ -197,7 +197,12 @@ func main() {
 		if strings.ToLower(format) == "tar" {
 			log.Fatalf("list not supported for tar format")
 		}
-		extract(flagSet.Args(), true)
+		extract(flagSet.Args(), true, false)
+	case 'j':
+		if strings.ToLower(format) == "tar" {
+			log.Fatalf("list not supported for tar format")
+		}
+		extract(flagSet.Args(), true, true)
 	case 'x':
 		if archivePath == defaultArchiveName {
 			log.Fatal("You must specify an archive to extract.")
@@ -217,7 +222,7 @@ func main() {
 			}
 			return
 		}
-		extract(flagSet.Args(), false)
+		extract(flagSet.Args(), false, false)
 	default:
 		showUsage()
 		doLog(false, "Unknown mode: %c", cmd[0])
@@ -226,11 +231,12 @@ func main() {
 }
 
 func showUsage() {
-	fmt.Println("Usage: goxa [c|l|x][apmsnbiveou] -arc=arcFile [-comp=alg] [input paths/files...] or [destination]")
+	fmt.Println("Usage: goxa [c|l|j|x][apmsnbiveou] -arc=arcFile [-comp=alg] [input paths/files...] or [destination]")
 	fmt.Println("Output archive to stdout: -stdout, No progress bar: -progress=false")
 	fmt.Println("\nModes:")
 	fmt.Println("  c = Create a new archive. Requires input paths or files")
 	fmt.Println("  l = List archive contents. Requires -arc")
+	fmt.Println("  j = JSON list of archive contents. Requires -arc")
 	fmt.Println("  x = Extract files from archive. Requires -arc")
 
 	fmt.Println("\nOptions:")

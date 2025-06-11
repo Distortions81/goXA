@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/fs"
@@ -52,7 +53,54 @@ func decompressor(r io.Reader, cType uint8) (io.ReadCloser, error) {
 
 var skippedFiles, checksumCount atomic.Int64
 
-func extract(destinations []string, listOnly bool) {
+func compName(t uint8) string {
+	switch t {
+	case compZstd:
+		return "zstd"
+	case compLZ4:
+		return "lz4"
+	case compS2:
+		return "s2"
+	case compSnappy:
+		return "snappy"
+	case compBrotli:
+		return "brotli"
+	default:
+		return "gzip"
+	}
+}
+
+func checksumName(t uint8) string {
+	switch t {
+	case sumCRC32:
+		return "crc32"
+	case sumCRC16:
+		return "crc16"
+	case sumXXHash:
+		return "xxhash"
+	case sumSHA256:
+		return "sha256"
+	case sumBlake3:
+		return "blake3"
+	default:
+		return "unknown"
+	}
+}
+
+func entryName(t uint8) string {
+	switch t {
+	case entryFile:
+		return "file"
+	case entrySymlink:
+		return "symlink"
+	case entryHardlink:
+		return "hardlink"
+	default:
+		return "other"
+	}
+}
+
+func extract(destinations []string, listOnly bool, jsonList bool) {
 
 	var destination string
 	//Clean destination
@@ -248,7 +296,7 @@ func extract(destinations []string, listOnly bool) {
 		fileList[n] = newEntry
 	}
 
-	if listOnly {
+	if listOnly && !jsonList {
 		fileCount := 0
 		byteCount := 0
 		for _, item := range dirList {
@@ -266,6 +314,47 @@ func extract(destinations []string, listOnly bool) {
 		}
 		fmt.Printf("%v files, %v\n", fileCount, humanize.Bytes(uint64(byteCount)))
 
+		return
+	}
+
+	if jsonList {
+		out := ArchiveListing{
+			Version:        readVersion,
+			Flags:          lfeat,
+			Compression:    compName(ctype),
+			Checksum:       checksumName(checksumType),
+			ChecksumLength: checksumLength,
+			BlockSize:      blockSize,
+			ArchiveSize:    arcSize,
+		}
+		for _, item := range dirList {
+			if isSelected(item.Path) {
+				out.Dirs = append(out.Dirs, ListEntry{
+					Path:    item.Path,
+					Type:    "dir",
+					Mode:    item.Mode,
+					ModTime: item.ModTime,
+				})
+			}
+		}
+		for _, item := range fileList {
+			if !isSelected(item.Path) {
+				continue
+			}
+			out.Files = append(out.Files, ListEntry{
+				Path:     item.Path,
+				Type:     entryName(item.Type),
+				Size:     item.Size,
+				Mode:     item.Mode,
+				ModTime:  item.ModTime,
+				Linkname: item.Linkname,
+			})
+		}
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(out); err != nil {
+			log.Fatalf("json encode: %v", err)
+		}
 		return
 	}
 
