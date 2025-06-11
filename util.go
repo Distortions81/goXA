@@ -69,6 +69,10 @@ func detectFormatFromExt(name string) (string, bool) {
 	if strings.HasSuffix(lower, ".tar") {
 		return "tar", true
 	}
+	if strings.HasSuffix(lower, ".goxaf") {
+		encode = "fec"
+		return "goxa", false
+	}
 	if strings.HasSuffix(lower, ".goxa") {
 		return "goxa", false
 	}
@@ -86,6 +90,8 @@ func stripArchiveExt(name string) string {
 		return name[:len(name)-len(".tar.xz")]
 	case strings.HasSuffix(lower, ".tar"):
 		return name[:len(name)-len(".tar")]
+	case strings.HasSuffix(lower, ".goxaf"):
+		return name[:len(name)-len(".goxaf")]
 	case strings.HasSuffix(lower, ".goxa"):
 		return name[:len(name)-len(".goxa")]
 	default:
@@ -96,10 +102,10 @@ func stripArchiveExt(name string) string {
 func hasKnownArchiveExt(name string) bool {
 	name, _ = detectEncodingFromExt(name)
 	lower := strings.ToLower(name)
-	return strings.HasSuffix(lower, ".tar.gz") || strings.HasSuffix(lower, ".tar.xz") || strings.HasSuffix(lower, ".tar") || strings.HasSuffix(lower, ".goxa")
+	return strings.HasSuffix(lower, ".tar.gz") || strings.HasSuffix(lower, ".tar.xz") || strings.HasSuffix(lower, ".tar") || strings.HasSuffix(lower, ".goxa") || strings.HasSuffix(lower, ".goxaf")
 }
 
-// decodeIfNeeded decodes a base32 or base64 encoded archive to a temporary file
+// decodeIfNeeded decodes a Base32, Base64 or FEC encoded archive to a temporary file
 // and returns the new filename and a cleanup function.
 func decodeIfNeeded(name string) (string, func(), error) {
 	if encode == "" {
@@ -121,6 +127,10 @@ func decodeIfNeeded(name string) (string, func(), error) {
 		r = base32.NewDecoder(base32.StdEncoding, f)
 	} else if encode == "b64" {
 		r = base64.NewDecoder(base64.StdEncoding, f)
+	} else if encode == "fec" {
+		f.Close()
+		os.Remove(tmp.Name())
+		return decodeWithFEC(name)
 	}
 	if _, err := io.Copy(tmp, r); err != nil {
 		tmp.Close()

@@ -19,6 +19,9 @@ func resetGlobals() {
 	tarUseXz = false
 	version = version2
 	blockSize = defaultBlockSize
+	fileRetries = 3
+	fileRetryDelay = 5
+	failOnChange = false
 }
 
 func TestCLIEndToEnd(t *testing.T) {
