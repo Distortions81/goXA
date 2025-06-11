@@ -89,6 +89,8 @@ Paths are stored relative by default. Use `a` to store and restore absolute path
 | `-speed=` | Compression speed (fastest, default, better, best) |
 | `-format=` | Archive format (`goxa` or `tar`) |
 | `-version` | Print version and exit |
+| `-fec-data=` | Number of FEC data shards |
+| `-fec-parity=` | Number of FEC parity shards |
 
 Progress shows transfer speed and the current file being processed.
 Snappy does not support configurable compression levels; `-speed` has no effect when using snappy.
@@ -105,6 +107,7 @@ goxa x -arc=mybackup.goxa.b64           # extract encoded archive
 goxa c -arc=mybackup.goxa.b32 myStuff/  # create Base32 encoded archive
 goxa c -arc=mybackup.goxa.fec myStuff/  # create FEC encoded archive
 goxa x -arc=mybackup.goxa.fec           # extract FEC archive
+goxa c -arc=mybackup.goxa.fec -fec-parity=5 myStuff/  # FEC with extra redundancy
 ```
 
 ### Examples

@@ -314,3 +314,41 @@ func TestBaseEncoding(t *testing.T) {
 		checkFile(t, extracted, data, 0o644, false)
 	}
 }
+
+func TestFECParityOption(t *testing.T) {
+	tempDir := t.TempDir()
+	root := filepath.Join(tempDir, "root")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	data := []byte("hello")
+	if err := os.WriteFile(filepath.Join(root, "file.txt"), data, 0o644); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+
+	archivePath = filepath.Join(tempDir, "test.goxa.fec")
+	encode = "fec"
+	fecParityShards = 5
+	fecDataShards = 10
+	features = 0
+	version = version2
+	toStdOut = false
+	doForce = false
+
+	if err := create([]string{root}); err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+
+	os.RemoveAll(root)
+	dest := filepath.Join(tempDir, "out")
+	os.MkdirAll(dest, 0o755)
+	encode = "fec"
+	extract([]string{dest}, false, false)
+
+	encode = ""
+	fecParityShards = 3
+	fecDataShards = 10
+
+	extracted := filepath.Join(dest, filepath.Base(root), "file.txt")
+	checkFile(t, extracted, data, 0o644, false)
+}

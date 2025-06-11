@@ -10,8 +10,6 @@ import (
 )
 
 const fecMagic = "FEC1"
-const fecDataShards = 10
-const fecParityShards = 3
 
 func encodeWithFEC(inPath, outPath string) error {
 	data, err := os.ReadFile(inPath)

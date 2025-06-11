@@ -72,9 +72,15 @@ func main() {
 	flagSet.StringVar(&speedOpt, "speed", "fastest", "compression speed: fastest|default|better|best")
 	flagSet.StringVar(&format, "format", "goxa", "archive format: tar|goxa")
 	flagSet.StringVar(&sel, "files", "", "comma-separated list of files and directories to extract")
+	var fecData int
+	var fecParity int
+	flagSet.IntVar(&fecData, "fec-data", fecDataShards, "FEC data shards")
+	flagSet.IntVar(&fecParity, "fec-parity", fecParityShards, "FEC parity shards")
 	var showVer bool
 	flagSet.BoolVar(&showVer, "version", false, "print version and exit")
 	flagSet.Parse(os.Args[2:])
+	fecDataShards = fecData
+	fecParityShards = fecParity
 	if showVer {
 		fmt.Println(version)
 		return
@@ -284,6 +290,8 @@ func showUsage() {
 	fmt.Println("  -speed=LEVEL    Compression speed (fastest, default, better, best)")
 	fmt.Println("  -format=FORMAT  Archive format (goxa or tar)")
 	fmt.Println("  -version        Print version and exit")
+	fmt.Println("  -fec-data=N     FEC data shards (default 10)")
+	fmt.Println("  -fec-parity=N   FEC parity shards (default 3)")
 	fmt.Println("  (append .b32, .b64 or .fec to -arc for encoded output)")
 
 	fmt.Println("\nExamples:")
@@ -296,5 +304,6 @@ func showUsage() {
 	fmt.Println("  goxa c -arc=mybackup.goxa.b64 myStuff/        # create Base64 encoded")
 	fmt.Println("  goxa x -arc=mybackup.goxa.b64                 # extract encoded archive")
 	fmt.Println("  goxa c -arc=mybackup.goxa.fec myStuff/        # create FEC encoded")
+	fmt.Println("  goxa c -arc=mybackup.goxa.fec -fec-parity=5 myStuff/ # FEC with extra redundancy")
 	fmt.Println("  goxa x -arc=mybackup.goxa.fec                 # extract FEC archive")
 }
