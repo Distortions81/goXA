@@ -277,3 +277,40 @@ func TestModDatePreservation(t *testing.T) {
 		t.Fatalf("dir mod time mismatch: got %v want %v", dInfo.ModTime(), modTime)
 	}
 }
+
+func TestBaseEncoding(t *testing.T) {
+	cases := []struct{ enc string }{{"b64"}, {"b32"}}
+	for _, tc := range cases {
+		tempDir := t.TempDir()
+		root := filepath.Join(tempDir, "root")
+		if err := os.MkdirAll(root, 0o755); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+		data := []byte("hello")
+		if err := os.WriteFile(filepath.Join(root, "file.txt"), data, 0o644); err != nil {
+			t.Fatalf("write file: %v", err)
+		}
+
+		archivePath = filepath.Join(tempDir, "test.goxa."+tc.enc)
+		encode = tc.enc
+		features = 0
+		version = version2
+		toStdOut = false
+		doForce = false
+
+		if err := create([]string{root}); err != nil {
+			t.Fatalf("create failed: %v", err)
+		}
+
+		os.RemoveAll(root)
+		dest := filepath.Join(tempDir, "out")
+		os.MkdirAll(dest, 0o755)
+		encode = tc.enc
+		extract([]string{dest}, false)
+
+		encode = ""
+
+		extracted := filepath.Join(dest, filepath.Base(root), "file.txt")
+		checkFile(t, extracted, data, 0o644, false)
+	}
+}

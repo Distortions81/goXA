@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"encoding/base32"
+	"encoding/base64"
 	"encoding/binary"
 	"io"
 	"log"
@@ -41,23 +43,36 @@ func compressor(w io.Writer) io.WriteCloser {
 func create(inputPaths []string) error {
 
 	var bf *BufferedFile
-	if toStdOut {
+	var tmpPath string
+	var outFile *os.File
+	if toStdOut && encode == "" {
 		bf = NewBufferedFile(os.Stdout, writeBuffer, &progressData{})
+		outFile = os.Stdout
 	} else {
-		if !doForce {
-			found, _ := fileExists(archivePath)
-			if found {
-				log.Fatalf("create: Archive %v already exists.", archivePath)
+		if encode != "" || toStdOut {
+			f, err := os.CreateTemp("", "goxa_tmp_*")
+			if err != nil {
+				log.Fatalf("temp create: %v", err)
 			}
+			tmpPath = f.Name()
+			outFile = f
+			defer outFile.Close()
+		} else {
+			if !doForce {
+				found, _ := fileExists(archivePath)
+				if found {
+					log.Fatalf("create: Archive %v already exists.", archivePath)
+				}
+			}
+			f, err := os.Create(archivePath)
+			if err != nil {
+				log.Fatalf("create: os.Create: %v", err)
+			}
+			f.Truncate(0)
+			outFile = f
+			defer outFile.Close()
 		}
-
-		f, err := os.Create(archivePath)
-		if err != nil {
-			log.Fatalf("create: os.Create: %v", err)
-		}
-		f.Truncate(0)
-		defer f.Close()
-		bf = NewBufferedFile(f, writeBuffer, &progressData{})
+		bf = NewBufferedFile(outFile, writeBuffer, &progressData{})
 	}
 	doLog(false, "Creating archive: %v, inputs: %v", archivePath, inputPaths)
 
@@ -97,6 +112,45 @@ func create(inputPaths []string) error {
 	if err := bf.Close(); err != nil {
 		log.Fatalf("create: close failed: %v", err)
 	}
+
+	if encode != "" {
+		outFile.Close()
+		src, err := os.Open(tmpPath)
+		if err != nil {
+			log.Fatalf("temp reopen: %v", err)
+		}
+		defer os.Remove(tmpPath)
+
+		var dst io.Writer
+		var encW io.WriteCloser
+		if toStdOut {
+			dst = os.Stdout
+		} else {
+			f, err := os.Create(archivePath)
+			if err != nil {
+				log.Fatalf("create output: %v", err)
+			}
+			defer f.Close()
+			dst = f
+		}
+		if encode == "b32" {
+			encW = base32.NewEncoder(base32.StdEncoding, dst)
+		} else {
+			encW = base64.NewEncoder(base64.StdEncoding, dst)
+		}
+		if _, err := io.Copy(encW, src); err != nil {
+			log.Fatalf("encode copy: %v", err)
+		}
+		encW.Close()
+		src.Close()
+
+		if !toStdOut {
+			if st, err := os.Stat(archivePath); err == nil {
+				info = st
+			}
+		}
+	}
+
 	doLog(false, "\nWrote %v, %v containing %v files.", archivePath, humanize.Bytes(uint64(info.Size())), len(files))
 	return nil
 }

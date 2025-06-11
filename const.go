@@ -14,7 +14,9 @@ const (
 // Checksum types
 const (
 	sumCRC32 uint8 = iota
+	sumCRC16
 	sumXXHash
+	sumSHA256
 	sumBlake3
 )
 

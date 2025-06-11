@@ -9,12 +9,13 @@ GoXA is a friendly archiver written in Go. It's fast and straightforward, though
 - [x] Fast archive creation and extraction
 - [x] Multiple compression formats (gzip, zstd, lz4, s2, snappy, brotli; defaults to gzip)
 - [x] Standard tar archive support (auto-detected from extension or archive header)
- - [x] Optional file checksums (crc32, xxhash, or blake3)
+ - [x] Optional file checksums (crc16, crc32, xxhash, sha-256, or blake3)
 - [x] Preserve permissions and modification times
 - [x] Fully documented binary format ([FILE-FORMAT.md](FILE-FORMAT.md))
 - [x] Optional support for symlinks and other special files
 - [x] Block-based format for fast extraction (single block when uncompressed)
 - [x] Pure Go code with no runtime dependencies once compiled.
+- [x] Optional base32/base64 encoding via `.b32` or `.b64` file suffixes
 
 ## File Format
 
