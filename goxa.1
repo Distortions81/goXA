@@ -1,23 +1,23 @@
 .TH GOXA 1 "" "" "User Commands"
 .SH NAME
-goxa \- fast archiving tool written in Go
+goxa \- Go eXpress Archive
 .SH SYNOPSIS
 .B goxa
-.RI "[mode] [flags]" " -arc=FILE [paths...]"
+.RI "MODE[flags] [options]" " -arc FILE [paths...]"
 .br
 .B goxa c
-.RI "[flags] -arc=FILE [paths...]"
+.RI "[flags] -arc FILE [paths...]"
 .br
 .B goxa l
-.RI "[flags] -arc=FILE"
+.RI "[flags] -arc FILE"
 .br
 .B goxa j
-.RI "[flags] -arc=FILE"
+.RI "[flags] -arc FILE"
 .br
 .B goxa x
-.RI "[flags] -arc=FILE [destination]"
+.RI "[flags] -arc FILE [destination]"
 .SH DESCRIPTION
-GoXA is a lightweight archiver written in Go. It can create, list and extract \fB.goxa\fP archives or standard tar files. Compression, checksums and metadata preservation are optional.
+GoXA is a small archiver written in Go. It understands its own \fB.goxa\fP format and standard tar archives. Compression, checksums and most metadata are optional and controlled by flags. Archives can be streamed to stdout and, when the file name ends in \fB.b32\fP or \fB.b64\fP, encoded using Base32 or Base64. Files ending in \fB.goxaf\fP are encoded with forward error correction (FEC).
 .SH MODES
 .TP
 .B c
@@ -27,27 +27,27 @@ Create a new archive.
 List archive contents.
 .TP
 .B j
-JSON list of archive contents.
+Output a JSON listing of the archive.
 .TP
 .B x
 Extract files from an archive.
 .SH FLAGS
-Single letter flags may be combined after the mode character:
+Single letter flags may be combined immediately after the mode letter (e.g. \fBcpms\fP). They control how metadata is stored and restored.
 .TP
 .B a
 Store and restore absolute paths.
 .TP
 .B p
-Include file permissions.
+Preserve permissions.
 .TP
 .B m
-Include modification times.
+Preserve modification times.
 .TP
 .B s
-Enable checksums.
+Include file checksums.
 .TP
 .B b
-Per-block checksums.
+Include per-block checksums.
 .TP
 .B n
 Disable compression.
@@ -56,76 +56,77 @@ Disable compression.
 Include hidden files.
 .TP
 .B o
-Allow special files.
+Archive special files (devices, fifos, symlinks etc.).
 .TP
 .B u
-Use flags embedded in archive.
+Use the flags that were stored in the archive itself.
 .TP
 .B v
-Verbose logging.
+Verbose output.
 .TP
 .B f
 Force overwrite and ignore read errors.
 .PP
-Additional options:
+Longer options use the usual \fB-flag=value\fP form.
 .TP
-.BI -arc= FILE
+.BI -arc " FILE"
 Archive file name.
 .TP
 .B -stdout
 Write archive data to standard output.
 .TP
-.BI -files= LIST
+.BI -files " LIST"
 Comma separated list of files/directories to extract.
 .TP
 .B -progress=false
-Disable progress display.
+Disable the progress display.
 .TP
-.BI -comp= ALG
-Compression algorithm (gzip, zstd, lz4, s2, snappy, brotli, xz, none).
+.BI -comp " ALG"
+Compression algorithm: gzip, zstd, lz4, s2, snappy, brotli, xz or none.
 .TP
-.BI -speed= LEVEL
-Compression speed (fastest, default, better, best).
+.BI -speed " LEVEL"
+Compression speed: fastest, default, better or best.
 .TP
-.BI -format= TYPE
-Archive format (goxa or tar).
+.BI -format " TYPE"
+Force archive format: goxa or tar.
 .TP
-.BI -retries= N
-Retry reads when a file changes during processing (0 means unlimited).
+.BI -retries " N"
+Retries when a file changes during read (0 means never give up).
 .TP
-.BI -retrydelay= N
+.BI -retrydelay " N"
 Delay between retries in seconds.
 .TP
 .B -failonchange
 Treat changed files as fatal errors.
 .TP
 .B -version
-Print version and exit.
+Print program version and exit.
 .TP
-.BI -fec-data= NUM
+.BI -fec-data " NUM"
 Number of FEC data shards (default 10).
 .TP
-.BI -fec-parity= NUM
+.BI -fec-parity " NUM"
 Number of FEC parity shards (default 3).
 .TP
-.BI -fec-level= LEVEL
-FEC redundancy preset: low, medium or high.
-.SS BASE32/BASE64/FEC
-Filenames ending with \fB.b32\fP or \fB.b64\fP are encoded using Base32 or Base64.
-FEC archives use the \fB.goxaf\fP extension and are automatically decoded on extract or list.
+.BI -fec-level " LEVEL"
+FEC redundancy preset: \fBlow\fP (10 data / 3 parity), \fBmedium\fP (8 data / 4 parity) or \fBhigh\fP (5 data / 5 parity). Use of \fB-fec-data\fP and \fB-fec-parity\fP overrides these presets.
+.SS FEC ENCODING
+FEC archives use Reed-Solomon coding to provide redundancy. Data shards contain the original bytes while parity shards allow recovery from missing or corrupted shards. For example, \fB-fec-data=10\fP and \fB-fec-parity=3\fP create 13 shards; any 10 shards are sufficient to reconstruct the archive. The \fB.goxaf\fP extension triggers automatic decoding during extraction or listing.
+.SS BASE32 AND BASE64
+When the archive name ends with \fB.b32\fP or \fB.b64\fP the output is Base32 or Base64 encoded. Extraction and listing automatically decode these files.
 .SH EXAMPLES
 .nf
 goxa c -arc=backup.goxa mydir/
+# using all flags
 goxa capmsf -arc=backup.goxa ~/docs
+# extract to folder
 goxa x -arc=backup.goxa
+# create Base64 encoded archive
 goxa c -arc=backup.goxa.b64 mydir/
-goxa x -arc=backup.goxa.b64
-goxa c -arc=backup.goxaf mydir/
+# FEC archive with extra parity
 goxa c -arc=backup.goxaf -fec-parity=5 mydir/
-goxa c -arc=backup.goxaf -fec-level=high mydir/
-goxa x -arc=backup.goxaf
 .fi
 .SH SEE ALSO
 tar(1), gzip(1)
 .SH AUTHOR
-https://github.com/Distortions81
+<https://github.com/Distortions81>
