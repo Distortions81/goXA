@@ -36,7 +36,7 @@ type FileEntry struct {
 
 type Block struct {
 	Offset uint64
-	Size   uint32
+	Size   uint64
 }
 
 type ListEntry struct {
