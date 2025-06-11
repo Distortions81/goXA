@@ -150,7 +150,7 @@ func create(inputPaths []string) error {
 	header := writeHeader(emptyDirs, files, 0, 0, features, compType)
 	headerLen := len(header)
 	bf.Write(header)
-	trailerOffset := writeEntries(headerLen, bf, files)
+	files, trailerOffset := writeEntries(headerLen, bf, files)
 	trailer := writeTrailer(files)
 	bf.Write(trailer)
 	if err := bf.Flush(); err != nil {
@@ -272,6 +272,13 @@ func writeHeader(emptyDirs, files []FileEntry, trailerOffset, arcSize uint64, fl
 				log.Fatalf("write string failed: %v", err)
 			}
 		}
+		if version >= version2 {
+			if file.Changed {
+				header.WriteByte(1)
+			} else {
+				header.WriteByte(0)
+			}
+		}
 	}
 	// File offsets are tracked in the trailer only
 	h := newHasher(checksumType)
@@ -285,7 +292,7 @@ func writeHeader(emptyDirs, files []FileEntry, trailerOffset, arcSize uint64, fl
 	return header.Bytes()
 }
 
-func writeEntries(headerLen int, bf *BufferedFile, files []FileEntry) uint64 {
+func writeEntries(headerLen int, bf *BufferedFile, files []FileEntry) ([]FileEntry, uint64) {
 	h := newHasher(checksumType)
 
 	var totalBytes int64
@@ -307,107 +314,169 @@ func writeEntries(headerLen int, bf *BufferedFile, files []FileEntry) uint64 {
 		buf = make([]byte, blockSize)
 	}
 
+	newFiles := make([]FileEntry, 0, len(files))
+
 	for i := range files {
 		entry := &files[i]
 		p.file.Store(entry.Path)
 		if entry.Type != entryFile {
 			entry.Offset = 0
+			newFiles = append(newFiles, *entry)
 			continue
 		}
 
-		f, err := os.Open(entry.SrcPath)
-		if err != nil {
-			if doForce {
-				doLog(false, "\nUnable to open file: %v (continuing)", entry.Path)
-				continue
-			}
-			log.Fatalf("Unable to open file: %v", entry.Path)
-		}
+		attempt := 0
+		hadChange := false
+	retryLoop:
+		for {
+			attempt++
+			startOffset := cOffset
 
-		var checksum []byte
-		if features.IsSet(fChecksums) {
-			h.Reset()
-			if _, err := io.Copy(h, f); err != nil {
-				log.Fatalf("checksum compute failed: %v", err)
-			}
-			checksum = h.Sum(nil)
-			if _, err := f.Seek(0, io.SeekStart); err != nil {
-				log.Fatalf("seek reset failed: %v", err)
-			}
-			if _, err := bf.Write(checksum); err != nil {
-				log.Fatalf("writing checksum failed: %v", err)
-			}
-		}
-
-		entry.Offset = cOffset
-		if features.IsSet(fChecksums) {
-			cOffset += uint64(checksumLength)
-		}
-
-		br := NewBufferedFile(f, writeBuffer, p)
-		var blocks []Block
-
-		if blockSize == 0 {
-			bOff := cOffset
-			var written uint64
-			if features.IsSet(fNoCompress) {
-				if _, err := io.Copy(bf, br); err != nil {
-					log.Fatalf("copy failed: %v", err)
+			f, err := os.Open(entry.SrcPath)
+			if err != nil {
+				if doForce {
+					doLog(false, "\nUnable to open file: %v (continuing)", entry.Path)
+					break retryLoop
 				}
-				written = entry.Size
+				log.Fatalf("Unable to open file: %v", entry.Path)
+			}
+
+			statStart, err := f.Stat()
+			if err != nil {
+				f.Close()
+				if doForce {
+					doLog(false, "\nStat failed: %v (continuing)", entry.Path)
+					break retryLoop
+				}
+				log.Fatalf("stat failed: %v", err)
+			}
+
+			var checksum []byte
+			if features.IsSet(fChecksums) {
+				h.Reset()
+				if _, err := io.Copy(h, f); err != nil {
+					f.Close()
+					log.Fatalf("checksum compute failed: %v", err)
+				}
+				checksum = h.Sum(nil)
+				if _, err := f.Seek(0, io.SeekStart); err != nil {
+					f.Close()
+					log.Fatalf("seek reset failed: %v", err)
+				}
+				if _, err := bf.Write(checksum); err != nil {
+					f.Close()
+					log.Fatalf("writing checksum failed: %v", err)
+				}
+			}
+
+			entry.Offset = cOffset
+			if features.IsSet(fChecksums) {
+				cOffset += uint64(checksumLength)
+			}
+
+			br := NewBufferedFile(f, writeBuffer, p)
+			var blocks []Block
+
+			if blockSize == 0 {
+				bOff := cOffset
+				var written uint64
+				if features.IsSet(fNoCompress) {
+					if _, err := io.Copy(bf, br); err != nil {
+						f.Close()
+						log.Fatalf("copy failed: %v", err)
+					}
+					written = uint64(statStart.Size())
+				} else {
+					cw := &countingWriter{w: bf}
+					zw := compressor(cw)
+					if _, err := io.Copy(zw, br); err != nil {
+						f.Close()
+						log.Fatalf("compress copy failed: %v", err)
+					}
+					if err := zw.Close(); err != nil {
+						f.Close()
+						log.Fatalf("compress close failed: %v", err)
+					}
+					written = uint64(cw.Count())
+				}
+				cOffset += written
+				blocks = append(blocks, Block{Offset: bOff, Size: written})
 			} else {
-				cw := &countingWriter{w: bf}
-				zw := compressor(cw)
-				if _, err := io.Copy(zw, br); err != nil {
-					log.Fatalf("compress copy failed: %v", err)
-				}
-				if err := zw.Close(); err != nil {
-					log.Fatalf("compress close failed: %v", err)
-				}
-				written = uint64(cw.Count())
-			}
-			cOffset += written
-			blocks = append(blocks, Block{Offset: bOff, Size: written})
-		} else {
-			for {
-				n, err := io.ReadFull(br, buf)
-				if n > 0 {
-					bOff := cOffset
-					if features.IsSet(fNoCompress) {
-						if _, err := bf.Write(buf[:n]); err != nil {
-							log.Fatalf("copy failed: %v", err)
+				for {
+					n, err := io.ReadFull(br, buf)
+					if n > 0 {
+						bOff := cOffset
+						if features.IsSet(fNoCompress) {
+							if _, err := bf.Write(buf[:n]); err != nil {
+								f.Close()
+								log.Fatalf("copy failed: %v", err)
+							}
+							cOffset += uint64(n)
+							blocks = append(blocks, Block{Offset: bOff, Size: uint64(n)})
+						} else {
+							cw := &countingWriter{w: bf}
+							zw := compressor(cw)
+							if _, err := zw.Write(buf[:n]); err != nil {
+								f.Close()
+								log.Fatalf("compress copy failed: %v", err)
+							}
+							if err := zw.Close(); err != nil {
+								f.Close()
+								log.Fatalf("compress close failed: %v", err)
+							}
+							cOffset += uint64(cw.Count())
+							blocks = append(blocks, Block{Offset: bOff, Size: uint64(cw.Count())})
 						}
-						cOffset += uint64(n)
-						blocks = append(blocks, Block{Offset: bOff, Size: uint64(n)})
-					} else {
-						cw := &countingWriter{w: bf}
-						zw := compressor(cw)
-						if _, err := zw.Write(buf[:n]); err != nil {
-							log.Fatalf("compress copy failed: %v", err)
-						}
-						if err := zw.Close(); err != nil {
-							log.Fatalf("compress close failed: %v", err)
-						}
-						cOffset += uint64(cw.Count())
-						blocks = append(blocks, Block{Offset: bOff, Size: uint64(cw.Count())})
+					}
+					if err == io.EOF {
+						break
+					}
+					if err == io.ErrUnexpectedEOF {
+						break
+					}
+					if err != nil {
+						f.Close()
+						log.Fatalf("read block failed: %v", err)
 					}
 				}
-				if err == io.EOF {
-					break
-				}
-				if err == io.ErrUnexpectedEOF {
-					break
-				}
-				if err != nil {
-					log.Fatalf("read block failed: %v", err)
-				}
 			}
+			br.Close()
+			f.Close()
+
+			statEnd, err := os.Stat(entry.SrcPath)
+			if err == nil && (statEnd.Size() != statStart.Size() || !statEnd.ModTime().Equal(statStart.ModTime())) {
+				hadChange = true
+				if fileRetries == 0 || attempt < fileRetries {
+					doLog(false, "\nFile changed during read: %v (retrying)", entry.Path)
+					if _, err := bf.Seek(int64(startOffset), io.SeekStart); err != nil {
+						log.Fatalf("seek reset failed: %v", err)
+					}
+					cOffset = startOffset
+					time.Sleep(time.Duration(fileRetryDelay) * time.Second)
+					continue retryLoop
+				}
+				if failOnChange {
+					log.Fatalf("File changed during read: %v", entry.Path)
+				}
+				doLog(false, "\nFile changed during read: %v (skipping)", entry.Path)
+				if _, err := bf.Seek(int64(startOffset), io.SeekStart); err != nil {
+					log.Fatalf("seek reset failed: %v", err)
+				}
+				cOffset = startOffset
+				break retryLoop
+			}
+
+			entry.Size = uint64(statEnd.Size())
+			entry.ModTime = statEnd.ModTime()
+			entry.Blocks = blocks
+			if hadChange {
+				entry.Changed = true
+			}
+			newFiles = append(newFiles, *entry)
+			break retryLoop
 		}
-		br.Close()
-		f.Close()
-		entry.Blocks = blocks
 	}
-	return cOffset
+	return newFiles, cOffset
 }
 
 func writeTrailer(files []FileEntry) []byte {
