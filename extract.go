@@ -72,7 +72,17 @@ func extract(destinations []string, listOnly bool) {
 	}
 
 	//Create reader
-	arc, err := NewBinReader(archivePath)
+	arcPath := archivePath
+	cleanup := func() {}
+	if encode != "" {
+		var err error
+		arcPath, cleanup, err = decodeIfNeeded(archivePath)
+		if err != nil {
+			log.Fatalf("extract: decode failed: %v", err)
+		}
+		defer cleanup()
+	}
+	arc, err := NewBinReader(arcPath)
 	if err != nil {
 		log.Fatalf("extract: Could not open the archive file: %v", err)
 	}
@@ -370,7 +380,7 @@ func extract(destinations []string, listOnly bool) {
 			wg.Add()
 			go func(item *FileEntry) {
 				defer wg.Done()
-				_ = extractFile(destination, lfeat, ctype, item, p)
+				_ = extractFile(arcPath, destination, lfeat, ctype, item, p)
 			}(&fileList[f])
 		}
 		wg.Wait()
@@ -379,7 +389,7 @@ func extract(destinations []string, listOnly bool) {
 			if !isSelected(fileList[f].Path) {
 				continue
 			}
-			_ = extractFile(destination, lfeat, ctype, &fileList[f], p)
+			_ = extractFile(arcPath, destination, lfeat, ctype, &fileList[f], p)
 		}
 	}
 
@@ -388,7 +398,7 @@ func extract(destinations []string, listOnly bool) {
 	}
 }
 
-func extractFile(destination string, lfeat BitFlags, ctype uint8, item *FileEntry, p *progressData) error {
+func extractFile(arcPath, destination string, lfeat BitFlags, ctype uint8, item *FileEntry, p *progressData) error {
 	if item.Type == entryOther {
 		return nil
 	}
@@ -487,7 +497,7 @@ func extractFile(destination string, lfeat BitFlags, ctype uint8, item *FileEntr
 	}
 
 	//Seek to data in archive
-	arcB, err := NewBinReader(archivePath)
+	arcB, err := NewBinReader(arcPath)
 	if err != nil {
 		if doForce {
 			doLog(false, "unable to open archive reader: %v", err)
@@ -502,9 +512,9 @@ func extractFile(destination string, lfeat BitFlags, ctype uint8, item *FileEntr
 	_, err = arcB.Seek(int64(item.Offset), io.SeekStart)
 	if err != nil {
 		if doForce {
-			doLog(false, "Unable to seek archive: %v :: %v", archivePath, err)
+			doLog(false, "Unable to seek archive: %v :: %v", arcPath, err)
 		} else {
-			log.Fatalf("Unable to seek archive: %v :: %v", archivePath, err)
+			log.Fatalf("Unable to seek archive: %v :: %v", arcPath, err)
 		}
 	}
 

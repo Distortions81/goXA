@@ -11,6 +11,7 @@ var (
 	features                                 BitFlags
 	useArchiveFlags                          bool
 	compression                              string
+	encode                                   string
 	compType                                 uint8 = compGzip
 	checksumType                             uint8 = defaultChecksumType
 	checksumLength                           uint8 = defaultChecksumLen

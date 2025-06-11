@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"encoding/base32"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -34,9 +36,27 @@ func removeExtension(filename string) string {
 	return filename[:len(filename)-len(extension)]
 }
 
+// detectEncodingFromExt checks for .b32 or .b64 suffixes.
+// It returns the filename without the encoding extension and the encoding type.
+func detectEncodingFromExt(name string) (string, string) {
+	lower := strings.ToLower(name)
+	if strings.HasSuffix(lower, ".b32") {
+		return name[:len(name)-4], "b32"
+	}
+	if strings.HasSuffix(lower, ".b64") {
+		return name[:len(name)-4], "b64"
+	}
+	return name, ""
+}
+
 // detectFormatFromExt inspects the archive filename to infer the format.
 // It returns "tar" or "goxa" and whether the tar archive is uncompressed.
 func detectFormatFromExt(name string) (string, bool) {
+	var enc string
+	name, enc = detectEncodingFromExt(name)
+	if enc != "" {
+		encode = enc
+	}
 	lower := strings.ToLower(name)
 	tarUseXz = false
 	if strings.HasSuffix(lower, ".tar.gz") {
@@ -57,6 +77,7 @@ func detectFormatFromExt(name string) (string, bool) {
 
 // stripArchiveExt removes a known archive extension from name.
 func stripArchiveExt(name string) string {
+	name, _ = detectEncodingFromExt(name)
 	lower := strings.ToLower(name)
 	switch {
 	case strings.HasSuffix(lower, ".tar.gz"):
@@ -73,8 +94,41 @@ func stripArchiveExt(name string) string {
 }
 
 func hasKnownArchiveExt(name string) bool {
+	name, _ = detectEncodingFromExt(name)
 	lower := strings.ToLower(name)
 	return strings.HasSuffix(lower, ".tar.gz") || strings.HasSuffix(lower, ".tar.xz") || strings.HasSuffix(lower, ".tar") || strings.HasSuffix(lower, ".goxa")
+}
+
+// decodeIfNeeded decodes a base32 or base64 encoded archive to a temporary file
+// and returns the new filename and a cleanup function.
+func decodeIfNeeded(name string) (string, func(), error) {
+	if encode == "" {
+		return name, func() {}, nil
+	}
+	f, err := os.Open(name)
+	if err != nil {
+		return "", nil, err
+	}
+	defer f.Close()
+
+	tmp, err := os.CreateTemp("", "goxa_dec_*")
+	if err != nil {
+		return "", nil, err
+	}
+
+	var r io.Reader = f
+	if encode == "b32" {
+		r = base32.NewDecoder(base32.StdEncoding, f)
+	} else if encode == "b64" {
+		r = base64.NewDecoder(base64.StdEncoding, f)
+	}
+	if _, err := io.Copy(tmp, r); err != nil {
+		tmp.Close()
+		os.Remove(tmp.Name())
+		return "", nil, err
+	}
+	tmp.Close()
+	return tmp.Name(), func() { os.Remove(tmp.Name()) }, nil
 }
 
 // detectTarHeader reports whether buf appears to be a tar archive by checking
@@ -89,7 +143,17 @@ func detectTarHeader(buf []byte) bool {
 // detectFormatFromHeader attempts to identify the archive format based on the
 // file's magic bytes. The returned bool indicates success.
 func detectFormatFromHeader(name string) (string, bool, bool) {
-	f, err := os.Open(name)
+	path := name
+	cleanup := func() {}
+	if encode != "" {
+		var err error
+		path, cleanup, err = decodeIfNeeded(name)
+		if err != nil {
+			return "", false, false
+		}
+		defer cleanup()
+	}
+	f, err := os.Open(path)
 	if err != nil {
 		return "", false, false
 	}
