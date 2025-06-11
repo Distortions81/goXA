@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"github.com/klauspost/reedsolomon"
 )
@@ -116,11 +117,19 @@ func decodeWithFEC(name string) (string, func(), error) {
 	if err != nil {
 		return "", nil, err
 	}
-	if err := enc.Join(tmp, shards, int(dataSize)); err != nil {
+
+	p, done, finished := progressTicker(&progressData{total: int64(dataSize), speedWindowSize: time.Second * 5})
+	p.file.Store(name)
+
+	if err := enc.Join(progressWriter{w: tmp, p: p}, shards, int(dataSize)); err != nil {
+		close(done)
+		<-finished
 		tmp.Close()
 		os.Remove(tmp.Name())
 		return "", nil, err
 	}
 	tmp.Close()
+	close(done)
+	<-finished
 	return tmp.Name(), func() { os.Remove(tmp.Name()) }, nil
 }
