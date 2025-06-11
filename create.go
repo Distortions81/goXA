@@ -203,11 +203,12 @@ func create(inputPaths []string) error {
 			}
 			defer os.Remove(tmpPath)
 
-			info, err := src.Stat()
+			st, err := src.Stat()
 			if err != nil {
 				src.Close()
 				log.Fatalf("stat tmp: %v", err)
 			}
+			info = st
 
 			var dst io.Writer
 			var encW io.WriteCloser
