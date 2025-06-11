@@ -18,7 +18,7 @@ GoXA is a friendly archiver written in Go. It's fast and straightforward, though
 - [x] Block-based format for fast compression (single block when uncompressed)
 - [x] Automatic format detection from file extension or archive header
 - [x] Output archives directly to stdout for easy piping
-- [x] Selective extraction with the `-files` flag
+- [x] Fast selective extraction with the `-files` flag
 - [x] Progress bar showing transfer speed and current file
 - [x] Pure Go code with no runtime dependencies once compiled.
 - [x] Optional base32/base64 encoding via `.b32` or `.b64` file suffixes
