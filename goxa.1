@@ -1,0 +1,95 @@
+.TH GOXA 1 "" "" "User Commands"
+.SH NAME
+goxa \- fast archiving tool written in Go
+.SH SYNOPSIS
+.B goxa
+.RI "[mode] [flags]" " -arc=FILE [paths...]"
+.br
+.B goxa c
+.RI "[flags] -arc=FILE [paths...]"
+.br
+.B goxa l
+.RI "[flags] -arc=FILE"
+.br
+.B goxa x
+.RI "[flags] -arc=FILE [destination]"
+.SH DESCRIPTION
+GoXA is a friendly archiver written in Go. It can create, list and extract \fB.goxa\fP archives or standard tar files. The format supports compression, checksums and preservation of metadata.
+.SH MODES
+.TP
+.B c
+Create a new archive.
+.TP
+.B l
+List archive contents.
+.TP
+.B x
+Extract files from an archive.
+.SH FLAGS
+Single letter flags may be combined after the mode character:
+.TP
+.B a
+Store and restore absolute paths.
+.TP
+.B p
+Include file permissions.
+.TP
+.B m
+Include modification times.
+.TP
+.B s
+Enable checksums.
+.TP
+.B b
+Per-block checksums.
+.TP
+.B n
+Disable compression.
+.TP
+.B i
+Include hidden files.
+.TP
+.B o
+Allow special files.
+.TP
+.B u
+Use flags embedded in archive.
+.TP
+.B v
+Verbose logging.
+.TP
+.B f
+Force overwrite and ignore read errors.
+.PP
+Additional options:
+.TP
+.BI -arc= FILE
+Archive file name.
+.TP
+.B -stdout
+Write archive data to standard output.
+.TP
+.BI -files= LIST
+Comma separated list of files/directories to extract.
+.TP
+.B -progress=false
+Disable progress display.
+.TP
+.BI -comp= ALG
+Compression algorithm (gzip, zstd, lz4, s2, snappy, brotli, xz, none).
+.TP
+.BI -speed= LEVEL
+Compression speed (fastest, default, better, best).
+.TP
+.BI -format= TYPE
+Archive format (goxa or tar).
+.SH EXAMPLES
+.nf
+goxa c -arc=backup.goxa mydir/
+goxa capmsf -arc=backup.goxa ~/docs
+goxa x -arc=backup.goxa
+.fi
+.SH SEE ALSO
+tar(1), gzip(1)
+.SH AUTHOR
+https://github.com/Distortions81
