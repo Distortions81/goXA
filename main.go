@@ -45,7 +45,7 @@ func main() {
 	flagSet.StringVar(&archivePath, "arc", defaultArchiveName, "archive file name (extension not required)")
 	flagSet.BoolVar(&toStdOut, "stdout", false, "output archive data to stdout")
 	flagSet.BoolVar(&progress, "progress", true, "show progress bar")
-	flagSet.StringVar(&compression, "comp", "gzip", "compression: gzip|zstd|lz4|s2|snappy|brotli|xz|none")
+	flagSet.StringVar(&compression, "comp", "zstd", "compression: gzip|zstd|lz4|s2|snappy|brotli|xz|none")
 	flagSet.StringVar(&format, "format", "goxa", "archive format: tar|goxa")
 	flagSet.StringVar(&sel, "files", "", "comma-separated list of files and directories to extract")
 	flagSet.Parse(os.Args[2:])
@@ -100,6 +100,9 @@ func main() {
 			features.Set(fModDates)
 		case 's':
 			features.Set(fChecksums)
+		case 'b':
+			features.Set(fChecksums)
+			features.Set(fBlockChecksums)
 		case 'n':
 			features.Set(fNoCompress)
 		case 'i':
@@ -202,7 +205,7 @@ func main() {
 }
 
 func showUsage() {
-	fmt.Println("Usage: goxa [c|l|x][apmsniveou] -arc=arcFile [-comp=alg] [input paths/files...] or [destination]")
+	fmt.Println("Usage: goxa [c|l|x][apmsnbiveou] -arc=arcFile [-comp=alg] [input paths/files...] or [destination]")
 	fmt.Println("Output archive to stdout: -stdout, No progress bar: -progress=false")
 	fmt.Println("\nModes:")
 	fmt.Println("  c = Create a new archive. Requires input paths or files")
@@ -213,7 +216,8 @@ func showUsage() {
 	fmt.Print("  a = Absolute paths	")
 	fmt.Println("  p = Permissions")
 	fmt.Print("  m = Modification date	")
-	fmt.Println("  s = Sums")
+	fmt.Println("  s = File sums")
+	fmt.Print("  b = Block sums            ")
 	fmt.Print("  n = No-compression	")
 	fmt.Println("  i = Include dotfiles")
 	fmt.Print("  o = Special files          ")

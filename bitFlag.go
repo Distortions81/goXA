@@ -56,6 +56,9 @@ func flagLetters(flags BitFlags) string {
 	if flags.IsSet(fChecksums) {
 		out += "s"
 	}
+	if flags.IsSet(fBlockChecksums) {
+		out += "b"
+	}
 	if flags.IsSet(fNoCompress) {
 		out += "n"
 	}

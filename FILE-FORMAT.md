@@ -46,6 +46,8 @@ The header contains metadata for empty directories and files. Actual file conten
 | 3 | SHA‑256 |
 | 4 | Blake3 |
 
+CRC16 is used by default when checksums are enabled.
+
 ### Feature Flags
 
 | Flag            | Value | Purpose                                   |
@@ -58,6 +60,7 @@ The header contains metadata for empty directories and files. Actual file conten
 | `fNoCompress`   | 0x20  | Disable compression                       |
 | `fIncludeInvis` | 0x40  | Include hidden files                      |
 | `fSpecialFiles` | 0x80  | Archive symlinks and other special files  |
+| `fBlockChecksums` | 0x100 | Store per-block checksums                |
 
 Multiple flags may be combined.
 
@@ -87,8 +90,8 @@ Each file entry contains:
 ### Per-file Data
 
 For every file:
-1. Optional checksum (length given in the header) when `fChecksums` is set.
-2. File contents, compressed according to the compression type. Gzip is used by default when compression is enabled and no other type is selected.
+1. Optional checksum (length given in the header) when `fChecksums` is set. When `fBlockChecksums` is set, a checksum precedes each block instead of one per file.
+2. File contents, compressed according to the compression type. Zstd is used by default when compression is enabled and no other type is selected.
 
 ### Example Layout
 
