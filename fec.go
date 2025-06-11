@@ -51,11 +51,19 @@ func encodeWithFEC(inPath, outPath string) error {
 	if err := binary.Write(out, binary.LittleEndian, uint64(len(data))); err != nil {
 		return err
 	}
+
+	p, done, finished := progressTicker(&progressData{total: int64(len(data)), speedWindowSize: time.Second * 5})
+	p.file.Store(inPath)
+	w := progressWriter{w: out, p: p}
 	for _, s := range shards {
-		if _, err := out.Write(s); err != nil {
+		if _, err := w.Write(s); err != nil {
+			close(done)
+			<-finished
 			return err
 		}
 	}
+	close(done)
+	<-finished
 	return nil
 }
 
