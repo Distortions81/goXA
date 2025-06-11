@@ -284,6 +284,7 @@ func showUsage() {
 	fmt.Println("  -speed=LEVEL    Compression speed (fastest, default, better, best)")
 	fmt.Println("  -format=FORMAT  Archive format (goxa or tar)")
 	fmt.Println("  -version        Print version and exit")
+	fmt.Println("  (append .b32 or .b64 to -arc for Base32 or Base64 encoding)")
 
 	fmt.Println("\nExamples:")
 	fmt.Println("  goxa -version                                 # print version")
@@ -292,4 +293,6 @@ func showUsage() {
 	fmt.Println("  goxa l -arc=mybackup.goxa                     # list contents")
 	fmt.Println("  goxa c -arc=mybackup.tar.gz myStuff/          # create tar.gz")
 	fmt.Println("  goxa x -arc=mybackup.tar.xz                   # extract tar.xz")
+	fmt.Println("  goxa c -arc=mybackup.goxa.b64 myStuff/        # create Base64 encoded")
+	fmt.Println("  goxa x -arc=mybackup.goxa.b64                 # extract encoded archive")
 }
