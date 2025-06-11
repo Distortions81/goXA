@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"compress/gzip"
 	"encoding/binary"
@@ -192,22 +193,56 @@ func extract(destinations []string, listOnly bool, jsonList bool) {
 		features |= lfeat
 	} else {
 		missing := ""
+		missingFlags := BitFlags(0)
 		if lfeat.IsSet(fPermissions) && features.IsNotSet(fPermissions) {
 			missing += "p"
+			missingFlags |= fPermissions
 		}
 		if lfeat.IsSet(fModDates) && features.IsNotSet(fModDates) {
 			missing += "m"
+			missingFlags |= fModDates
 		}
 		if lfeat.IsSet(fSpecialFiles) && features.IsNotSet(fSpecialFiles) {
 			missing += "o"
+			missingFlags |= fSpecialFiles
 		}
 		if lfeat.IsSet(fIncludeInvis) && features.IsNotSet(fIncludeInvis) {
 			missing += "i"
+			missingFlags |= fIncludeInvis
 		}
 		if missing != "" {
-			doLog(false, "Archive uses flags '%s'. Rerun with these flags or 'u' to auto-enable.", missing)
-			arc.Close()
-			return
+			if interactiveMode {
+				fmt.Printf("Archive uses flags '%s'. Enable which? (letters or 'u'=all) [none]: ", missing)
+				reader := bufio.NewReader(os.Stdin)
+				resp, _ := reader.ReadString('\n')
+				resp = strings.TrimSpace(strings.ToLower(resp))
+				if resp == "u" {
+					features |= missingFlags
+				} else {
+					for _, r := range resp {
+						switch r {
+						case 'p':
+							if missingFlags.IsSet(fPermissions) {
+								features.Set(fPermissions)
+							}
+						case 'm':
+							if missingFlags.IsSet(fModDates) {
+								features.Set(fModDates)
+							}
+						case 'o':
+							if missingFlags.IsSet(fSpecialFiles) {
+								features.Set(fSpecialFiles)
+							}
+						case 'i':
+							if missingFlags.IsSet(fIncludeInvis) {
+								features.Set(fIncludeInvis)
+							}
+						}
+					}
+				}
+			} else {
+				doLog(false, "Archive uses flags '%s'.", missing)
+			}
 		}
 	}
 

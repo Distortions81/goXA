@@ -81,6 +81,11 @@ Longer options use the usual `-flag=value` form.
 | `v` | verbose output |
 | `f` | force overwrite / ignore read errors |
 
+When extracting, the program prompts if the archive was created with
+flags you did not specify. It will ask which missing flags to enable, or
+`u` to enable all. Press Enter to continue without them. Use
+`-interactive=false` to skip prompts.
+
 ### Options
 
 | Option | Description |
@@ -89,6 +94,7 @@ Longer options use the usual `-flag=value` form.
 | `-stdout` | write archive to stdout |
 | `-files` | comma-separated list to extract |
 | `-progress=false` | disable progress display |
+| `-interactive=false` | disable prompts for archive flags |
 | `-comp` | compression algorithm |
 | `-speed` | compression speed level |
 | `-format` | force `goxa` or `tar` format |
