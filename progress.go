@@ -129,7 +129,7 @@ func printProgress(p *progressData) {
 	fileName = filepath.Base(fileName)
 
 	// Build the informational part of the line and determine the bar width
-	info := fmt.Sprintf(" %3.2f%% %v/s %s", progress*100, humanize.Bytes(uint64(speed)), fileName)
+	info := fmt.Sprintf(" %3.2f%% %v/s avg %v/s %s", progress*100, humanize.Bytes(uint64(speed)), humanize.Bytes(uint64(avgSpeed)), fileName)
 	width := getLineWidth()
 	barWidth := width - len(info) - 2 // 2 for the surrounding []
 	if barWidth > maxBarWidth {

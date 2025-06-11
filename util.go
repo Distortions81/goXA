@@ -111,22 +111,35 @@ func decodeIfNeeded(name string) (string, func(), error) {
 	if encode == "" {
 		return name, func() {}, nil
 	}
+	if encode == "b32" {
+		doLog(false, "Base32 decoding archive")
+	} else if encode == "b64" {
+		doLog(false, "Base64 decoding archive")
+	}
 	f, err := os.Open(name)
 	if err != nil {
 		return "", nil, err
 	}
 	defer f.Close()
 
+	info, err := f.Stat()
+	if err != nil {
+		return "", nil, err
+	}
+
 	tmp, err := os.CreateTemp("", "goxa_dec_*")
 	if err != nil {
 		return "", nil, err
 	}
 
-	var r io.Reader = f
+	p, done, finished := progressTicker(&progressData{total: info.Size(), speedWindowSize: time.Second * 5})
+	p.file.Store(name)
+
+	var r io.Reader = progressReader{r: f, p: p}
 	if encode == "b32" {
-		r = base32.NewDecoder(base32.StdEncoding, f)
+		r = base32.NewDecoder(base32.StdEncoding, r)
 	} else if encode == "b64" {
-		r = base64.NewDecoder(base64.StdEncoding, f)
+		r = base64.NewDecoder(base64.StdEncoding, r)
 	} else if encode == "fec" {
 		f.Close()
 		os.Remove(tmp.Name())
@@ -135,9 +148,13 @@ func decodeIfNeeded(name string) (string, func(), error) {
 	if _, err := io.Copy(tmp, r); err != nil {
 		tmp.Close()
 		os.Remove(tmp.Name())
+		close(done)
+		<-finished
 		return "", nil, err
 	}
 	tmp.Close()
+	close(done)
+	<-finished
 	return tmp.Name(), func() { os.Remove(tmp.Name()) }, nil
 }
 

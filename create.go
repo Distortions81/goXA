@@ -179,6 +179,7 @@ func create(inputPaths []string) error {
 			if toStdOut {
 				log.Fatalf("FEC encoding not supported with stdout")
 			}
+			doLog(false, "FEC encoding archive")
 			if err := encodeWithFEC(tmpPath, archivePath); err != nil {
 				log.Fatalf("fec encode: %v", err)
 			}
@@ -193,6 +194,12 @@ func create(inputPaths []string) error {
 			}
 			defer os.Remove(tmpPath)
 
+			info, err := src.Stat()
+			if err != nil {
+				src.Close()
+				log.Fatalf("stat tmp: %v", err)
+			}
+
 			var dst io.Writer
 			var encW io.WriteCloser
 			if toStdOut {
@@ -206,15 +213,25 @@ func create(inputPaths []string) error {
 				dst = f
 			}
 			if encode == "b32" {
+				doLog(false, "Base32 encoding archive")
 				encW = base32.NewEncoder(base32.StdEncoding, dst)
 			} else {
+				doLog(false, "Base64 encoding archive")
 				encW = base64.NewEncoder(base64.StdEncoding, dst)
 			}
-			if _, err := io.Copy(encW, src); err != nil {
+
+			p, done, finished := progressTicker(&progressData{total: info.Size(), speedWindowSize: time.Second * 5})
+			p.file.Store(archivePath)
+
+			if _, err := io.Copy(encW, progressReader{r: src, p: p}); err != nil {
+				close(done)
+				<-finished
 				log.Fatalf("encode copy: %v", err)
 			}
 			encW.Close()
 			src.Close()
+			close(done)
+			<-finished
 
 			if !toStdOut {
 				if st, err := os.Stat(archivePath); err == nil {

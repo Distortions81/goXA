@@ -12,6 +12,7 @@ func (pw progressWriter) Write(b []byte) (int, error) {
 	n, err := pw.w.Write(b)
 	if pw.p != nil {
 		pw.p.current.Add(int64(n))
+		pw.p.written.Add(int64(n))
 	}
 	return n, err
 }
