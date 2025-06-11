@@ -19,6 +19,7 @@ func TestAllCompressions(t *testing.T) {
 		{"s2", compS2, 0},
 		{"snappy", compSnappy, 0},
 		{"brotli", compBrotli, 0},
+		{"xz", compXZ, 0},
 		{"none", compGzip, fNoCompress},
 	}
 
