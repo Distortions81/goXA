@@ -10,8 +10,8 @@ set -euo pipefail
 # ---- config ---------------------------------------------------------------
 SIZE_GB=24
 MOUNTPOINT="$(pwd)/RamDisk"
-SOURCE="$HOME/testFiles"
 ARCHIVE_SUBDIR="testFiles"
+SOURCE="$HOME/$ARCHIVE_SUBDIR"
 GOXA_OUTPUT="$MOUNTPOINT/${ARCHIVE_SUBDIR}.goxa"
 TAR_OUTPUT="$MOUNTPOINT/${ARCHIVE_SUBDIR}.tar.gz"
 MOUNTED=0
@@ -19,7 +19,7 @@ MOUNTED=0
 # ---- cleanup function -----------------------------------------------------
 cleanup_on_exit() {
     if [[ $MOUNTED -eq 1 ]]; then
-        echo "🧹 Unmounting RAM disk at $MOUNTPOINT..."
+        echo "🪩 Unmounting RAM disk at $MOUNTPOINT..."
         sudo umount "$MOUNTPOINT"
         rmdir "$MOUNTPOINT"
         echo "✅ RAM disk unmounted and removed."
@@ -45,10 +45,10 @@ MOUNTED=1
 # ---- copy source files ---------------------------------------------------
 echo "Copying files from $SOURCE to $MOUNTPOINT/$ARCHIVE_SUBDIR..."
 mkdir -p "$MOUNTPOINT/$ARCHIVE_SUBDIR"
-cp -rv "${SOURCE}/." "$MOUNTPOINT/$ARCHIVE_SUBDIR"
+cp -rv "$SOURCE/." "$MOUNTPOINT/$ARCHIVE_SUBDIR"
 
 # ---- goxa archive + timing ------------------------------------------------
-echo "📦 Archiving with goXA to $GOXA_OUTPUT..."
+echo "📆 Archiving with goXA to $GOXA_OUTPUT..."
 go build
 GOXA_TIME="$(mktemp)"
 /usr/bin/time -f "%e %U %S" -o "$GOXA_TIME" \
@@ -58,7 +58,7 @@ goxa_cpu=$(awk "BEGIN {print $goxa_user + $goxa_sys}")
 rm -f "$GOXA_TIME"
 
 # ---- tar archive + timing -------------------------------------------------
-echo "📦 Creating tar.gz archive to $TAR_OUTPUT..."
+echo "📆 Creating tar.gz archive to $TAR_OUTPUT..."
 TAR_TIME="$(mktemp)"
 /usr/bin/time -f "%e %U %S" -o "$TAR_TIME" \
   tar -czf "$TAR_OUTPUT" -C "$MOUNTPOINT" "$ARCHIVE_SUBDIR"
@@ -66,25 +66,46 @@ read -r tar_real tar_user tar_sys < "$TAR_TIME"
 tar_cpu=$(awk "BEGIN {print $tar_user + $tar_sys}")
 rm -f "$TAR_TIME"
 
+# ---- decompression test --------------------------------------------------
+echo "\n📂 Benchmarking decompression..."
+GOXA_EXTRACT="$MOUNTPOINT/extracted_goxa"
+TAR_EXTRACT="$MOUNTPOINT/extracted_tar"
+mkdir -p "$GOXA_EXTRACT" "$TAR_EXTRACT"
+
+# goXA extract
+echo "📂 Extracting with goXA to $GOXA_EXTRACT..."
+GOXA_X_TIME="$(mktemp)"
+/usr/bin/time -f "%e %U %S" -o "$GOXA_X_TIME" \
+  ./goXA xu -arc="$GOXA_OUTPUT" "$GOXA_EXTRACT"
+read -r goxa_x_real goxa_x_user goxa_x_sys < "$GOXA_X_TIME"
+goxa_x_cpu=$(awk "BEGIN {print $goxa_x_user + $goxa_x_sys}")
+rm -f "$GOXA_X_TIME"
+
+# tar extract
+echo "📂 Extracting with tar to $TAR_EXTRACT..."
+TAR_X_TIME="$(mktemp)"
+/usr/bin/time -f "%e %U %S" -o "$TAR_X_TIME" \
+  tar -xzf "$TAR_OUTPUT" -C "$TAR_EXTRACT"
+read -r tar_x_real tar_x_user tar_x_sys < "$TAR_X_TIME"
+tar_x_cpu=$(awk "BEGIN {print $tar_x_user + $tar_x_sys}")
+rm -f "$TAR_X_TIME"
+
 # ---- size summary ---------------------------------------------------------
-echo ""
-echo "✅ Archives created:"
+echo "\n✅ Archives created:"
 ls -lh "$GOXA_OUTPUT" "$TAR_OUTPUT"
 
-# ---- performance comparison -----------------------------------------------
-echo ""
-echo "📊 Comparing archive methods..."
-
-# True CPU efficiency: work done = total CPU seconds
+# ---- compression performance ---------------------------------------------
+echo "\n📊 Comparing compression performance..."
 if (( $(awk "BEGIN {exit !($goxa_cpu < $tar_cpu)}") )); then
     cpu_winner="goXA"
-    cpu_savings=$(awk "BEGIN {print (1 - $goxa_cpu / $tar_cpu) * 100}")
+    cpu_loser="tar"
+    cpu_savings=$(awk "BEGIN {print ($tar_cpu - $goxa_cpu) / $tar_cpu * 100}")
 else
     cpu_winner="tar"
-    cpu_savings=$(awk "BEGIN {print (1 - $tar_cpu / $goxa_cpu) * 100}")
+    cpu_loser="goXA"
+    cpu_savings=$(awk "BEGIN {print ($goxa_cpu - $tar_cpu) / $goxa_cpu * 100}")
 fi
 
-# Speed comparison (wall + cpu)
 goxa_eff=$(awk "BEGIN {print $goxa_cpu / $goxa_real}")
 tar_eff=$(awk "BEGIN {print $tar_cpu / $tar_real}")
 
@@ -103,58 +124,22 @@ else
     cpu_diff_pct=$(awk "BEGIN {print (1 - $tar_cpu / $goxa_cpu) * 100}")
 fi
 
-# Output results
-echo "📦 goXA: real=${goxa_real}s, cpu=${goxa_cpu}s"
-echo "📦 tar:  real=${tar_real}s, cpu=${tar_cpu}s"
+echo "📆 Compression Results:"
+echo "📆 goXA: real=${goxa_real}s, cpu=${goxa_cpu}s"
+echo "📆 tar:  real=${tar_real}s, cpu=${tar_cpu}s"
 
-echo ""
-echo "⚡ CPU Efficiency: $cpu_winner used fewer CPU seconds (${cpu_savings}% less energy used)"
-echo "🚀 Speed Comparison:"
-echo "   Wall time: $faster was $(awk "BEGIN {printf \"%.2fx\", $wall_speedup}") faster (${wall_diff_pct}% faster)"
-echo "   CPU time:  $faster used $(awk "BEGIN {printf \"%.2fx\", $cpu_speedup}") less CPU time (${cpu_diff_pct}% less)"
-
-# ---- decompression benchmark ----------------------------------------------
-echo ""
-echo "📂 Benchmarking decompression..."
-
-# Paths to extract into
-GOXA_EXTRACT="$MOUNTPOINT/extracted_goxa"
-TAR_EXTRACT="$MOUNTPOINT/extracted_tar"
-
-mkdir -p "$GOXA_EXTRACT" "$TAR_EXTRACT"
-
-# ---- goXA extraction ------------------------------------------------------
-echo "📂 Extracting with goXA to $GOXA_EXTRACT..."
-GOXA_X_TIME="$(mktemp)"
-/usr/bin/time -f "%e %U %S" -o "$GOXA_X_TIME" \
-  ./goXA xu -arc="$GOXA_OUTPUT" -out="$GOXA_EXTRACT"
-read -r goxa_x_real goxa_x_user goxa_x_sys < "$GOXA_X_TIME"
-goxa_x_cpu=$(awk "BEGIN {print $goxa_x_user + $goxa_x_sys}")
-rm -f "$GOXA_X_TIME"
-
-# ---- tar extraction -------------------------------------------------------
-echo "📂 Extracting with tar to $TAR_EXTRACT..."
-TAR_X_TIME="$(mktemp)"
-/usr/bin/time -f "%e %U %S" -o "$TAR_X_TIME" \
-  tar -xzf "$TAR_OUTPUT" -C "$TAR_EXTRACT"
-read -r tar_x_real tar_x_user tar_x_sys < "$TAR_X_TIME"
-tar_x_cpu=$(awk "BEGIN {print $tar_x_user + $tar_x_sys}")
-rm -f "$TAR_X_TIME"
-
-# ---- decompression comparison ---------------------------------------------
-echo ""
-echo "📊 Comparing decompression performance..."
-
-# CPU efficiency winner
+# ---- decompression performance -------------------------------------------
+echo "\n📊 Comparing decompression performance..."
 if (( $(awk "BEGIN {exit !($goxa_x_cpu < $tar_x_cpu)}") )); then
     x_cpu_winner="goXA"
-    x_cpu_savings=$(awk "BEGIN {print (1 - $goxa_x_cpu / $tar_x_cpu) * 100}")
+    x_cpu_loser="tar"
+    x_cpu_savings=$(awk "BEGIN {print ($tar_x_cpu - $goxa_x_cpu) / $tar_x_cpu * 100}")
 else
     x_cpu_winner="tar"
-    x_cpu_savings=$(awk "BEGIN {print (1 - $tar_x_cpu / $goxa_x_cpu) * 100}")
+    x_cpu_loser="goXA"
+    x_cpu_savings=$(awk "BEGIN {print ($goxa_x_cpu - $tar_x_cpu) / $goxa_x_cpu * 100}")
 fi
 
-# Speed comparison
 x_is_goxa_faster=$(awk "BEGIN {print ($goxa_x_real < $tar_x_real) ? 1 : 0}")
 if [[ "$x_is_goxa_faster" == "1" ]]; then
     x_faster="goXA"
@@ -170,12 +155,6 @@ else
     x_cpu_diff_pct=$(awk "BEGIN {print (1 - $tar_x_cpu / $goxa_x_cpu) * 100}")
 fi
 
-# Output
-echo "📦 goXA: real=${goxa_x_real}s, cpu=${goxa_x_cpu}s"
-echo "📦 tar:  real=${tar_x_real}s, cpu=${tar_x_cpu}s"
-
-echo ""
-echo "⚡ CPU Efficiency: $x_cpu_winner used fewer CPU seconds (${x_cpu_savings}% less energy used)"
-echo "🚀 Decompression Speed:"
-echo "   Wall time: $x_faster was $(awk "BEGIN {printf \"%.2fx\", $x_wall_speedup}") faster (${x_wall_diff_pct}% faster)"
-echo "   CPU time:  $x_faster used $(awk "BEGIN {printf \"%.2fx\", $x_cpu_speedup}") less CPU time (${x_cpu_diff_pct}% less)"
+echo "📆 Decompression Results:"
+echo "📆 goXA: real=${goxa_x_real}s, cpu=${goxa_x_cpu}s"
+echo "📆 tar:  real=${tar_x_real}s, cpu=${tar_x_cpu}s"
