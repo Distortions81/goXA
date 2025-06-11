@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	defaultChecksumType = sumBlake3
-	defaultChecksumLen  = 32
+	defaultChecksumType = sumCRC16
+	defaultChecksumLen  = 2
 )
 
 func newHasher(t uint8) hash.Hash {

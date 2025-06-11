@@ -35,12 +35,13 @@ const (
 	fS2
 	fSnappy
 	fBrotli
+	fBlockChecksums
 
 	fTop //Do not use, move or delete
 )
 
 var (
-	flagNames = []string{"None", "Absolute Paths", "Permissions", "Mod Dates", "Checksums", "No Compress", "Include Invis", "Special Files", "Zstd", "LZ4", "S2", "Snappy", "Brotli", "Unknown"}
+	flagNames = []string{"None", "Absolute Paths", "Permissions", "Mod Dates", "Checksums", "No Compress", "Include Invis", "Special Files", "Zstd", "LZ4", "S2", "Snappy", "Brotli", "Block Checksums", "Unknown"}
 )
 
 // Entry Types

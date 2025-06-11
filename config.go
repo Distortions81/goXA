@@ -12,7 +12,7 @@ var (
 	useArchiveFlags                          bool
 	compression                              string
 	encode                                   string
-	compType                                 uint8 = compGzip
+	compType                                 uint8 = compZstd
 	checksumType                             uint8 = defaultChecksumType
 	checksumLength                           uint8 = defaultChecksumLen
 	tarUseXz                                 bool
