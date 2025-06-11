@@ -45,7 +45,7 @@ func main() {
 	flagSet.StringVar(&archivePath, "arc", defaultArchiveName, "archive file name (extension not required)")
 	flagSet.BoolVar(&toStdOut, "stdout", false, "output archive data to stdout")
 	flagSet.BoolVar(&progress, "progress", true, "show progress bar")
-	flagSet.StringVar(&compression, "comp", "gzip", "compression: gzip|zstd|lz4|s2|snappy|brotli|none")
+	flagSet.StringVar(&compression, "comp", "gzip", "compression: gzip|zstd|lz4|s2|snappy|brotli|xz|none")
 	flagSet.StringVar(&format, "format", "goxa", "archive format: tar|goxa")
 	flagSet.StringVar(&sel, "files", "", "comma-separated list of files and directories to extract")
 	flagSet.Parse(os.Args[2:])
@@ -117,6 +117,12 @@ func main() {
 		compType = compSnappy
 	case "brotli":
 		compType = compBrotli
+	case "xz":
+		if strings.ToLower(format) == "tar" {
+			tarUseXz = true
+		} else {
+			log.Fatalf("Unknown compression: %s", compression)
+		}
 	case "none":
 		features.Set(fNoCompress)
 		compType = compGzip
@@ -127,7 +133,11 @@ func main() {
 	if cmdLetter == 'c' && !hasKnownArchiveExt(archivePath) {
 		if strings.ToLower(format) == "tar" {
 			if features.IsNotSet(fNoCompress) {
-				archivePath += ".tar.gz"
+				if tarUseXz {
+					archivePath += ".tar.xz"
+				} else {
+					archivePath += ".tar.gz"
+				}
 			} else {
 				archivePath += ".tar"
 			}
@@ -197,7 +207,7 @@ func showUsage() {
 	fmt.Println("  u = Use archive flags")
 	fmt.Println("  v = Verbose logging")
 	fmt.Print("  f = Force (overwrite files and ignore read errors)")
-	fmt.Println("  -comp=gzip|zstd|lz4|s2|snappy|brotli|none")
+	fmt.Println("  -comp=gzip|zstd|lz4|s2|snappy|brotli|xz|none")
 	fmt.Println("  -format=tar|goxa")
 	fmt.Println()
 	fmt.Println("  goxa c -arc=arcFile myStuff		(similar to zip)")

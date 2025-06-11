@@ -55,6 +55,7 @@ func TestTarBasic(t *testing.T) {
 	}{
 		{"compress", false},
 		{"nocompress", true},
+		{"xz", false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -64,6 +65,11 @@ func TestTarBasic(t *testing.T) {
 
 			archivePath = filepath.Join(tempDir, "test.tar")
 			features = 0
+			tarUseXz = false
+			if tc.name == "xz" {
+				tarUseXz = true
+				archivePath += ".xz"
+			}
 			if tc.noComp {
 				features = fNoCompress
 			}

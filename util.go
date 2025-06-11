@@ -32,7 +32,12 @@ func removeExtension(filename string) string {
 // It returns "tar" or "goxa" and whether the tar archive is uncompressed.
 func detectFormatFromExt(name string) (string, bool) {
 	lower := strings.ToLower(name)
+	tarUseXz = false
 	if strings.HasSuffix(lower, ".tar.gz") {
+		return "tar", false
+	}
+	if strings.HasSuffix(lower, ".tar.xz") {
+		tarUseXz = true
 		return "tar", false
 	}
 	if strings.HasSuffix(lower, ".tar") {
@@ -50,6 +55,8 @@ func stripArchiveExt(name string) string {
 	switch {
 	case strings.HasSuffix(lower, ".tar.gz"):
 		return name[:len(name)-len(".tar.gz")]
+	case strings.HasSuffix(lower, ".tar.xz"):
+		return name[:len(name)-len(".tar.xz")]
 	case strings.HasSuffix(lower, ".tar"):
 		return name[:len(name)-len(".tar")]
 	case strings.HasSuffix(lower, ".goxa"):
@@ -61,7 +68,7 @@ func stripArchiveExt(name string) string {
 
 func hasKnownArchiveExt(name string) bool {
 	lower := strings.ToLower(name)
-	return strings.HasSuffix(lower, ".tar.gz") || strings.HasSuffix(lower, ".tar") || strings.HasSuffix(lower, ".goxa")
+	return strings.HasSuffix(lower, ".tar.gz") || strings.HasSuffix(lower, ".tar.xz") || strings.HasSuffix(lower, ".tar") || strings.HasSuffix(lower, ".goxa")
 }
 
 func doLog(verbose bool, format string, args ...interface{}) {

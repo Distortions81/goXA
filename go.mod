@@ -10,6 +10,7 @@ require (
 	github.com/klauspost/pgzip v1.2.6
 	github.com/pierrec/lz4/v4 v4.1.22
 	github.com/remeh/sizedwaitgroup v1.0.0
+	github.com/ulikunitz/xz v0.5.12
 	golang.org/x/crypto v0.38.0
 	golang.org/x/term v0.32.0
 )

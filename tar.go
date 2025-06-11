@@ -6,10 +6,13 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+
+	"github.com/ulikunitz/xz"
 )
 
 // createTar creates a tar archive from the provided paths.
-// When fNoCompress is not set, the archive is gzip compressed.
+// When fNoCompress is not set, the archive is gzip compressed unless
+// tarUseXz is true, in which case xz compression is used.
 func createTar(paths []string) error {
 	f, err := os.Create(archivePath)
 	if err != nil {
@@ -17,10 +20,21 @@ func createTar(paths []string) error {
 	}
 	var w io.WriteCloser = f
 	if features.IsNotSet(fNoCompress) {
-		gw := gzip.NewWriter(f)
-		w = gw
-		defer f.Close()
-		defer gw.Close()
+		if tarUseXz {
+			xzw, err := xz.NewWriter(f)
+			if err != nil {
+				f.Close()
+				return err
+			}
+			w = xzw
+			defer f.Close()
+			defer xzw.Close()
+		} else {
+			gw := gzip.NewWriter(f)
+			w = gw
+			defer f.Close()
+			defer gw.Close()
+		}
 	} else {
 		defer f.Close()
 	}
@@ -72,7 +86,7 @@ func createTar(paths []string) error {
 }
 
 // extractTar extracts a tar archive into destination. When fNoCompress is not set,
-// the archive is assumed to be gzip compressed.
+// gzip compression is assumed unless tarUseXz is true, in which case xz is used.
 func extractTar(destination string) error {
 	r, err := os.Open(archivePath)
 	if err != nil {
@@ -80,13 +94,22 @@ func extractTar(destination string) error {
 	}
 	var src io.Reader = r
 	if features.IsNotSet(fNoCompress) {
-		gr, err := gzip.NewReader(r)
-		if err != nil {
-			r.Close()
-			return err
+		if tarUseXz {
+			xr, err := xz.NewReader(r)
+			if err != nil {
+				r.Close()
+				return err
+			}
+			src = xr
+		} else {
+			gr, err := gzip.NewReader(r)
+			if err != nil {
+				r.Close()
+				return err
+			}
+			src = gr
+			defer gr.Close()
 		}
-		src = gr
-		defer gr.Close()
 	}
 	defer r.Close()
 

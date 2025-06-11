@@ -8,7 +8,7 @@ GoXA is a friendly archiver written in Go. It's fast and straightforward, though
 
 - [x] Fast archive creation and extraction
 - [x] Multiple compression formats (gzip, zstd, lz4, s2, snappy, brotli; defaults to gzip)
-- [x] Standard tar archive support (auto-detected from `.tar` or `.tar.gz`)
+- [x] Standard tar archive support (auto-detected from `.tar`, `.tar.gz`, or `.tar.xz`)
 - [x] Optional BLAKE2b-256 checksums
 - [x] Preserve permissions and modification times
 - [x] Fully documented binary format ([FILE-FORMAT.md](FILE-FORMAT.md))
@@ -86,6 +86,8 @@ goxa xu -arc=mybackup.goxa     # use flags in archive (aka auto)
 goxa l -arc=mybackup.goxa
 goxa c -arc=mybackup.tar.gz myStuff/
 goxa x -arc=mybackup.tar.gz
+goxa c -arc=mybackup.tar.xz myStuff/
+goxa x -arc=mybackup.tar.xz
 ```
 
 ## Roadmap
