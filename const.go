@@ -55,6 +55,7 @@ const (
 	compS2
 	compSnappy
 	compBrotli
+	compXZ
 )
 
 // Compression speed levels

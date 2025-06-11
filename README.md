@@ -9,13 +9,13 @@ GoXA is a small archiver written in Go. It's quick and friendly, though still le
 ## Features
 
 - Fast archive creation and extraction
-- Choice of gzip, zstd, lz4, s2, snappy, brotli or xz (default zstd)
+- Compression: gzip, zstd, lz4, s2, snappy, brotli or xz (default zstd)
 - Tar compatibility (auto-detected by filename or header)
 - Optional checksums: CRC32, CRC16, XXHash3, SHA-256 or Blake3 (default Blake3)
 - Preserve permissions and modification times
 - Fully documented binary format ([FILE-FORMAT.md](FILE-FORMAT.md))
 - Archive symlinks and other special files
-- Block-based compression for speed (single block when uncompressed)
+- Block-based compression for speed
 - Automatic format detection
 - Stream archives to stdout
 - Selective extraction with `-files`
@@ -49,12 +49,17 @@ See `goxa.1` for the full command reference.
 ## Usage
 
 ```bash
-goxa [mode] [flags] -arc=archiveFile [paths...]
+goxa [mode] [flags] -arc=FILE [paths...]
 ```
 
-`mode`: `c` (create), `l` (list), `j` (json list), `x` (extract)
+Modes are:
 
-`flags`: any combination of:
+* `c` – create an archive
+* `l` – list contents
+* `j` – JSON list
+* `x` – extract files
+
+Flags (combine as needed):
 
 | Flag | Description |
 |------|-------------|
@@ -86,26 +91,24 @@ Paths are stored relative by default. Use `a` to store and restore absolute path
 | `-version` | Print version and exit |
 
 Progress shows transfer speed and the current file being processed.
-
-`xz` compression is only available when `-format=tar`.
 Snappy does not support configurable compression levels; `-speed` has no effect when using snappy.
 
 ### Examples
 
 ```bash
-goxa -version
-goxa c -arc=mybackup.goxa myStuff/
-goxa capmsif -arc=mybackup.goxa ~/
-goxa x -arc=mybackup.goxa
-goxa xu -arc=mybackup.goxa     # use flags in archive (aka auto)
-goxa l -arc=mybackup.goxa
-goxa j -arc=mybackup.goxa > listing.json
-goxa c -arc=mybackup.tar.gz myStuff/
-goxa x -arc=mybackup.tar.gz
-goxa c -arc=mybackup.tar.xz myStuff/
-goxa x -arc=mybackup.tar.xz
-goxa c -arc=mybackup.goxa -stdout myStuff/ | ssh host "cat > backup.goxa"
-goxa x -arc=mybackup.goxa -files=file.txt,dir/
+goxa -version                                 # print version
+goxa c -arc=mybackup.goxa myStuff/            # create archive
+goxa capmsif -arc=mybackup.goxa ~/            # create using all flags
+goxa x -arc=mybackup.goxa                     # extract to folder
+goxa xu -arc=mybackup.goxa                    # extract using archive flags
+goxa l -arc=mybackup.goxa                     # list contents
+goxa j -arc=mybackup.goxa > listing.json      # JSON listing
+goxa c -arc=mybackup.tar.gz myStuff/          # create tar.gz
+goxa x -arc=mybackup.tar.gz                   # extract tar.gz
+goxa c -arc=mybackup.tar.xz myStuff/          # create tar.xz
+goxa x -arc=mybackup.tar.xz                   # extract tar.xz
+goxa c -arc=mybackup.goxa -stdout myStuff/ | ssh host "cat > backup.goxa"  # stream over SSH
+goxa x -arc=mybackup.goxa -files=file.txt,dir/ # selective extract
 ```
 
 ## Roadmap
@@ -114,6 +117,13 @@ goxa x -arc=mybackup.goxa -files=file.txt,dir/
 - [ ] Archive signatures for optional additional security
 - [ ] Archive comment field
 - [ ] Encrypted archives
+- [ ] Create goxa library
+
+## Testing
+
+`go test ./...` runs the built-in unit and integration tests. The
+`test-goxa.sh` script builds the CLI and performs real-world archive
+creation and extraction checks.
 
 ## Security Notes
 
