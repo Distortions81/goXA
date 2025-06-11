@@ -46,7 +46,7 @@ The header contains metadata for empty directories and files. Actual file conten
 | 3 | SHA‑256 |
 | 4 | Blake3 |
 
-CRC16 is used by default when checksums are enabled.
+Blake3 is used by default when checksums are enabled.
 
 ### Feature Flags
 
