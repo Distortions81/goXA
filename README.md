@@ -4,7 +4,7 @@
 ## Xango the Pangolin Archivist
 GoXA is a gopher-friendly archiver written in Go. It's quick and simple, and still new enough that the paint is drying. Expect the odd bump and let the busy gophers know if you hit one.
 
-### V2 format coming soon, with data blocks for better multi-threaded compression.
+### New format coming soon, with data blocks for better multi-threaded compression.
 
 ## Features
 
