@@ -12,6 +12,13 @@ const (
 	defaultBlockSize   = 512 * 1024 // 512KiB
 )
 
+// Checksum types
+const (
+	sumCRC32 uint8 = iota
+	sumXXHash
+	sumBlake3
+)
+
 // Features
 const (
 	fNone BitFlags = 1 << iota

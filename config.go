@@ -12,6 +12,7 @@ var (
 	useArchiveFlags                          bool
 	compression                              string
 	compType                                 uint8 = compGzip
+	checksumType                             uint8 = defaultChecksumType
 	tarUseXz                                 bool
 	extractList                              []string
 	version                                  uint16 = version2

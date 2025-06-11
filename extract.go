@@ -23,7 +23,6 @@ import (
 	"github.com/klauspost/compress/zstd"
 	lz4 "github.com/pierrec/lz4/v4"
 	"github.com/remeh/sizedwaitgroup"
-	"golang.org/x/crypto/blake2b"
 )
 
 func decompressor(r io.Reader, cType uint8) (io.ReadCloser, error) {
@@ -109,6 +108,9 @@ func extract(destinations []string, listOnly bool) {
 	if readVersion >= version2 {
 		if err := binary.Read(arc, binary.LittleEndian, &ctype); err != nil {
 			log.Fatalf("extract: failed to read compression type: %v", err)
+		}
+		if err := binary.Read(arc, binary.LittleEndian, &checksumType); err != nil {
+			log.Fatalf("extract: failed to read checksum type: %v", err)
 		}
 	}
 
@@ -528,7 +530,7 @@ func extractFile(destination string, lfeat BitFlags, ctype uint8, item *FileEntr
 	var hashSum []byte
 	hasBlocks := len(item.Blocks) > 0
 	if lfeat.IsSet(fChecksums) {
-		hasher, _ := blake2b.New256(nil)
+		hasher := newHasher(checksumType)
 		writer = io.MultiWriter(bf, hasher)
 		if hasBlocks {
 			for _, b := range item.Blocks {
@@ -575,6 +577,10 @@ func extractFile(destination string, lfeat BitFlags, ctype uint8, item *FileEntr
 			}
 		}
 		hashSum = hasher.Sum(nil)
+		if l := len(hashSum); l < checksumSize {
+			pad := make([]byte, checksumSize-l)
+			hashSum = append(hashSum, pad...)
+		}
 	} else {
 		if hasBlocks {
 			for _, b := range item.Blocks {

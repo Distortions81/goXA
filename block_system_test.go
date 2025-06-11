@@ -84,6 +84,10 @@ func parseArchive(t *testing.T, path string) []FileEntry {
 		if err := binary.Read(arc, binary.LittleEndian, &ctype); err != nil {
 			t.Fatalf("read compression type: %v", err)
 		}
+		var csum uint8
+		if err := binary.Read(arc, binary.LittleEndian, &csum); err != nil {
+			t.Fatalf("read checksum type: %v", err)
+		}
 	}
 	if ver >= version2 {
 		if err := binary.Read(arc, binary.LittleEndian, &blkSize); err != nil {
