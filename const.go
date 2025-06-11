@@ -36,7 +36,7 @@ const (
 )
 
 var (
-	flagNames = []string{"None", "Absolute Paths", "Permissions", "Mod Dates", "Checksums", "No Compress", "Include Invis", "Special Files", "Block Checksums", "Unknown"}
+	flagNames = []string{"None", "Absolute Paths", "Permissions", "Modification Times", "Checksums", "No Compress", "Hidden Files", "Special Files", "Block Checksums", "Unknown"}
 )
 
 // Entry Types

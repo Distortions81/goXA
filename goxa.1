@@ -11,6 +11,9 @@ goxa \- fast archiving tool written in Go
 .B goxa l
 .RI "[flags] -arc=FILE"
 .br
+.B goxa j
+.RI "[flags] -arc=FILE"
+.br
 .B goxa x
 .RI "[flags] -arc=FILE [destination]"
 .SH DESCRIPTION
@@ -22,6 +25,9 @@ Create a new archive.
 .TP
 .B l
 List archive contents.
+.TP
+.B j
+JSON list of archive contents.
 .TP
 .B x
 Extract files from an archive.
@@ -83,6 +89,9 @@ Compression speed (fastest, default, better, best).
 .TP
 .BI -format= TYPE
 Archive format (goxa or tar).
+.TP
+.B -version
+Print version and exit.
 .SH EXAMPLES
 .nf
 goxa c -arc=backup.goxa mydir/
