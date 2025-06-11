@@ -159,8 +159,10 @@ mv "$SRC.orig_b64" "$SRC"  # Restore for next test
 # --- Test FEC encoding ---
 "$GOXA" cpmsi -arc "$TMPDIR/test_fec.goxaf" "$SRC"
 mv "$SRC" "$SRC.orig_fec"
-"$GOXA" xpmsi -arc "$TMPDIR/test_fec.goxaf" "$OUT/fec"
-EXTRACTED_FEC="$OUT/fec/$ORIG_NAME"
+pushd "$OUT" >/dev/null
+"$GOXA" xpmsi -arc "$TMPDIR/test_fec.goxaf"
+popd >/dev/null
+EXTRACTED_FEC="$OUT/test_fec/$ORIG_NAME"
 
 orig_files=$(find "$SRC.orig_fec" -type f | wc -l)
 extr_files=$(find "$EXTRACTED_FEC" -type f | wc -l)
