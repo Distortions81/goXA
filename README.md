@@ -1,4 +1,6 @@
 # GoXA -- Go eXpress Archive
+“An archive isn’t only storage—it’s a promise to the future.” – Unknown
+
 <img src="https://github.com/Distortions81/goXA/blob/main/Xango.png?raw=true" alt="Xango the Archivist" width="300"/>
 
 ## Xango the Pangolin Archivist
