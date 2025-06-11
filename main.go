@@ -50,7 +50,13 @@ func main() {
 	flagSet.StringVar(&speedOpt, "speed", "fastest", "compression speed: fastest|default|better|best")
 	flagSet.StringVar(&format, "format", "goxa", "archive format: tar|goxa")
 	flagSet.StringVar(&sel, "files", "", "comma-separated list of files and directories to extract")
+	var showVer bool
+	flagSet.BoolVar(&showVer, "version", false, "print version and exit")
 	flagSet.Parse(os.Args[2:])
+	if showVer {
+		fmt.Println(version)
+		return
+	}
 
 	detFmt, noComp := detectFormatFromExt(archivePath)
 	if detFmt != "" {
@@ -242,6 +248,7 @@ func showUsage() {
 	fmt.Println("  -comp=gzip|zstd|lz4|s2|snappy|brotli|xz|none")
 	fmt.Println("  -speed=fastest|default|better|best")
 	fmt.Println("  -format=tar|goxa")
+	fmt.Println("  -version")
 	fmt.Println()
 	fmt.Println("  goxa c -arc=arcFile myStuff		(similar to zip)")
 	fmt.Println("  goxa cpmi -arc=arcFile myStuff	(similar to tar -czf)")
