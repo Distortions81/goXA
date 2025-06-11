@@ -23,7 +23,7 @@ GoXA is a friendly archiver written in Go. It's fast and straightforward, though
 
 ## File Format
 
-See [file-format.md](file-format.md) for the full binary format.
+See [FILE-FORMAT.md](FILE-FORMAT.md) for the full binary format.
 
 ## Install
 
