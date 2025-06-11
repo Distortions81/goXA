@@ -82,6 +82,7 @@ Paths are stored relative by default. Use `a` to store and restore absolute path
 | `-comp=` | Compression algorithm (gzip, zstd, lz4, s2, snappy, brotli, xz, none) |
 | `-speed=` | Compression speed (fastest, default, better, best) |
 | `-format=` | Archive format (`goxa` or `tar`) |
+| `-version` | Print version and exit |
 
 Progress shows transfer speed and the current file being processed.
 
@@ -91,6 +92,7 @@ Snappy does not support configurable compression levels; `-speed` has no effect 
 ### Examples
 
 ```bash
+goxa -version
 goxa c -arc=mybackup.goxa myStuff/
 goxa capmsif -arc=mybackup.goxa ~/
 goxa x -arc=mybackup.goxa
