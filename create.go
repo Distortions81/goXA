@@ -109,6 +109,7 @@ func writeHeader(emptyDirs, files []FileEntry, trailerOffset, arcSize uint64, fl
 	binary.Write(&header, binary.LittleEndian, flags)
 	binary.Write(&header, binary.LittleEndian, cType)
 	binary.Write(&header, binary.LittleEndian, checksumType)
+	binary.Write(&header, binary.LittleEndian, checksumLength)
 	binary.Write(&header, binary.LittleEndian, blockSize)
 	binary.Write(&header, binary.LittleEndian, trailerOffset)
 	binary.Write(&header, binary.LittleEndian, arcSize)
@@ -149,11 +150,11 @@ func writeHeader(emptyDirs, files []FileEntry, trailerOffset, arcSize uint64, fl
 	h := newHasher(checksumType)
 	h.Write(header.Bytes())
 	sum := h.Sum(nil)
-	if l := len(sum); l < checksumSize {
-		pad := make([]byte, checksumSize-l)
+	if len(sum) < int(checksumLength) {
+		pad := make([]byte, int(checksumLength)-len(sum))
 		sum = append(sum, pad...)
 	}
-	header.Write(sum[:checksumSize])
+	header.Write(sum[:checksumLength])
 	return header.Bytes()
 }
 
@@ -213,7 +214,7 @@ func writeEntries(headerLen int, bf *BufferedFile, files []FileEntry) uint64 {
 
 		entry.Offset = cOffset
 		if features.IsSet(fChecksums) {
-			cOffset += checksumSize
+			cOffset += uint64(checksumLength)
 		}
 
 		br := NewBufferedFile(f, writeBuffer, p)
@@ -294,10 +295,10 @@ func writeTrailer(files []FileEntry) []byte {
 	h := newHasher(checksumType)
 	h.Write(trailer.Bytes())
 	sum := h.Sum(nil)
-	if l := len(sum); l < checksumSize {
-		pad := make([]byte, checksumSize-l)
+	if len(sum) < int(checksumLength) {
+		pad := make([]byte, int(checksumLength)-len(sum))
 		sum = append(sum, pad...)
 	}
-	trailer.Write(sum[:checksumSize])
+	trailer.Write(sum[:checksumLength])
 	return trailer.Bytes()
 }

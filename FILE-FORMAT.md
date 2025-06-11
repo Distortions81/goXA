@@ -18,6 +18,7 @@ The header contains metadata for empty directories and files. Actual file conten
 - Feature flags (uint32)
 - Compression type (`uint8`)
 - Checksum type (`uint8`)
+- Checksum length (`uint8`)
 - Block size (`uint32`)
 - Trailer offset (`uint64`)
 - Archive size (`uint64`)
@@ -65,7 +66,7 @@ Each file entry contains:
 ### Per-file Data
 
 For every file:
-1. Optional checksum (length depends on algorithm) when `fChecksums` is set.
+1. Optional checksum (length given in the header) when `fChecksums` is set.
 2. File contents, compressed according to the compression type. Gzip is used by default when compression is enabled and no other type is selected.
 
 ### Example Layout
@@ -98,7 +99,7 @@ Trailer layout:
 ```
 [Block Count: uint32]
 [ [Offset uint64][Size uint32] ... ]
-[Trailer Checksum: depends on algorithm]
+[Trailer Checksum: checksum length from header]
 ```
 
 A checksum of the header (including the trailer offset) is stored at the end of

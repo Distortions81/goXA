@@ -13,6 +13,7 @@ var (
 	compression                              string
 	compType                                 uint8 = compGzip
 	checksumType                             uint8 = defaultChecksumType
+	checksumLength                           uint8 = defaultChecksumLen
 	tarUseXz                                 bool
 	extractList                              []string
 	version                                  uint16 = version2

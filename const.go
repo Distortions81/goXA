@@ -8,7 +8,6 @@ const (
 	readBuffer         = 1000 * 1000 * 1 //MiB
 	writeBuffer        = readBuffer
 	defaultArchiveName = "archive.goxa"
-	checksumSize       = 32
 	defaultBlockSize   = 512 * 1024 // 512KiB
 )
 

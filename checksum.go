@@ -8,7 +8,10 @@ import (
 	"github.com/zeebo/xxh3"
 )
 
-const defaultChecksumType = sumBlake3
+const (
+	defaultChecksumType = sumBlake3
+	defaultChecksumLen  = 32
+)
 
 func newHasher(t uint8) hash.Hash {
 	switch t {
