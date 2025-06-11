@@ -153,6 +153,18 @@ func extract(destinations []string, listOnly bool, jsonList bool) {
 		doLog(false, "Destination: %v", path.Clean(destination))
 	}
 
+	headerDone := make(chan struct{})
+	go func() {
+		timer := time.NewTimer(500 * time.Millisecond)
+		defer timer.Stop()
+		select {
+		case <-headerDone:
+			return
+		case <-timer.C:
+			doLog(false, "Reading archive headers...")
+		}
+	}()
+
 	//Read header
 	readMagic := make([]byte, 4)
 	if err := binary.Read(arc, binary.LittleEndian, &readMagic); err != nil {
@@ -461,6 +473,7 @@ func extract(destinations []string, listOnly bool, jsonList bool) {
 		}
 	}
 
+	close(headerDone)
 	doLog(false, "Read index: %v files.", len(fileList))
 
 	var totalBytes int64
