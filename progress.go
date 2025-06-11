@@ -38,6 +38,7 @@ type progressData struct {
 	total            int64
 	speedWindow      []sample
 	speedWindowSize  time.Duration
+	startTime        time.Time
 	lastPrintStr     string
 	file             atomic.Value
 }
@@ -49,6 +50,8 @@ func progressTicker(p *progressData) (*progressData, chan struct{}, chan struct{
 		close(finished)
 		return p, done, finished
 	}
+
+	p.startTime = time.Now()
 
 	go func() {
 		ticker := time.NewTicker(updatePeriod)
@@ -101,12 +104,25 @@ func printProgress(p *progressData) {
 	}
 	p.speedWindow = p.speedWindow[i:]
 
-	// Calculate average speed
+	// Calculate average speed for the moving window
 	var bytesDelta int64
 	if len(p.speedWindow) > 1 {
 		bytesDelta = p.speedWindow[len(p.speedWindow)-1].bytes - p.speedWindow[0].bytes
 		seconds := p.speedWindow[len(p.speedWindow)-1].timestamp.Sub(p.speedWindow[0].timestamp).Seconds()
 		speed = float64(bytesDelta) / seconds
+	}
+
+	// Overall average speed since start
+	var avgSpeed float64
+	if !p.startTime.IsZero() {
+		elapsed := now.Sub(p.startTime).Seconds()
+		if elapsed > 0 {
+			avgSpeed = float64(p.written.Load()) / elapsed
+		}
+	}
+
+	if progress >= 1 {
+		speed = avgSpeed
 	}
 
 	fileName, _ := p.file.Load().(string)
