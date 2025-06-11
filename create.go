@@ -354,7 +354,7 @@ func writeEntries(headerLen int, bf *BufferedFile, files []FileEntry) uint64 {
 				written = uint64(cw.Count())
 			}
 			cOffset += written
-			blocks = append(blocks, Block{Offset: bOff, Size: uint32(written)})
+			blocks = append(blocks, Block{Offset: bOff, Size: written})
 		} else {
 			for {
 				n, err := io.ReadFull(br, buf)
@@ -365,7 +365,7 @@ func writeEntries(headerLen int, bf *BufferedFile, files []FileEntry) uint64 {
 							log.Fatalf("copy failed: %v", err)
 						}
 						cOffset += uint64(n)
-						blocks = append(blocks, Block{Offset: bOff, Size: uint32(n)})
+						blocks = append(blocks, Block{Offset: bOff, Size: uint64(n)})
 					} else {
 						cw := &countingWriter{w: bf}
 						zw := compressor(cw)
@@ -376,7 +376,7 @@ func writeEntries(headerLen int, bf *BufferedFile, files []FileEntry) uint64 {
 							log.Fatalf("compress close failed: %v", err)
 						}
 						cOffset += uint64(cw.Count())
-						blocks = append(blocks, Block{Offset: bOff, Size: uint32(cw.Count())})
+						blocks = append(blocks, Block{Offset: bOff, Size: uint64(cw.Count())})
 					}
 				}
 				if err == io.EOF {

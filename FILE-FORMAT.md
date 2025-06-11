@@ -110,7 +110,7 @@ The trailer starts at the offset recorded in the header. Layout:
 
 ```
 [Block Count uint32]
-[ [Offset uint64][Size uint32] ... ]
+[ [Offset uint64][Size uint64] ... ]
 [Trailer Checksum: checksum length from header]
 ```
 

@@ -33,8 +33,30 @@ func main() {
 		fmt.Println("\nError: No mode specified.")
 		return
 	}
+
+	if strings.HasPrefix(os.Args[1], "-") {
+		fs := flag.NewFlagSet("goxa", flag.ExitOnError)
+		var showVer bool
+		var showHelp bool
+		fs.BoolVar(&showVer, "version", false, "print version and exit")
+		fs.BoolVar(&showHelp, "help", false, "show help")
+		fs.BoolVar(&showHelp, "h", false, "show help")
+		fs.Parse(os.Args[1:])
+		if showVer {
+			fmt.Println(version)
+			return
+		}
+		showUsage()
+		return
+	}
+
 	cmd := strings.ToLower(os.Args[1])
 	cmdLetter := cmd[0]
+	if !strings.ContainsRune("cljx", rune(cmdLetter)) {
+		showUsage()
+		fmt.Printf("\nError: Unknown mode: %s\n", cmd)
+		return
+	}
 	opts := ""
 	if len(cmd) > 1 {
 		opts = cmd[1:]
@@ -231,34 +253,43 @@ func main() {
 }
 
 func showUsage() {
-	fmt.Println("Usage: goxa [c|l|j|x][apmsnbiveou] -arc=arcFile [-comp=alg] [input paths/files...] or [destination]")
-	fmt.Println("Output archive to stdout: -stdout, No progress bar: -progress=false")
-	fmt.Println("\nModes:")
-	fmt.Println("  c = Create a new archive. Requires input paths or files")
-	fmt.Println("  l = List archive contents. Requires -arc")
-	fmt.Println("  j = JSON list of archive contents. Requires -arc")
-	fmt.Println("  x = Extract files from archive. Requires -arc")
+	fmt.Println("Usage:")
+	fmt.Println("  goxa [mode] [flags] -arc=FILE [paths...]")
 
-	fmt.Println("\nOptions:")
-	fmt.Print("  a = Absolute paths	")
-	fmt.Println("  p = Permissions")
-	fmt.Print("  m = Modification date	")
-	fmt.Println("  s = File sums")
-	fmt.Print("  b = Block sums            ")
-	fmt.Print("  n = No-compression	")
-	fmt.Println("  i = Include dotfiles")
-	fmt.Print("  o = Special files          ")
-	fmt.Println("  u = Use archive flags")
-	fmt.Println("  v = Verbose logging")
-	fmt.Print("  f = Force (overwrite files and ignore read errors)")
-	fmt.Println("  -comp=gzip|zstd|lz4|s2|snappy|brotli|xz|none")
-	fmt.Println("  -speed=fastest|default|better|best")
-	fmt.Println("  -format=tar|goxa")
-	fmt.Println("  -version")
-	fmt.Println()
-	fmt.Println("  goxa c -arc=arcFile myStuff		(similar to zip)")
-	fmt.Println("  goxa cpmi -arc=arcFile myStuff	(similar to tar -czf)")
-	fmt.Println("")
-	fmt.Println("  goxa x -arc=arcFile			(similar to unzip)")
-	fmt.Println("  goxa xpmi -arc=arcFile		(similar to tar -xzf)")
+	fmt.Println("\nModes:")
+	fmt.Println("  c - create an archive")
+	fmt.Println("  l - list contents")
+	fmt.Println("  j - JSON list")
+	fmt.Println("  x - extract files")
+
+	fmt.Println("\nFlags:")
+	fmt.Print("  a = Absolute paths          ")
+	fmt.Println("p = File permissions")
+	fmt.Print("  m = Modification times      ")
+	fmt.Println("s = Enable checksums")
+	fmt.Print("  b = Block checksums         ")
+	fmt.Println("n = Disable compression")
+	fmt.Print("  i = Hidden files            ")
+	fmt.Println("o = Special files")
+	fmt.Print("  u = Use archive flags       ")
+	fmt.Println("v = Verbose logging")
+	fmt.Println("  f = Force overwrite/ignore errors")
+
+	fmt.Println("\nExtra flags:")
+	fmt.Println("  -arc=FILE       Archive file name")
+	fmt.Println("  -stdout         Output archive to stdout")
+	fmt.Println("  -files=LIST     Files/directories to extract")
+	fmt.Println("  -progress=false Disable progress display")
+	fmt.Println("  -comp=ALG       Compression algorithm (gzip, zstd, lz4, s2, snappy, brotli, xz, none)")
+	fmt.Println("  -speed=LEVEL    Compression speed (fastest, default, better, best)")
+	fmt.Println("  -format=FORMAT  Archive format (goxa or tar)")
+	fmt.Println("  -version        Print version and exit")
+
+	fmt.Println("\nExamples:")
+	fmt.Println("  goxa -version                                 # print version")
+	fmt.Println("  goxa c -arc=mybackup.goxa myStuff/            # create archive")
+	fmt.Println("  goxa x -arc=mybackup.goxa                     # extract to folder")
+	fmt.Println("  goxa l -arc=mybackup.goxa                     # list contents")
+	fmt.Println("  goxa c -arc=mybackup.tar.gz myStuff/          # create tar.gz")
+	fmt.Println("  goxa x -arc=mybackup.tar.xz                   # extract tar.xz")
 }

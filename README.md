@@ -129,7 +129,7 @@ creation and extraction checks.
 
 - Paths are sanitized during extraction, but `-a` (`absolute paths`) allows the archive to write anywhere. Use with care on unknown files.
 - With `-o` (`special files`) symlinks are not resolved, so sneaky links can sidestep your destination folder.
-- `-u` (`use flags from archive`) applies whatever options were set when the archive was created, which may enable absolute paths, permissions, mod dates and special files.
+ - `-u` (`use flags from archive`) applies whatever options were set when the archive was created, which may enable absolute paths, permissions, modification times and special files.
 - Size fields use `int64`; maximum individual file size is about 9,223 petabytes (~8&nbsp;EiB).
 
 ## License
