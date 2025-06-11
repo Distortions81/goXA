@@ -13,6 +13,7 @@ var (
 	compression                              string
 	encode                                   string
 	compType                                 uint8 = compZstd
+	compSpeed                                int   = SpeedFastest
 	checksumType                             uint8 = defaultChecksumType
 	checksumLength                           uint8 = defaultChecksumLen
 	tarUseXz                                 bool

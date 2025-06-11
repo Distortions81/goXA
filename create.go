@@ -22,21 +22,74 @@ import (
 func compressor(w io.Writer) io.WriteCloser {
 	switch compType {
 	case compZstd:
-		zw, err := zstd.NewWriter(w)
+		level := zstd.SpeedFastest
+		switch compSpeed {
+		case SpeedFastest:
+			level = zstd.SpeedFastest
+		case SpeedDefault:
+			level = zstd.SpeedDefault
+		case SpeedBetterCompression:
+			level = zstd.SpeedBetterCompression
+		case SpeedBestCompression:
+			level = zstd.SpeedBestCompression
+		}
+		zw, err := zstd.NewWriter(w, zstd.WithEncoderLevel(level))
 		if err != nil {
 			log.Fatalf("zstd init failed: %v", err)
 		}
 		return zw
 	case compLZ4:
-		return lz4.NewWriter(w)
+		zw := lz4.NewWriter(w)
+		lvl := lz4.Fast
+		switch compSpeed {
+		case SpeedDefault:
+			lvl = lz4.Level3
+		case SpeedBetterCompression:
+			lvl = lz4.Level6
+		case SpeedBestCompression:
+			lvl = lz4.Level9
+		}
+		if err := zw.Apply(lz4.CompressionLevelOption(lvl)); err != nil {
+			log.Fatalf("lz4 level: %v", err)
+		}
+		return zw
 	case compS2:
-		return s2.NewWriter(w)
+		opts := []s2.WriterOption{}
+		switch compSpeed {
+		case SpeedBetterCompression:
+			opts = append(opts, s2.WriterBetterCompression())
+		case SpeedBestCompression:
+			opts = append(opts, s2.WriterBestCompression())
+		}
+		return s2.NewWriter(w, opts...)
 	case compSnappy:
 		return snappy.NewBufferedWriter(w)
 	case compBrotli:
-		return brotli.NewWriter(w)
+		level := brotli.BestSpeed
+		switch compSpeed {
+		case SpeedDefault:
+			level = brotli.DefaultCompression
+		case SpeedBetterCompression:
+			level = 9
+		case SpeedBestCompression:
+			level = brotli.BestCompression
+		}
+		return brotli.NewWriterLevel(w, level)
 	default:
-		return gzip.NewWriter(w)
+		lvl := gzip.BestSpeed
+		switch compSpeed {
+		case SpeedDefault:
+			lvl = gzip.DefaultCompression
+		case SpeedBetterCompression:
+			lvl = 8
+		case SpeedBestCompression:
+			lvl = gzip.BestCompression
+		}
+		zw, err := gzip.NewWriterLevel(w, lvl)
+		if err != nil {
+			log.Fatalf("gzip init: %v", err)
+		}
+		return zw
 	}
 }
 

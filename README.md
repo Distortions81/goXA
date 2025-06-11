@@ -78,11 +78,13 @@ Paths are stored relative by default. Use `a` to store and restore absolute path
 | `-files` | Comma-separated list of files and directories to extract |
 | `-progress=false` | Disable progress display |
 | `-comp=` | Compression algorithm (gzip, zstd, lz4, s2, snappy, brotli, xz, none) |
+| `-speed=` | Compression speed (fastest, default, better, best) |
 | `-format=` | Archive format (`goxa` or `tar`) |
 
 Progress shows transfer speed and the current file being processed.
 
 `xz` compression is only available when `-format=tar`.
+Snappy does not support configurable compression levels; `-speed` has no effect when using snappy.
 
 ### Examples
 

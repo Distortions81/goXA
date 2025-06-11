@@ -61,3 +61,11 @@ const (
 	compSnappy
 	compBrotli
 )
+
+// Compression speed levels
+const (
+	SpeedFastest = iota
+	SpeedDefault
+	SpeedBetterCompression
+	SpeedBestCompression
+)
