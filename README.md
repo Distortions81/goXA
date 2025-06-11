@@ -1,27 +1,27 @@
-# GoXA -- Go eXpress Archive
-“An archive isn’t only storage—it’s a promise to the future.” – Unknown
+# GoXA — Go eXpress Archive
+"An archive isn’t only storage—it’s a promise to the future." – Unknown
 
 <img src="https://github.com/Distortions81/goXA/blob/main/Xango.png?raw=true" alt="Xango the Archivist" width="300"/>
 
 ## Xango the Pangolin Archivist
-GoXA is a friendly archiver written in Go. It's fast and straightforward, though still maturing—please report any issues you find.
+GoXA is a small archiver written in Go. It's quick and friendly, though still learning new tricks. Let us know if you spot a bug.
 
 ## Features
 
-- [x] Fast archive creation and extraction
-- [x] Multiple compression formats (gzip, zstd, lz4, s2, snappy, brotli, xz; defaults to zstd)
-- [x] Standard tar archive support (auto-detected from extension or archive header)
-- [x] Optional checksums (per-file or per-block; crc16, crc32, xxhash, sha-256, or blake3; default blake3)
-- [x] Preserve permissions and modification times
-- [x] Fully documented binary format ([FILE-FORMAT.md](FILE-FORMAT.md))
-- [x] Optional support for symlinks and other special files
-- [x] Block-based format for fast compression (single block when uncompressed)
-- [x] Automatic format detection from file extension or archive header
-- [x] Output archives directly to stdout for easy piping
-- [x] Fast selective extraction with the `-files` flag
-- [x] Progress bar showing transfer speed and current file
-- [x] Pure Go code with no runtime dependencies once compiled.
-- [x] Optional base32/base64 encoding via `.b32` or `.b64` file suffixes
+- Fast archive creation and extraction
+- Choice of gzip, zstd, lz4, s2, snappy, brotli or xz (default zstd)
+- Tar compatibility (auto-detected by filename or header)
+- Optional checksums: CRC32, CRC16, XXHash3, SHA-256 or Blake3 (default Blake3)
+- Preserve permissions and modification times
+- Fully documented binary format ([FILE-FORMAT.md](FILE-FORMAT.md))
+- Archive symlinks and other special files
+- Block-based compression for speed (single block when uncompressed)
+- Automatic format detection
+- Stream archives to stdout
+- Selective extraction with `-files`
+- Progress bar with transfer speed and current file
+- Pure Go code—no runtime deps once built
+- Base32/64 encoding via `.b32`/`.b64` suffix
 
 ## File Format
 
@@ -32,20 +32,19 @@ The JSON structure emitted by `j` mode is described in
 ## Install
 
 With Go 1.24+:
-
 ```bash
 go install github.com/Distortions81/goXA@latest
 ```
 
-Or build from source:
-
+To build from source:
 ```bash
 git clone https://github.com/Distortions81/goXA.git
 cd goXA
 go build
 ```
 
-This creates the `goxa` binary.
+The script `./install.sh` builds and installs the binary and man page for you.
+See `goxa.1` for the full command reference.
 
 ## Usage
 
