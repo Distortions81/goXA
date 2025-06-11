@@ -42,7 +42,7 @@ func TestExtractListOption(t *testing.T) {
 	extractList = []string{filepath.Join(base, "sub1")}
 	defer func() { extractList = nil }()
 
-	extract([]string{dest}, false)
+	extract([]string{dest}, false, false)
 
 	checkFile(t, filepath.Join(dest, base, "sub1", "one.txt"), []byte("one"), 0o644, false)
 	if _, err := os.Stat(filepath.Join(dest, base, "sub2", "two.txt")); !os.IsNotExist(err) {

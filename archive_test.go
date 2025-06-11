@@ -112,13 +112,13 @@ func TestArchiveScenarios(t *testing.T) {
 
 			var dest string
 			if tc.extractFlags.IsSet(fAbsolutePaths) {
-				extract([]string{}, false)
+				extract([]string{}, false, false)
 			} else {
 				dest = filepath.Join(tempDir, "out")
 				if err := os.MkdirAll(dest, 0o755); err != nil {
 					t.Fatalf("mkdir dest: %v", err)
 				}
-				extract([]string{dest}, false)
+				extract([]string{dest}, false, false)
 			}
 
 			var base string
@@ -179,7 +179,7 @@ func TestArchiveParentRelative(t *testing.T) {
 	if err := os.MkdirAll(dest, 0o755); err != nil {
 		t.Fatalf("mkdir dest: %v", err)
 	}
-	extract([]string{dest}, false)
+	extract([]string{dest}, false, false)
 
 	extracted := filepath.Join(dest, filepath.Base(root), "file.txt")
 	checkFile(t, extracted, data, 0o644, false)
@@ -217,7 +217,7 @@ func TestSymlinkAndHardlink(t *testing.T) {
 	dest := filepath.Join(tempDir, "out")
 	os.MkdirAll(dest, 0o755)
 	features = fSpecialFiles
-	extract([]string{dest}, false)
+	extract([]string{dest}, false, false)
 
 	base := filepath.Join(dest, filepath.Base(root))
 	ltarget, err := os.Readlink(filepath.Join(base, "link.txt"))
@@ -258,7 +258,7 @@ func TestModDatePreservation(t *testing.T) {
 	dest := filepath.Join(tempDir, "out")
 	os.MkdirAll(dest, 0o755)
 	features = fModDates
-	extract([]string{dest}, false)
+	extract([]string{dest}, false, false)
 
 	base := filepath.Join(dest, filepath.Base(root))
 	info, err := os.Stat(filepath.Join(base, "file.txt"))
@@ -306,7 +306,7 @@ func TestBaseEncoding(t *testing.T) {
 		dest := filepath.Join(tempDir, "out")
 		os.MkdirAll(dest, 0o755)
 		encode = tc.enc
-		extract([]string{dest}, false)
+		extract([]string{dest}, false, false)
 
 		encode = ""
 

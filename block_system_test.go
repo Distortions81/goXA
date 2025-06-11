@@ -227,7 +227,7 @@ func TestBlockArchiveLargeFiles(t *testing.T) {
 	os.RemoveAll(root)
 	dest := filepath.Join(tempDir, "out")
 	os.MkdirAll(dest, 0o755)
-	extract([]string{dest}, false)
+	extract([]string{dest}, false, false)
 
 	base := filepath.Join(dest, filepath.Base(root))
 	for _, sp := range specs {
