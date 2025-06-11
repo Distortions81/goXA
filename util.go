@@ -28,6 +28,37 @@ func removeExtension(filename string) string {
 	return filename[:len(filename)-len(extension)]
 }
 
+// detectFormatFromExt inspects the archive filename to infer the format.
+// It returns "tar" or "goxa" and whether the tar archive is uncompressed.
+func detectFormatFromExt(name string) (string, bool) {
+	lower := strings.ToLower(name)
+	if strings.HasSuffix(lower, ".tar.gz") {
+		return "tar", false
+	}
+	if strings.HasSuffix(lower, ".tar") {
+		return "tar", true
+	}
+	if strings.HasSuffix(lower, ".goxa") {
+		return "goxa", false
+	}
+	return "", false
+}
+
+// stripArchiveExt removes a known archive extension from name.
+func stripArchiveExt(name string) string {
+	lower := strings.ToLower(name)
+	switch {
+	case strings.HasSuffix(lower, ".tar.gz"):
+		return name[:len(name)-len(".tar.gz")]
+	case strings.HasSuffix(lower, ".tar"):
+		return name[:len(name)-len(".tar")]
+	case strings.HasSuffix(lower, ".goxa"):
+		return name[:len(name)-len(".goxa")]
+	default:
+		return removeExtension(name)
+	}
+}
+
 func doLog(verbose bool, format string, args ...interface{}) {
 	if toStdOut || (!verboseMode && verbose) {
 		return

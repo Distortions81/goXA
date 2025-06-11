@@ -45,6 +45,19 @@ func main() {
 	flagSet.StringVar(&sel, "files", "", "comma-separated list of files and directories to extract")
 	flagSet.Parse(os.Args[2:])
 
+	detFmt, noComp := detectFormatFromExt(archivePath)
+	if detFmt != "" {
+		format = detFmt
+		if detFmt == "tar" {
+			if noComp {
+				features.Set(fNoCompress)
+			} else {
+				features.Clear(fNoCompress)
+			}
+		}
+	}
+	archivePath = stripArchiveExt(archivePath)
+
 	if sel != "" {
 		parts := strings.Split(sel, ",")
 		for _, p := range parts {
@@ -56,17 +69,7 @@ func main() {
 		}
 	}
 
-	//Clean up archive name
-	archivePath = removeExtension(archivePath)
-	if strings.ToLower(format) == "tar" {
-		if features.IsNotSet(fNoCompress) {
-			archivePath += ".tar.gz"
-		} else {
-			archivePath += ".tar"
-		}
-	} else {
-		archivePath = archivePath + ".goxa"
-	}
+	// Clean up archive name will occur after options are parsed
 
 	//Options
 	for _, letter := range cmd {
@@ -116,6 +119,17 @@ func main() {
 		compType = compGzip
 	default:
 		log.Fatalf("Unknown compression: %s", compression)
+	}
+
+	// finalize archive name with extension
+	if strings.ToLower(format) == "tar" {
+		if features.IsNotSet(fNoCompress) {
+			archivePath += ".tar.gz"
+		} else {
+			archivePath += ".tar"
+		}
+	} else {
+		archivePath += ".goxa"
 	}
 
 	if len(cmd) == 0 {
