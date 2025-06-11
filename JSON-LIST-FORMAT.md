@@ -39,10 +39,10 @@ The recognized flag names are:
 
 - "Absolute Paths" – store absolute paths
 - "Permissions" – preserve permissions
-- "Mod Dates" – preserve modification times
-- "Checksums" – include checksums
-- "No Compress" – disable compression
-- "Include Invis" – include hidden files
+ - "Modification Times" – preserve modification times
+ - "Checksums" – include checksums
+ - "No Compress" – disable compression
+ - "Hidden Files" – include hidden files
 - "Special Files" – archive symlinks and other special files
 - "Block Checksums" – store per-block checksums
 
