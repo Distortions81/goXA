@@ -106,9 +106,6 @@ goxa x -arc=mybackup.goxa -files=file.txt,dir/
 
 ## Roadmap
 
-- [x] Format documentation
-- [x] Working relative path support
-- [x] Add modes for non-files (symlinks, devices)
 - [ ] Multi-threaded archive optimization
 - [ ] Archive signatures for optional additional security
 - [ ] Archive comment field
