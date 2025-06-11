@@ -35,3 +35,7 @@ The following components are licensed under the BSD 3-Clause "New" or "Revised" 
 - The MIT and BSD-3-Clause licenses are permissive and compatible with this project's MIT license.
 - License notices are preserved as required.
 
+
+## Community and Tooling
+
+- This project received guidance using OpenAI’s ChatGPT.
