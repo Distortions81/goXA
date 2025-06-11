@@ -24,6 +24,7 @@ import (
 	"github.com/klauspost/compress/zstd"
 	lz4 "github.com/pierrec/lz4/v4"
 	"github.com/remeh/sizedwaitgroup"
+	"github.com/ulikunitz/xz"
 )
 
 func decompressor(r io.Reader, cType uint8) (io.ReadCloser, error) {
@@ -42,6 +43,12 @@ func decompressor(r io.Reader, cType uint8) (io.ReadCloser, error) {
 		return io.NopCloser(snappy.NewReader(r)), nil
 	case compBrotli:
 		return io.NopCloser(brotli.NewReader(r)), nil
+	case compXZ:
+		xr, err := xz.NewReader(r)
+		if err != nil {
+			return nil, err
+		}
+		return io.NopCloser(xr), nil
 	default:
 		gr, err := gzip.NewReader(r)
 		if err != nil {
@@ -65,6 +72,8 @@ func compName(t uint8) string {
 		return "snappy"
 	case compBrotli:
 		return "brotli"
+	case compXZ:
+		return "xz"
 	default:
 		return "gzip"
 	}
