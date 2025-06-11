@@ -11,9 +11,11 @@ A fast, portable archiving utility written in Go.
 ### Xango the Pangolin Archivist
 
 > _"An archive isn’t only storage — it’s a promise to the future."_
+---
 
-Create, list, and extract `.goxa` format or standard tar files.  
-Compression and checksums are optional, and you can stream archives directly to stdout.
+> ⚠️ **Warning: goXA is not yet complete.**  
+> This project is under active development — expect **breaking changes**, incomplete features, and **bugs**.  
+> Please report any [issues](https://github.com/Distortions81/goXA/issues).
 
 ---
 
