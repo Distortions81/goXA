@@ -44,7 +44,7 @@ func TestCLIJSONList(t *testing.T) {
 	var buf bytes.Buffer
 	io.Copy(&buf, r)
 
-	var listing ArchiveListing
+	var listing ArchiveListingOut
 	if err := json.Unmarshal(buf.Bytes(), &listing); err != nil {
 		t.Fatalf("json decode: %v", err)
 	}
