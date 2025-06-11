@@ -38,7 +38,6 @@ type progressData struct {
 	total            int64
 	speedWindow      []sample
 	speedWindowSize  time.Duration
-	startTime        time.Time
 	lastPrintStr     string
 	file             atomic.Value
 }
@@ -50,8 +49,6 @@ func progressTicker(p *progressData) (*progressData, chan struct{}, chan struct{
 		close(finished)
 		return p, done, finished
 	}
-
-	p.startTime = time.Now()
 
 	go func() {
 		ticker := time.NewTicker(updatePeriod)
@@ -112,24 +109,11 @@ func printProgress(p *progressData) {
 		speed = float64(bytesDelta) / seconds
 	}
 
-	// Overall average speed since start
-	var avgSpeed float64
-	if !p.startTime.IsZero() {
-		elapsed := now.Sub(p.startTime).Seconds()
-		if elapsed > 0 {
-			avgSpeed = float64(p.written.Load()) / elapsed
-		}
-	}
-
-	if progress >= 1 {
-		speed = avgSpeed
-	}
-
 	fileName, _ := p.file.Load().(string)
 	fileName = filepath.Base(fileName)
 
 	// Build the informational part of the line and determine the bar width
-	info := fmt.Sprintf(" %3.2f%% %v/s avg %v/s %s", progress*100, humanize.Bytes(uint64(speed)), humanize.Bytes(uint64(avgSpeed)), fileName)
+	info := fmt.Sprintf(" %3.2f%% %v/s %s", progress*100, humanize.Bytes(uint64(speed)), fileName)
 	width := getLineWidth()
 	barWidth := width - len(info) - 2 // 2 for the surrounding []
 	if barWidth > maxBarWidth {
