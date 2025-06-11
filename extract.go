@@ -205,9 +205,18 @@ func extract(destinations []string, listOnly bool, jsonList bool) {
 			missing += "i"
 		}
 		if missing != "" {
-			doLog(false, "Archive uses flags '%s'. Rerun with these flags or 'u' to auto-enable.", missing)
-			arc.Close()
-			return
+			if interactiveMode {
+				fmt.Printf("Archive uses flags '%s'. Continue? [Y/n] ", missing)
+				var resp string
+				fmt.Scanln(&resp)
+				resp = strings.TrimSpace(strings.ToLower(resp))
+				if resp == "n" || resp == "no" {
+					arc.Close()
+					return
+				}
+			} else {
+				doLog(false, "Archive uses flags '%s'.", missing)
+			}
 		}
 	}
 

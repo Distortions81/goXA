@@ -8,6 +8,7 @@ import (
 var (
 	archivePath                              string
 	verboseMode, doForce, toStdOut, progress bool
+	interactiveMode                          bool = true
 	features                                 BitFlags
 	useArchiveFlags                          bool
 	compression                              string

@@ -67,6 +67,7 @@ func main() {
 	flagSet.StringVar(&archivePath, "arc", defaultArchiveName, "archive file name (extension not required)")
 	flagSet.BoolVar(&toStdOut, "stdout", false, "output archive data to stdout")
 	flagSet.BoolVar(&progress, "progress", true, "show progress bar")
+	flagSet.BoolVar(&interactiveMode, "interactive", true, "prompt when archive uses extra flags")
 	var speedOpt string
 	flagSet.StringVar(&compression, "comp", "zstd", "compression: gzip|zstd|lz4|s2|snappy|brotli|xz|none")
 	flagSet.StringVar(&speedOpt, "speed", "fastest", "compression speed: fastest|default|better|best")
@@ -301,6 +302,7 @@ func showUsage() {
 	fmt.Println("  -stdout         write archive to stdout")
 	fmt.Println("  -files LIST     comma separated files to extract")
 	fmt.Println("  -progress=false disable progress display")
+	fmt.Println("  -interactive=false disable prompts for archive flags")
 	fmt.Println("  -comp ALG       compression algorithm (gzip, zstd, lz4, s2, snappy, brotli, xz, none)")
 	fmt.Println("  -speed LEVEL    compression speed (fastest, default, better, best)")
 	fmt.Println("  -format FORMAT  archive format (goxa or tar)")
