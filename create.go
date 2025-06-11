@@ -2,42 +2,130 @@ package main
 
 import (
 	"bytes"
+	"encoding/base32"
+	"encoding/base64"
 	"encoding/binary"
 	"io"
 	"log"
-	"math"
 	"os"
-	"runtime"
-	"sync"
 	"time"
 
-	gzip "github.com/klauspost/pgzip"
-	"github.com/remeh/sizedwaitgroup"
-
+	brotli "github.com/andybalholm/brotli"
 	"github.com/dustin/go-humanize"
-	"golang.org/x/crypto/blake2b"
+	"github.com/golang/snappy"
+	"github.com/klauspost/compress/s2"
+	"github.com/klauspost/compress/zstd"
+	gzip "github.com/klauspost/pgzip"
+	lz4 "github.com/pierrec/lz4/v4"
 )
+
+func compressor(w io.Writer) io.WriteCloser {
+	switch compType {
+	case compZstd:
+		level := zstd.SpeedFastest
+		switch compSpeed {
+		case SpeedFastest:
+			level = zstd.SpeedFastest
+		case SpeedDefault:
+			level = zstd.SpeedDefault
+		case SpeedBetterCompression:
+			level = zstd.SpeedBetterCompression
+		case SpeedBestCompression:
+			level = zstd.SpeedBestCompression
+		}
+		zw, err := zstd.NewWriter(w, zstd.WithEncoderLevel(level))
+		if err != nil {
+			log.Fatalf("zstd init failed: %v", err)
+		}
+		return zw
+	case compLZ4:
+		zw := lz4.NewWriter(w)
+		lvl := lz4.Fast
+		switch compSpeed {
+		case SpeedDefault:
+			lvl = lz4.Level3
+		case SpeedBetterCompression:
+			lvl = lz4.Level6
+		case SpeedBestCompression:
+			lvl = lz4.Level9
+		}
+		if err := zw.Apply(lz4.CompressionLevelOption(lvl)); err != nil {
+			log.Fatalf("lz4 level: %v", err)
+		}
+		return zw
+	case compS2:
+		opts := []s2.WriterOption{}
+		switch compSpeed {
+		case SpeedBetterCompression:
+			opts = append(opts, s2.WriterBetterCompression())
+		case SpeedBestCompression:
+			opts = append(opts, s2.WriterBestCompression())
+		}
+		return s2.NewWriter(w, opts...)
+	case compSnappy:
+		return snappy.NewBufferedWriter(w)
+	case compBrotli:
+		level := brotli.BestSpeed
+		switch compSpeed {
+		case SpeedDefault:
+			level = brotli.DefaultCompression
+		case SpeedBetterCompression:
+			level = 9
+		case SpeedBestCompression:
+			level = brotli.BestCompression
+		}
+		return brotli.NewWriterLevel(w, level)
+	default:
+		lvl := gzip.BestSpeed
+		switch compSpeed {
+		case SpeedDefault:
+			lvl = gzip.DefaultCompression
+		case SpeedBetterCompression:
+			lvl = 8
+		case SpeedBestCompression:
+			lvl = gzip.BestCompression
+		}
+		zw, err := gzip.NewWriterLevel(w, lvl)
+		if err != nil {
+			log.Fatalf("gzip init: %v", err)
+		}
+		return zw
+	}
+}
 
 func create(inputPaths []string) error {
 
 	var bf *BufferedFile
-	if toStdOut {
+	var tmpPath string
+	var outFile *os.File
+	if toStdOut && encode == "" {
 		bf = NewBufferedFile(os.Stdout, writeBuffer, &progressData{})
+		outFile = os.Stdout
 	} else {
-		if !doForce {
-			found, _ := fileExists(archivePath)
-			if found {
-				log.Fatalf("create: Archive %v already exists.", archivePath)
+		if encode != "" || toStdOut {
+			f, err := os.CreateTemp("", "goxa_tmp_*")
+			if err != nil {
+				log.Fatalf("temp create: %v", err)
 			}
+			tmpPath = f.Name()
+			outFile = f
+			defer outFile.Close()
+		} else {
+			if !doForce {
+				found, _ := fileExists(archivePath)
+				if found {
+					log.Fatalf("create: Archive %v already exists.", archivePath)
+				}
+			}
+			f, err := os.Create(archivePath)
+			if err != nil {
+				log.Fatalf("create: os.Create: %v", err)
+			}
+			f.Truncate(0)
+			outFile = f
+			defer outFile.Close()
 		}
-
-		f, err := os.Create(archivePath)
-		if err != nil {
-			log.Fatalf("create: os.Create: %v", err)
-		}
-		f.Truncate(0)
-		defer f.Close()
-		bf = NewBufferedFile(f, writeBuffer, &progressData{})
+		bf = NewBufferedFile(outFile, writeBuffer, &progressData{})
 	}
 	doLog(false, "Creating archive: %v, inputs: %v", archivePath, inputPaths)
 
@@ -46,100 +134,139 @@ func create(inputPaths []string) error {
 		return err
 	}
 
-	offsetsLoc, header := writeHeader(emptyDirs, files)
+	if features.IsSet(fNoCompress) {
+		blockSize = 0
+	} else if blockSize == 0 {
+		blockSize = defaultBlockSize
+	}
+
+	header := writeHeader(emptyDirs, files, 0, 0, features, compType)
+	headerLen := len(header)
 	bf.Write(header)
-
-	writeEntries(offsetsLoc, bf, files)
-
+	trailerOffset := writeEntries(headerLen, bf, files)
+	trailer := writeTrailer(files)
+	bf.Write(trailer)
+	if err := bf.Flush(); err != nil {
+		log.Fatalf("flush: %v", err)
+	}
 	info, err := bf.file.Stat()
 	if err != nil {
 		log.Fatalf("create: os.Create: %v", err)
 	}
+	finalHeader := writeHeader(emptyDirs, files, trailerOffset, uint64(info.Size()), features, compType)
+	if len(finalHeader) != headerLen {
+		log.Fatalf("header size mismatch")
+	}
+	if _, err := bf.Seek(0, io.SeekStart); err != nil {
+		log.Fatalf("seek start: %v", err)
+	}
+	bf.Write(finalHeader)
 
 	if err := bf.Close(); err != nil {
 		log.Fatalf("create: close failed: %v", err)
 	}
+
+	if encode != "" {
+		outFile.Close()
+		src, err := os.Open(tmpPath)
+		if err != nil {
+			log.Fatalf("temp reopen: %v", err)
+		}
+		defer os.Remove(tmpPath)
+
+		var dst io.Writer
+		var encW io.WriteCloser
+		if toStdOut {
+			dst = os.Stdout
+		} else {
+			f, err := os.Create(archivePath)
+			if err != nil {
+				log.Fatalf("create output: %v", err)
+			}
+			defer f.Close()
+			dst = f
+		}
+		if encode == "b32" {
+			encW = base32.NewEncoder(base32.StdEncoding, dst)
+		} else {
+			encW = base64.NewEncoder(base64.StdEncoding, dst)
+		}
+		if _, err := io.Copy(encW, src); err != nil {
+			log.Fatalf("encode copy: %v", err)
+		}
+		encW.Close()
+		src.Close()
+
+		if !toStdOut {
+			if st, err := os.Stat(archivePath); err == nil {
+				info = st
+			}
+		}
+	}
+
 	doLog(false, "\nWrote %v, %v containing %v files.", archivePath, humanize.Bytes(uint64(info.Size())), len(files))
 	return nil
 }
 
-func writeHeader(emptyDirs, files []FileEntry) (uint64, []byte) {
+func writeHeader(emptyDirs, files []FileEntry, trailerOffset, arcSize uint64, flags BitFlags, cType uint8) []byte {
 	var header bytes.Buffer
 
-	numFiles := len(files)
-
-	//Start
 	binary.Write(&header, binary.LittleEndian, []byte(magic))
 	binary.Write(&header, binary.LittleEndian, uint16(version))
-	binary.Write(&header, binary.LittleEndian, features)
+	binary.Write(&header, binary.LittleEndian, flags)
+	binary.Write(&header, binary.LittleEndian, cType)
+	binary.Write(&header, binary.LittleEndian, checksumType)
+	binary.Write(&header, binary.LittleEndian, checksumLength)
+	binary.Write(&header, binary.LittleEndian, blockSize)
+	binary.Write(&header, binary.LittleEndian, trailerOffset)
+	binary.Write(&header, binary.LittleEndian, arcSize)
 
-	//Empty dir info
 	binary.Write(&header, binary.LittleEndian, uint64(len(emptyDirs)))
 	for _, folder := range emptyDirs {
-
-		if features&fPermissions != 0 {
+		if flags.IsSet(fPermissions) {
 			binary.Write(&header, binary.LittleEndian, uint32(folder.Mode))
 		}
-		if features&fModDates != 0 {
+		if flags.IsSet(fModDates) {
 			binary.Write(&header, binary.LittleEndian, int64(folder.ModTime.Unix()))
 		}
-		if err := WriteString(&header, folder.Path); err != nil {
+		if err := WriteLPString(&header, folder.Path); err != nil {
 			log.Fatalf("write string failed: %v", err)
 		}
 	}
 
-	//File info
-	binary.Write(&header, binary.LittleEndian, uint64(numFiles))
+	binary.Write(&header, binary.LittleEndian, uint64(len(files)))
 	for _, file := range files {
 		binary.Write(&header, binary.LittleEndian, uint64(file.Size))
-		if features&fPermissions != 0 {
+		if flags.IsSet(fPermissions) {
 			binary.Write(&header, binary.LittleEndian, uint32(file.Mode))
 		}
-		if features&fModDates != 0 {
+		if flags.IsSet(fModDates) {
 			binary.Write(&header, binary.LittleEndian, int64(file.ModTime.Unix()))
 		}
-		if err := WriteString(&header, file.Path); err != nil {
+		if err := WriteLPString(&header, file.Path); err != nil {
 			log.Fatalf("write string failed: %v", err)
 		}
 		header.WriteByte(file.Type)
 		if file.Type == entrySymlink || file.Type == entryHardlink {
-			if err := WriteString(&header, file.Linkname); err != nil {
+			if err := WriteLPString(&header, file.Linkname); err != nil {
 				log.Fatalf("write string failed: %v", err)
 			}
 		}
 	}
-
-	//Save end of header, so we can update offsets later
-	offsetsLocation := uint64(header.Len())
-
-	const ThreadedMode = false
-	if ThreadedMode {
-		//Write spacer for file offsets by block (experimental)
-		for _, file := range files {
-			blocks := int(math.Ceil(float64(file.Size) / float64(blockSize)))
-			for i := 0; i < blocks; i++ {
-				binary.Write(&header, binary.LittleEndian, uint64(0))
-			}
-		}
-	} else {
-		//Write spacer for file offsets
-		for range files {
-			binary.Write(&header, binary.LittleEndian, uint64(0))
-		}
+	// File offsets are tracked in the trailer only
+	h := newHasher(checksumType)
+	h.Write(header.Bytes())
+	sum := h.Sum(nil)
+	if len(sum) < int(checksumLength) {
+		pad := make([]byte, int(checksumLength)-len(sum))
+		sum = append(sum, pad...)
 	}
-
-	doLog(true, "Header size: %v", humanize.Bytes(uint64(header.Len())))
-	return offsetsLocation, header.Bytes()
+	header.Write(sum[:checksumLength])
+	return header.Bytes()
 }
 
-func writeEntries(offsetLoc uint64, bf *BufferedFile, files []FileEntry) {
-	cOffset := offsetLoc + uint64(len(files))*8
-	offsets := make([]uint64, len(files))
-
-	h, err := blake2b.New256(nil)
-	if err != nil {
-		log.Fatalf("blake2b init failed: %v", err)
-	}
+func writeEntries(headerLen int, bf *BufferedFile, files []FileEntry) uint64 {
+	h := newHasher(checksumType)
 
 	var totalBytes int64
 	for _, entry := range files {
@@ -154,33 +281,37 @@ func writeEntries(offsetLoc uint64, bf *BufferedFile, files []FileEntry) {
 		<-finished
 	}()
 
-	for i, entry := range files {
-		p.file.Store(entry.Path)
+	cOffset := uint64(headerLen)
+	var buf []byte
+	if blockSize > 0 {
+		buf = make([]byte, blockSize)
+	}
 
+	for i := range files {
+		entry := &files[i]
+		p.file.Store(entry.Path)
 		if entry.Type != entryFile {
-			offsets[i] = 0
+			entry.Offset = 0
 			continue
 		}
 
-		file, err := os.Open(entry.SrcPath)
+		f, err := os.Open(entry.SrcPath)
 		if err != nil {
 			if doForce {
-				//Soldier on even if read fails
 				doLog(false, "\nUnable to open file: %v (continuing)", entry.Path)
 				continue
-			} else {
-				log.Fatalf("Unable to open file: %v", entry.Path)
 			}
+			log.Fatalf("Unable to open file: %v", entry.Path)
 		}
-		// Compute checksum first without counting progress
+
 		var checksum []byte
 		if features.IsSet(fChecksums) {
 			h.Reset()
-			if _, err := io.Copy(h, file); err != nil {
+			if _, err := io.Copy(h, f); err != nil {
 				log.Fatalf("checksum compute failed: %v", err)
 			}
 			checksum = h.Sum(nil)
-			if _, err := file.Seek(0, io.SeekStart); err != nil {
+			if _, err := f.Seek(0, io.SeekStart); err != nil {
 				log.Fatalf("seek reset failed: %v", err)
 			}
 			if _, err := bf.Write(checksum); err != nil {
@@ -188,125 +319,93 @@ func writeEntries(offsetLoc uint64, bf *BufferedFile, files []FileEntry) {
 			}
 		}
 
-		br := NewBufferedFile(file, writeBuffer, p)
-
-		// Write file data (compressed or not)
-		var written uint64
-		if features.IsSet(fNoCompress) {
-			if _, err := io.Copy(bf, br); err != nil {
-				log.Fatalf("copy failed: %v", err)
-			}
-			written = entry.Size
-		} else {
-			cw := &countingWriter{w: bf}
-			gw := gzip.NewWriter(cw)
-			if _, err := io.Copy(gw, br); err != nil {
-				log.Fatalf("gzip copy failed: %v", err)
-			}
-			if err := gw.Close(); err != nil {
-				log.Fatalf("gzip close failed: %v", err)
-			}
-			written = uint64(cw.Count())
-		}
-
-		br.Close()
-
-		offsets[i] = cOffset
-		cOffset += written
+		entry.Offset = cOffset
 		if features.IsSet(fChecksums) {
-			cOffset += checksumSize
+			cOffset += uint64(checksumLength)
 		}
-	}
 
-	// Seek back and write offset table
-	if _, err := bf.Seek(int64(offsetLoc), io.SeekStart); err != nil {
-		log.Fatalf("seek to offset %d failed: %v", offsetLoc, err)
-	}
-	for _, off := range offsets {
-		if err := binary.Write(bf, binary.LittleEndian, off); err != nil {
-			log.Fatalf("writing offset failed: %v", err)
-		}
-	}
-}
+		br := NewBufferedFile(f, writeBuffer, p)
+		var blocks []Block
 
-// WIP
-func writeEntriesThreaded(offsetLoc uint64, bf *BufferedFile, files []FileEntry) {
-
-	totalBlocks := 0
-	wg := sizedwaitgroup.New(runtime.NumCPU())
-	for _, entry := range files {
-
-		wg.Add()
-		go func(entry FileEntry) {
-			defer wg.Done()
-
-			file, err := os.Open(entry.SrcPath)
-			if err != nil {
-				if doForce {
-					//Soldier on even if read fails
-					doLog(false, "\nUnable to open file: %v (continuing)", entry.Path)
-					return
-				} else {
-					log.Fatalf("Unable to open file: %v", entry.Path)
+		if blockSize == 0 {
+			bOff := cOffset
+			var written uint64
+			if features.IsSet(fNoCompress) {
+				if _, err := io.Copy(bf, br); err != nil {
+					log.Fatalf("copy failed: %v", err)
+				}
+				written = entry.Size
+			} else {
+				cw := &countingWriter{w: bf}
+				zw := compressor(cw)
+				if _, err := io.Copy(zw, br); err != nil {
+					log.Fatalf("compress copy failed: %v", err)
+				}
+				if err := zw.Close(); err != nil {
+					log.Fatalf("compress close failed: %v", err)
+				}
+				written = uint64(cw.Count())
+			}
+			cOffset += written
+			blocks = append(blocks, Block{Offset: bOff, Size: uint32(written)})
+		} else {
+			for {
+				n, err := io.ReadFull(br, buf)
+				if n > 0 {
+					bOff := cOffset
+					if features.IsSet(fNoCompress) {
+						if _, err := bf.Write(buf[:n]); err != nil {
+							log.Fatalf("copy failed: %v", err)
+						}
+						cOffset += uint64(n)
+						blocks = append(blocks, Block{Offset: bOff, Size: uint32(n)})
+					} else {
+						cw := &countingWriter{w: bf}
+						zw := compressor(cw)
+						if _, err := zw.Write(buf[:n]); err != nil {
+							log.Fatalf("compress copy failed: %v", err)
+						}
+						if err := zw.Close(); err != nil {
+							log.Fatalf("compress close failed: %v", err)
+						}
+						cOffset += uint64(cw.Count())
+						blocks = append(blocks, Block{Offset: bOff, Size: uint32(cw.Count())})
+					}
+				}
+				if err == io.EOF {
+					break
+				}
+				if err == io.ErrUnexpectedEOF {
+					break
+				}
+				if err != nil {
+					log.Fatalf("read block failed: %v", err)
 				}
 			}
-			entry.NumBlocks = uint64(math.Ceil(float64(entry.Size) / float64(blockSize)))
-			rbuf := make([]byte, blockSize)
-
-			for blockNum := uint64(0); blockNum < entry.NumBlocks; blockNum++ {
-				readBuf := bytes.NewBuffer(rbuf)
-				io.Copy(readBuf, file)
-
-				//Compress here
-
-				curPos := writeBlock(readBuf.Bytes(), bf)
-				entry.BlockOffset[blockNum] = offsetLoc + curPos
-
-				totalBlocks++
-			}
-
-		}(entry)
-	}
-	wg.Wait()
-
-	//End of BlockIndexOffset region
-	blockIndexOffset := totalBlocks * 8
-
-	//Shutup Compiler for the moment
-	if blockIndexOffset == 0 {
-		//
-	}
-
-	//Update blockOffsets in archive here
-	var writtenBlock uint64
-	for _, entry := range files {
-		for block := uint64(0); block < entry.NumBlocks; block++ {
-			newOffset := blockIndexOffset + int(entry.BlockOffset[block])
-			_, err := bf.Seek(int64(offsetLoc+writtenBlock), io.SeekStart)
-			if err != nil {
-				log.Fatal("Failed seeking within archive file.")
-			}
-			binary.Write(bf, binary.LittleEndian, uint64(newOffset))
-			writtenBlock++
 		}
+		br.Close()
+		f.Close()
+		entry.Blocks = blocks
 	}
-
+	return cOffset
 }
 
-var currentWritePos uint64
-var writeMutex sync.Mutex
-
-func writeBlock(data []byte, bf *BufferedFile) uint64 {
-	dataLen := len(data)
-
-	writeMutex.Lock()
-	defer writeMutex.Unlock()
-
-	currentWritePos += uint64(dataLen)
-
-	_, err := bf.Write(data)
-	if err != nil {
-		log.Fatalf("Unable to write block to archive: %v", err)
+func writeTrailer(files []FileEntry) []byte {
+	var trailer bytes.Buffer
+	for _, f := range files {
+		binary.Write(&trailer, binary.LittleEndian, uint32(len(f.Blocks)))
+		for _, b := range f.Blocks {
+			binary.Write(&trailer, binary.LittleEndian, b.Offset)
+			binary.Write(&trailer, binary.LittleEndian, b.Size)
+		}
 	}
-	return currentWritePos
+	h := newHasher(checksumType)
+	h.Write(trailer.Bytes())
+	sum := h.Sum(nil)
+	if len(sum) < int(checksumLength) {
+		pad := make([]byte, int(checksumLength)-len(sum))
+		sum = append(sum, pad...)
+	}
+	trailer.Write(sum[:checksumLength])
+	return trailer.Bytes()
 }

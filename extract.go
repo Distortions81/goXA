@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/fs"
@@ -16,14 +17,90 @@ import (
 	"sync/atomic"
 	"time"
 
+	brotli "github.com/andybalholm/brotli"
 	"github.com/dustin/go-humanize"
+	"github.com/golang/snappy"
+	"github.com/klauspost/compress/s2"
+	"github.com/klauspost/compress/zstd"
+	lz4 "github.com/pierrec/lz4/v4"
 	"github.com/remeh/sizedwaitgroup"
-	"golang.org/x/crypto/blake2b"
 )
+
+func decompressor(r io.Reader, cType uint8) (io.ReadCloser, error) {
+	switch cType {
+	case compZstd:
+		zr, err := zstd.NewReader(r)
+		if err != nil {
+			return nil, err
+		}
+		return zr.IOReadCloser(), nil
+	case compLZ4:
+		return io.NopCloser(lz4.NewReader(r)), nil
+	case compS2:
+		return io.NopCloser(s2.NewReader(r)), nil
+	case compSnappy:
+		return io.NopCloser(snappy.NewReader(r)), nil
+	case compBrotli:
+		return io.NopCloser(brotli.NewReader(r)), nil
+	default:
+		gr, err := gzip.NewReader(r)
+		if err != nil {
+			return nil, err
+		}
+		return gr, nil
+	}
+}
 
 var skippedFiles, checksumCount atomic.Int64
 
-func extract(destinations []string, listOnly bool) {
+func compName(t uint8) string {
+	switch t {
+	case compZstd:
+		return "zstd"
+	case compLZ4:
+		return "lz4"
+	case compS2:
+		return "s2"
+	case compSnappy:
+		return "snappy"
+	case compBrotli:
+		return "brotli"
+	default:
+		return "gzip"
+	}
+}
+
+func checksumName(t uint8) string {
+	switch t {
+	case sumCRC32:
+		return "crc32"
+	case sumCRC16:
+		return "crc16"
+	case sumXXHash:
+		return "xxhash"
+	case sumSHA256:
+		return "sha256"
+	case sumBlake3:
+		return "blake3"
+	default:
+		return "unknown"
+	}
+}
+
+func entryName(t uint8) string {
+	switch t {
+	case entryFile:
+		return "file"
+	case entrySymlink:
+		return "symlink"
+	case entryHardlink:
+		return "hardlink"
+	default:
+		return "other"
+	}
+}
+
+func extract(destinations []string, listOnly bool, jsonList bool) {
 
 	var destination string
 	//Clean destination
@@ -43,7 +120,17 @@ func extract(destinations []string, listOnly bool) {
 	}
 
 	//Create reader
-	arc, err := NewBinReader(archivePath)
+	arcPath := archivePath
+	cleanup := func() {}
+	if encode != "" {
+		var err error
+		arcPath, cleanup, err = decodeIfNeeded(archivePath)
+		if err != nil {
+			log.Fatalf("extract: decode failed: %v", err)
+		}
+		defer cleanup()
+	}
+	arc, err := NewBinReader(arcPath)
 	if err != nil {
 		log.Fatalf("extract: Could not open the archive file: %v", err)
 	}
@@ -65,7 +152,7 @@ func extract(destinations []string, listOnly bool) {
 	if err := binary.Read(arc, binary.LittleEndian, &readVersion); err != nil {
 		log.Fatalf("extract: failed to read version: %v", err)
 	}
-	if readVersion != version {
+	if readVersion != version1 && readVersion != version2 {
 		log.Fatalf("extract: Archive is of an unsupported version: %v", readVersion)
 	}
 
@@ -74,6 +161,64 @@ func extract(destinations []string, listOnly bool) {
 		log.Fatalf("extract: failed to read feature flags: %v", err)
 	}
 	showFeatures(lfeat)
+
+	ctype := compGzip
+	if readVersion >= version2 {
+		if err := binary.Read(arc, binary.LittleEndian, &ctype); err != nil {
+			log.Fatalf("extract: failed to read compression type: %v", err)
+		}
+		if err := binary.Read(arc, binary.LittleEndian, &checksumType); err != nil {
+			log.Fatalf("extract: failed to read checksum type: %v", err)
+		}
+		if err := binary.Read(arc, binary.LittleEndian, &checksumLength); err != nil {
+			log.Fatalf("extract: failed to read checksum length: %v", err)
+		}
+	}
+
+	if useArchiveFlags {
+		features |= lfeat
+	} else {
+		missing := ""
+		if lfeat.IsSet(fPermissions) && features.IsNotSet(fPermissions) {
+			missing += "p"
+		}
+		if lfeat.IsSet(fModDates) && features.IsNotSet(fModDates) {
+			missing += "m"
+		}
+		if lfeat.IsSet(fSpecialFiles) && features.IsNotSet(fSpecialFiles) {
+			missing += "o"
+		}
+		if lfeat.IsSet(fIncludeInvis) && features.IsNotSet(fIncludeInvis) {
+			missing += "i"
+		}
+		if missing != "" {
+			doLog(false, "Archive uses flags '%s'. Rerun with these flags or 'u' to auto-enable.", missing)
+			arc.Close()
+			return
+		}
+	}
+
+	var blkSize uint32 = blockSize
+	var trailerOffset uint64
+	var arcSize uint64
+	if readVersion >= version2 {
+		if err := binary.Read(arc, binary.LittleEndian, &blkSize); err != nil {
+			log.Fatalf("extract: failed to read block size: %v", err)
+		}
+		if err := binary.Read(arc, binary.LittleEndian, &trailerOffset); err != nil {
+			log.Fatalf("extract: failed to read trailer offset: %v", err)
+		}
+		blockSize = blkSize
+	}
+	if readVersion >= version2 {
+		if err := binary.Read(arc, binary.LittleEndian, &arcSize); err != nil {
+			log.Fatalf("extract: failed to read archive size: %v", err)
+		}
+		info, _ := arc.file.Stat()
+		if uint64(info.Size()) != arcSize {
+			log.Fatalf("extract: archive size mismatch")
+		}
+	}
 
 	//Empty Directories
 	var numEmptyDirs uint64
@@ -96,7 +241,7 @@ func extract(destinations []string, listOnly bool) {
 			}
 		}
 
-		pathName, err := ReadString(arc)
+		pathName, err := ReadLPString(arc)
 		if err != nil {
 			log.Fatalf("extract: failed to read directory path: %v", err)
 		}
@@ -131,7 +276,7 @@ func extract(destinations []string, listOnly bool) {
 			}
 		}
 
-		pathName, err := ReadString(arc)
+		pathName, err := ReadLPString(arc)
 		if err != nil {
 			log.Fatalf("extract: failed to read file path: %v", err)
 		}
@@ -141,7 +286,7 @@ func extract(destinations []string, listOnly bool) {
 		}
 		var linkName string
 		if ftype == entrySymlink || ftype == entryHardlink {
-			linkName, err = ReadString(arc)
+			linkName, err = ReadLPString(arc)
 			if err != nil {
 				log.Fatalf("extract: failed to read link target: %v", err)
 			}
@@ -151,7 +296,7 @@ func extract(destinations []string, listOnly bool) {
 		fileList[n] = newEntry
 	}
 
-	if listOnly {
+	if listOnly && !jsonList {
 		fileCount := 0
 		byteCount := 0
 		for _, item := range dirList {
@@ -172,13 +317,94 @@ func extract(destinations []string, listOnly bool) {
 		return
 	}
 
-	//File offsets
-	for n := uint64(0); n < numFiles; n++ {
-		var fileOffset uint64
-		if err := binary.Read(arc, binary.LittleEndian, &fileOffset); err != nil {
-			log.Fatalf("extract: failed to read file offset: %v", err)
+	if jsonList {
+		out := ArchiveListing{
+			Version:        readVersion,
+			Flags:          lfeat,
+			Compression:    compName(ctype),
+			Checksum:       checksumName(checksumType),
+			ChecksumLength: checksumLength,
+			BlockSize:      blockSize,
+			ArchiveSize:    arcSize,
 		}
-		fileList[n].Offset = fileOffset
+		for _, item := range dirList {
+			if isSelected(item.Path) {
+				out.Dirs = append(out.Dirs, ListEntry{
+					Path:    item.Path,
+					Type:    "dir",
+					Mode:    item.Mode,
+					ModTime: item.ModTime,
+				})
+			}
+		}
+		for _, item := range fileList {
+			if !isSelected(item.Path) {
+				continue
+			}
+			out.Files = append(out.Files, ListEntry{
+				Path:     item.Path,
+				Type:     entryName(item.Type),
+				Size:     item.Size,
+				Mode:     item.Mode,
+				ModTime:  item.ModTime,
+				Linkname: item.Linkname,
+			})
+		}
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(out); err != nil {
+			log.Fatalf("json encode: %v", err)
+		}
+		return
+	}
+
+	if readVersion >= version2 {
+		hdrSum := make([]byte, checksumLength)
+		if _, err := io.ReadFull(arc, hdrSum); err != nil {
+			log.Fatalf("extract: failed to read header checksum: %v", err)
+		}
+		var hdrBytes []byte
+		hdrBytes = writeHeader(dirList, fileList, trailerOffset, arcSize, lfeat, ctype)
+		expect := hdrBytes[len(hdrBytes)-int(checksumLength):]
+		if !bytes.Equal(expect, hdrSum) {
+			log.Fatalf("extract: header checksum mismatch")
+		}
+
+		if _, err := arc.Seek(int64(trailerOffset), io.SeekStart); err != nil {
+			log.Fatalf("extract: seek trailer: %v", err)
+		}
+		for i := range fileList {
+			var count uint32
+			if err := binary.Read(arc, binary.LittleEndian, &count); err != nil {
+				log.Fatalf("extract: read block count: %v", err)
+			}
+			blocks := make([]Block, count)
+			for b := uint32(0); b < count; b++ {
+				if err := binary.Read(arc, binary.LittleEndian, &blocks[b].Offset); err != nil {
+					log.Fatalf("extract: read block offset: %v", err)
+				}
+				if err := binary.Read(arc, binary.LittleEndian, &blocks[b].Size); err != nil {
+					log.Fatalf("extract: read block size: %v", err)
+				}
+			}
+			fileList[i].Blocks = blocks
+			if len(blocks) > 0 {
+				off := blocks[0].Offset
+				if lfeat.IsSet(fChecksums) {
+					off -= uint64(checksumLength)
+				}
+				fileList[i].Offset = off
+			}
+		}
+		tSum := make([]byte, checksumLength)
+		if _, err := io.ReadFull(arc, tSum); err != nil {
+			log.Fatalf("extract: read trailer checksum: %v", err)
+		}
+		trailerBytes := writeTrailer(fileList)
+		expectT := trailerBytes[len(trailerBytes)-int(checksumLength):]
+		if !bytes.Equal(expectT, tSum) {
+			log.Fatalf("extract: trailer checksum mismatch")
+		}
 	}
 
 	doLog(false, "Read index: %v files.", len(fileList))
@@ -203,7 +429,7 @@ func extract(destinations []string, listOnly bool) {
 		if !isSelected(item.Path) {
 			continue
 		}
-		perms := os.FileMode(0644)
+		perms := os.FileMode(0755)
 		if lfeat.IsSet(fPermissions) {
 			perms = item.Mode
 		}
@@ -221,7 +447,16 @@ func extract(destinations []string, listOnly bool) {
 				log.Fatalf("extract: invalid path %v", item.Path)
 			}
 		}
-		os.MkdirAll(dirPath, perms)
+		if err := os.MkdirAll(dirPath, perms); err != nil {
+			if doForce {
+				doLog(false, "unable to create directory %v: %v", dirPath, err)
+				continue
+			}
+			log.Fatalf("extract: unable to create directory %v: %v", dirPath, err)
+		}
+		if lfeat.IsSet(fModDates) {
+			os.Chtimes(dirPath, item.ModTime, item.ModTime)
+		}
 	}
 	arc.Close()
 
@@ -234,7 +469,7 @@ func extract(destinations []string, listOnly bool) {
 			wg.Add()
 			go func(item *FileEntry) {
 				defer wg.Done()
-				_ = handleFile(destination, lfeat, item, p)
+				_ = extractFile(arcPath, destination, lfeat, ctype, item, p)
 			}(&fileList[f])
 		}
 		wg.Wait()
@@ -243,7 +478,7 @@ func extract(destinations []string, listOnly bool) {
 			if !isSelected(fileList[f].Path) {
 				continue
 			}
-			_ = handleFile(destination, lfeat, &fileList[f], p)
+			_ = extractFile(arcPath, destination, lfeat, ctype, &fileList[f], p)
 		}
 	}
 
@@ -252,7 +487,7 @@ func extract(destinations []string, listOnly bool) {
 	}
 }
 
-func handleFile(destination string, lfeat BitFlags, item *FileEntry, p *progressData) error {
+func extractFile(arcPath, destination string, lfeat BitFlags, ctype uint8, item *FileEntry, p *progressData) error {
 	if item.Type == entryOther {
 		return nil
 	}
@@ -272,7 +507,14 @@ func handleFile(destination string, lfeat BitFlags, item *FileEntry, p *progress
 				log.Fatalf("invalid path: %v", item.Path)
 			}
 		}
-		os.MkdirAll(filepath.Dir(finalPath), os.ModePerm)
+		if err := os.MkdirAll(filepath.Dir(finalPath), os.ModePerm); err != nil {
+			if doForce {
+				doLog(false, "unable to create directory %v: %v", filepath.Dir(finalPath), err)
+				skippedFiles.Add(1)
+				return nil
+			}
+			log.Fatalf("extract: unable to create directory %v: %v", filepath.Dir(finalPath), err)
+		}
 		if doForce {
 			os.RemoveAll(finalPath)
 		}
@@ -303,7 +545,14 @@ func handleFile(destination string, lfeat BitFlags, item *FileEntry, p *progress
 
 	//Make directories
 	dir := filepath.Dir(finalPath)
-	os.MkdirAll(dir, os.ModePerm)
+	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+		if doForce {
+			doLog(false, "unable to create directory %v: %v", dir, err)
+			skippedFiles.Add(1)
+			return nil
+		}
+		log.Fatalf("extract: unable to create directory %v: %v", dir, err)
+	}
 
 	//Set file perms, if needed
 	filePerm := os.FileMode(0644)
@@ -337,7 +586,7 @@ func handleFile(destination string, lfeat BitFlags, item *FileEntry, p *progress
 	}
 
 	//Seek to data in archive
-	arcB, err := NewBinReader(archivePath)
+	arcB, err := NewBinReader(arcPath)
 	if err != nil {
 		if doForce {
 			doLog(false, "unable to open archive reader: %v", err)
@@ -352,9 +601,9 @@ func handleFile(destination string, lfeat BitFlags, item *FileEntry, p *progress
 	_, err = arcB.Seek(int64(item.Offset), io.SeekStart)
 	if err != nil {
 		if doForce {
-			doLog(false, "Unable to seek archive: %v :: %v", archivePath, err)
+			doLog(false, "Unable to seek archive: %v :: %v", arcPath, err)
 		} else {
-			log.Fatalf("Unable to seek archive: %v :: %v", archivePath, err)
+			log.Fatalf("Unable to seek archive: %v :: %v", arcPath, err)
 		}
 	}
 
@@ -365,7 +614,7 @@ func handleFile(destination string, lfeat BitFlags, item *FileEntry, p *progress
 	bf.doCount = true
 
 	//Read checksum
-	var expectedChecksum = make([]byte, checksumSize)
+	expectedChecksum := make([]byte, checksumLength)
 	if lfeat.IsSet(fChecksums) {
 		if _, err := io.ReadFull(arcB, expectedChecksum); err != nil {
 			if doForce {
@@ -379,48 +628,111 @@ func handleFile(destination string, lfeat BitFlags, item *FileEntry, p *progress
 		}
 	}
 
-	var src io.Reader = arcB
-	if lfeat.IsNotSet(fNoCompress) {
-		gzReader, err := gzip.NewReader(arcB)
-		if err != nil {
-			if doForce {
-				doLog(false, "gzip error: Unable to create reader: %v :: %v", item.Path, err)
-				closeFile()
-				return nil
-			}
-			closeFile()
-			log.Fatalf("gzip error: Unable to create reader: %v :: %v", item.Path, err)
-		}
-		defer gzReader.Close()
-		src = gzReader
-	}
-
-	src = countingReader{r: src, p: p}
-
 	var writer io.Writer = bf
 	var hashSum []byte
+	hasBlocks := len(item.Blocks) > 0
 	if lfeat.IsSet(fChecksums) {
-		hasher, _ := blake2b.New256(nil)
-		multiWriter := io.MultiWriter(bf, hasher)
-		writer = multiWriter
-
-		_, err = io.CopyN(writer, src, int64(item.Size))
-		if err == nil {
-			hashSum = hasher.Sum(nil)
+		hasher := newHasher(checksumType)
+		writer = io.MultiWriter(bf, hasher)
+		if hasBlocks {
+			for _, b := range item.Blocks {
+				if _, err := arcB.Seek(int64(b.Offset), io.SeekStart); err != nil {
+					log.Fatalf("seek block: %v", err)
+				}
+				r := io.LimitReader(arcB, int64(b.Size))
+				if lfeat.IsNotSet(fNoCompress) {
+					dec, err := decompressor(r, ctype)
+					if err != nil {
+						log.Fatalf("decompress setup: %v", err)
+					}
+					r = dec
+					_, err = io.Copy(writer, progressReader{r: r, p: p})
+					if err != nil {
+						log.Fatalf("copy block: %v", err)
+					}
+					dec.Close()
+				} else {
+					_, err = io.Copy(writer, progressReader{r: r, p: p})
+					if err != nil {
+						log.Fatalf("copy block: %v", err)
+					}
+				}
+			}
+		} else {
+			var src io.Reader = arcB
+			if lfeat.IsNotSet(fNoCompress) {
+				dec, err := decompressor(arcB, ctype)
+				if err != nil {
+					log.Fatalf("decompress error: Unable to create reader: %v :: %v", item.Path, err)
+				}
+				defer dec.Close()
+				src = dec
+			}
+			src = progressReader{r: src, p: p}
+			_, err = io.CopyN(writer, src, int64(item.Size))
+			if err != nil {
+				if doForce {
+					doLog(false, "Unable to write data: %v :: %v", item.Path, err)
+				} else {
+					log.Fatalf("Unable to write data to file: %v :: %v", item.Path, err)
+				}
+			}
+		}
+		hashSum = hasher.Sum(nil)
+		if len(hashSum) < int(checksumLength) {
+			pad := make([]byte, int(checksumLength)-len(hashSum))
+			hashSum = append(hashSum, pad...)
 		}
 	} else {
-		_, err = io.CopyN(writer, src, int64(item.Size))
-	}
-
-	if err != nil {
-		if doForce {
-			doLog(false, "Unable to write data: %v :: %v", item.Path, err)
+		if hasBlocks {
+			for _, b := range item.Blocks {
+				if _, err := arcB.Seek(int64(b.Offset), io.SeekStart); err != nil {
+					log.Fatalf("seek block: %v", err)
+				}
+				r := io.LimitReader(arcB, int64(b.Size))
+				if lfeat.IsNotSet(fNoCompress) {
+					dec, err := decompressor(r, ctype)
+					if err != nil {
+						log.Fatalf("decompress setup: %v", err)
+					}
+					_, err = io.Copy(writer, progressReader{r: dec, p: p})
+					if err != nil {
+						log.Fatalf("copy block: %v", err)
+					}
+					dec.Close()
+				} else {
+					_, err = io.Copy(writer, progressReader{r: r, p: p})
+				}
+				if err != nil {
+					log.Fatalf("copy block: %v", err)
+				}
+			}
 		} else {
-			log.Fatalf("Unable to write data to file: %v :: %v", item.Path, err)
+			var src io.Reader = arcB
+			if lfeat.IsNotSet(fNoCompress) {
+				dec, err := decompressor(arcB, ctype)
+				if err != nil {
+					log.Fatalf("decompress error: Unable to create reader: %v :: %v", item.Path, err)
+				}
+				defer dec.Close()
+				src = dec
+			}
+			src = progressReader{r: src, p: p}
+			_, err = io.CopyN(writer, src, int64(item.Size))
+			if err != nil {
+				if doForce {
+					doLog(false, "Unable to write data: %v :: %v", item.Path, err)
+				} else {
+					log.Fatalf("Unable to write data to file: %v :: %v", item.Path, err)
+				}
+			}
 		}
 	}
 	if err := bf.Close(); err != nil {
 		log.Fatalf("extract: close failed: %v", err)
+	}
+	if lfeat.IsSet(fModDates) {
+		os.Chtimes(finalPath, item.ModTime, item.ModTime)
 	}
 
 	if lfeat.IsSet(fChecksums) {

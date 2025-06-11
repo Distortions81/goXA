@@ -1,43 +1,52 @@
-# GoXA -- Go eXpress Archive
+# GoXA — Go eXpress Archive
+"An archive isn’t only storage—it’s a promise to the future." – Unknown
+
 <img src="https://github.com/Distortions81/goXA/blob/main/Xango.png?raw=true" alt="Xango the Archivist" width="300"/>
 
 ## Xango the Pangolin Archivist
-GoXA is a gopher-friendly archiver written in Go. It's quick and simple, and still new enough that the paint is drying. Expect the odd bump and let the busy gophers know if you hit one.
+GoXA is a small archiver written in Go. It's quick and friendly, though still learning new tricks. Let us know if you spot a bug.
 
 ### New format coming soon, with data blocks for better multi-threaded compression.
 
 ## Features
 
-- [x] Fast archive creation and extraction
-- [x] Optional gzip compression
-- [x] Optional BLAKE2b-256 checksums
-- [x] Preserve permissions and modification times
-- [x] Empty directory support
-- [x] Fully documented binary format ([FILE-FORMAT.md](FILE-FORMAT.md))
-- [x] Optional support for symlinks and other special files
-- [x] Clean, dependency-free Go code
+- Fast archive creation and extraction
+- Choice of gzip, zstd, lz4, s2, snappy, brotli or xz (default zstd)
+- Tar compatibility (auto-detected by filename or header)
+- Optional checksums: CRC32, CRC16, XXHash3, SHA-256 or Blake3 (default Blake3)
+- Preserve permissions and modification times
+- Fully documented binary format ([FILE-FORMAT.md](FILE-FORMAT.md))
+- Archive symlinks and other special files
+- Block-based compression for speed (single block when uncompressed)
+- Automatic format detection
+- Stream archives to stdout
+- Selective extraction with `-files`
+- Progress bar with transfer speed and current file
+- Pure Go code—no runtime deps once built
+- Base32/64 encoding via `.b32`/`.b64` suffix
 
 ## File Format
 
-See [file-format.md](file-format.md) for the full binary format.
+See [FILE-FORMAT.md](FILE-FORMAT.md) for the full binary format.
+The JSON structure emitted by `j` mode is described in
+[JSON-LIST-FORMAT.md](JSON-LIST-FORMAT.md).
 
 ## Install
 
-With Go 1.20+:
-
+With Go 1.24+:
 ```bash
 go install github.com/Distortions81/goXA@latest
 ```
 
-Or build from source:
-
+To build from source:
 ```bash
 git clone https://github.com/Distortions81/goXA.git
 cd goXA
 go build
 ```
 
-This creates the `goxa` binary.
+The script `./install.sh` builds and installs the binary and man page for you.
+See `goxa.1` for the full command reference.
 
 ## Usage
 
@@ -45,23 +54,25 @@ This creates the `goxa` binary.
 goxa [mode] [flags] -arc=archiveFile [paths...]
 ```
 
-`mode`: `c` (create), `l` (list), `x` (extract)
+`mode`: `c` (create), `l` (list), `j` (json list), `x` (extract)
 
 `flags`: any combination of:
 
 | Flag | Description |
 |------|-------------|
-| `a` | Store absolute paths |
-| `p` | Preserve permissions |
-| `m` | Preserve modification times |
-| `s` | Enable BLAKE2b checksums |
+| `a` | Absolute paths |
+| `p` | File permissions |
+| `m` | Modification times |
+| `s` | Enable checksums |
+| `b` | Per-block checksums |
 | `n` | Disable compression |
-| `i` | Include hidden files |
-| `o` | Include special files |
+| `i` | Hidden files |
+| `o` | Special files |
+| `u` | Use flags from archive |
 | `v` | Verbose logging |
-| `f` | Force overwrite / ignore errors |
+| `f` | Overwrite files / ignore read errors |
 
-Paths default to relative. Using `a` when extracting restores absolute paths.
+Paths are stored relative by default. Use `a` to store and restore absolute paths. Extraction only restores permissions, modification times, hidden files, or special files when `p`, `m`, `i`, or `o` are given (or `u` to use the archive's flags).
 
 ### Extra Flags
 
@@ -69,38 +80,49 @@ Paths default to relative. Using `a` when extracting restores absolute paths.
 |------|-------------|
 | `-arc=` | Archive file name |
 | `-stdout` | Output archive to stdout |
+| `-files` | Comma-separated list of files and directories to extract |
 | `-progress=false` | Disable progress display |
+| `-comp=` | Compression algorithm (gzip, zstd, lz4, s2, snappy, brotli, xz, none) |
+| `-speed=` | Compression speed (fastest, default, better, best) |
+| `-format=` | Archive format (`goxa` or `tar`) |
+| `-version` | Print version and exit |
 
 Progress shows transfer speed and the current file being processed.
+
+`xz` compression is only available when `-format=tar`.
+Snappy does not support configurable compression levels; `-speed` has no effect when using snappy.
 
 ### Examples
 
 ```bash
+goxa -version
 goxa c -arc=mybackup.goxa myStuff/
 goxa capmsif -arc=mybackup.goxa ~/
 goxa x -arc=mybackup.goxa
+goxa xu -arc=mybackup.goxa     # use flags in archive (aka auto)
 goxa l -arc=mybackup.goxa
+goxa j -arc=mybackup.goxa > listing.json
+goxa c -arc=mybackup.tar.gz myStuff/
+goxa x -arc=mybackup.tar.gz
+goxa c -arc=mybackup.tar.xz myStuff/
+goxa x -arc=mybackup.tar.xz
+goxa c -arc=mybackup.goxa -stdout myStuff/ | ssh host "cat > backup.goxa"
+goxa x -arc=mybackup.goxa -files=file.txt,dir/
 ```
 
 ## Roadmap
 
-- [x] Format documentation
-- [x] Working relative path support
-- [x] Add modes for non-files (symlinks, devices)
-- [ ] Random-access extraction mode
 - [ ] Multi-threaded archive optimization
-- [ ] Additional compression formats
-- [ ] Go 1.24+ os.Root directory jails
 - [ ] Archive signatures for optional additional security
 - [ ] Archive comment field
 - [ ] Encrypted archives
 
 ## Security Notes
 
-- Paths are sanitized during extraction, but `-a` lets archives write wherever they like. Use with care on unknown files.
-- Symlinks are not resolved, so sneaky links can sidestep your destination folder.
-- Size fields use `int64`; absurdly huge or corrupted sizes might crash the extractor.
-- The flag parser shortens the options string as it goes; unusual flags might confuse it.
+- Paths are sanitized during extraction, but `-a` (`absolute paths`) allows the archive to write anywhere. Use with care on unknown files.
+- With `-o` (`special files`) symlinks are not resolved, so sneaky links can sidestep your destination folder.
+- `-u` (`use flags from archive`) applies whatever options were set when the archive was created, which may enable absolute paths, permissions, mod dates and special files.
+- Size fields use `int64`; maximum individual file size is about 9,223 petabytes (~8&nbsp;EiB).
 
 ## License
 
@@ -109,6 +131,7 @@ MIT License.
 ## Author
 
 - https://github.com/Distortions81
+- AI-assisted contributions using OpenAI's ChatGPT
 
 ---
 

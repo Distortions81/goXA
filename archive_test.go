@@ -8,6 +8,7 @@ import (
 	"strings"
 	"syscall"
 	"testing"
+	"time"
 )
 
 type fileSpec struct {
@@ -69,16 +70,19 @@ func TestArchiveScenarios(t *testing.T) {
 	}{
 		{"rel_compress", 0, 0, false, false},
 		{"rel_nocompress", fNoCompress, 0, false, false},
-		{"rel_invis", fIncludeInvis, 0, true, false},
+		{"rel_invis", fIncludeInvis, fIncludeInvis, true, false},
 		{"abs_compress", fAbsolutePaths, fAbsolutePaths, false, false},
 		{"abs_nocompress", fAbsolutePaths | fNoCompress, fAbsolutePaths, false, false},
-		{"abs_invis", fAbsolutePaths | fIncludeInvis, fAbsolutePaths, true, false},
-		{"rel_all_flags", fPermissions | fChecksums | fIncludeInvis | fNoCompress, 0, true, true},
-		{"abs_all_flags", fAbsolutePaths | fPermissions | fChecksums | fIncludeInvis | fNoCompress, fAbsolutePaths, true, true},
+		{"abs_invis", fAbsolutePaths | fIncludeInvis, fAbsolutePaths | fIncludeInvis, true, false},
+		{"rel_all_flags", fPermissions | fChecksums | fIncludeInvis | fNoCompress, fPermissions | fIncludeInvis, true, true},
+		{"abs_all_flags", fAbsolutePaths | fPermissions | fChecksums | fIncludeInvis | fNoCompress, fAbsolutePaths | fPermissions | fIncludeInvis, true, true},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			features = 0
+			version = version2
+
 			tempDir := t.TempDir()
 			root := filepath.Join(tempDir, "root")
 			specs := setupTestTree(t, root)
@@ -92,7 +96,7 @@ func TestArchiveScenarios(t *testing.T) {
 			archivePath = filepath.Join(tempDir, "test.goxa")
 			toStdOut = false
 			doForce = false
-			features = tc.createFlags
+			features |= tc.createFlags
 
 			cwd, _ := os.Getwd()
 			os.Chdir(tempDir)
@@ -103,17 +107,18 @@ func TestArchiveScenarios(t *testing.T) {
 			}
 
 			os.RemoveAll(root)
-			features = tc.extractFlags
+			features = 0
+			features |= tc.extractFlags
 
 			var dest string
 			if tc.extractFlags.IsSet(fAbsolutePaths) {
-				extract([]string{}, false)
+				extract([]string{}, false, false)
 			} else {
 				dest = filepath.Join(tempDir, "out")
 				if err := os.MkdirAll(dest, 0o755); err != nil {
 					t.Fatalf("mkdir dest: %v", err)
 				}
-				extract([]string{dest}, false)
+				extract([]string{dest}, false, false)
 			}
 
 			var base string
@@ -156,6 +161,7 @@ func TestArchiveParentRelative(t *testing.T) {
 
 	archivePath = filepath.Join(tempDir, "test.goxa")
 	features = 0
+	version = version2
 	toStdOut = false
 	doForce = false
 
@@ -173,7 +179,7 @@ func TestArchiveParentRelative(t *testing.T) {
 	if err := os.MkdirAll(dest, 0o755); err != nil {
 		t.Fatalf("mkdir dest: %v", err)
 	}
-	extract([]string{dest}, false)
+	extract([]string{dest}, false, false)
 
 	extracted := filepath.Join(dest, filepath.Base(root), "file.txt")
 	checkFile(t, extracted, data, 0o644, false)
@@ -199,6 +205,7 @@ func TestSymlinkAndHardlink(t *testing.T) {
 
 	archivePath = filepath.Join(tempDir, "test.goxa")
 	features = fSpecialFiles
+	version = version2
 	toStdOut = false
 	doForce = false
 
@@ -210,7 +217,7 @@ func TestSymlinkAndHardlink(t *testing.T) {
 	dest := filepath.Join(tempDir, "out")
 	os.MkdirAll(dest, 0o755)
 	features = fSpecialFiles
-	extract([]string{dest}, false)
+	extract([]string{dest}, false, false)
 
 	base := filepath.Join(dest, filepath.Base(root))
 	ltarget, err := os.Readlink(filepath.Join(base, "link.txt"))
@@ -219,5 +226,91 @@ func TestSymlinkAndHardlink(t *testing.T) {
 	}
 	if _, err := os.Lstat(filepath.Join(base, "hard.txt")); err != nil {
 		t.Fatalf("hardlink missing: %v", err)
+	}
+}
+
+func TestModDatePreservation(t *testing.T) {
+	tempDir := t.TempDir()
+	root := filepath.Join(tempDir, "root")
+	filePath := filepath.Join(root, "file.txt")
+	dirPath := filepath.Join(root, "empty")
+	if err := os.MkdirAll(dirPath, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	content := []byte("hi")
+	if err := os.WriteFile(filePath, content, 0o644); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+	modTime := time.Now().Add(-time.Hour).UTC().Truncate(time.Second)
+	os.Chtimes(filePath, modTime, modTime)
+	os.Chtimes(dirPath, modTime, modTime)
+
+	archivePath = filepath.Join(tempDir, "test.goxa")
+	features = fModDates
+	toStdOut = false
+	doForce = false
+
+	if err := create([]string{root}); err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+
+	os.RemoveAll(root)
+	dest := filepath.Join(tempDir, "out")
+	os.MkdirAll(dest, 0o755)
+	features = fModDates
+	extract([]string{dest}, false, false)
+
+	base := filepath.Join(dest, filepath.Base(root))
+	info, err := os.Stat(filepath.Join(base, "file.txt"))
+	if err != nil {
+		t.Fatalf("stat file: %v", err)
+	}
+	if info.ModTime().UTC().Truncate(time.Second) != modTime {
+		t.Fatalf("file mod time mismatch: got %v want %v", info.ModTime(), modTime)
+	}
+
+	dInfo, err := os.Stat(filepath.Join(base, "empty"))
+	if err != nil {
+		t.Fatalf("stat dir: %v", err)
+	}
+	if dInfo.ModTime().UTC().Truncate(time.Second) != modTime {
+		t.Fatalf("dir mod time mismatch: got %v want %v", dInfo.ModTime(), modTime)
+	}
+}
+
+func TestBaseEncoding(t *testing.T) {
+	cases := []struct{ enc string }{{"b64"}, {"b32"}}
+	for _, tc := range cases {
+		tempDir := t.TempDir()
+		root := filepath.Join(tempDir, "root")
+		if err := os.MkdirAll(root, 0o755); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+		data := []byte("hello")
+		if err := os.WriteFile(filepath.Join(root, "file.txt"), data, 0o644); err != nil {
+			t.Fatalf("write file: %v", err)
+		}
+
+		archivePath = filepath.Join(tempDir, "test.goxa."+tc.enc)
+		encode = tc.enc
+		features = 0
+		version = version2
+		toStdOut = false
+		doForce = false
+
+		if err := create([]string{root}); err != nil {
+			t.Fatalf("create failed: %v", err)
+		}
+
+		os.RemoveAll(root)
+		dest := filepath.Join(tempDir, "out")
+		os.MkdirAll(dest, 0o755)
+		encode = tc.enc
+		extract([]string{dest}, false, false)
+
+		encode = ""
+
+		extracted := filepath.Join(dest, filepath.Base(root), "file.txt")
+		checkFile(t, extracted, data, 0o644, false)
 	}
 }

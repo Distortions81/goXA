@@ -23,6 +23,7 @@ func TestUnicodeFilenames(t *testing.T) {
 
 	archivePath = filepath.Join(tempDir, "test.goxa")
 	features = 0
+	version = version2
 	toStdOut = false
 	doForce = false
 
@@ -39,7 +40,7 @@ func TestUnicodeFilenames(t *testing.T) {
 		t.Fatalf("failed to create dest: %v", err)
 	}
 
-	extract([]string{dest}, false)
+	extract([]string{dest}, false, false)
 
 	extracted := filepath.Join(dest, filepath.Base(root), fileName)
 	data, err := os.ReadFile(extracted)

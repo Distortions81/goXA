@@ -6,7 +6,8 @@ import (
 	"io"
 )
 
-func WriteString(w io.Writer, s string) error {
+// WriteLPString writes a length-prefixed string.
+func WriteLPString(w io.Writer, s string) error {
 	b := []byte(s)
 	if len(b) > 0xFFFF {
 		return fmt.Errorf("string too long: %d bytes", len(b))
