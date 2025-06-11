@@ -90,6 +90,12 @@ Compression speed (fastest, default, better, best).
 .BI -format= TYPE
 Archive format (goxa or tar).
 .TP
+.BI -retries= N
+Retry reads when a file changes during processing (0 means unlimited).
+.TP
+.BI -retrydelay= N
+Delay between retries in seconds.
+.TP
 .B -version
 Print version and exit.
 .SS BASE32/BASE64

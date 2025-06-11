@@ -20,6 +20,8 @@ var (
 	extractList                              []string
 	version                                  uint16 = version2
 	blockSize                                uint32 = defaultBlockSize
+	fileRetries                              int    = 3
+	fileRetryDelay                           int    = 5
 )
 
 type FileEntry struct {
