@@ -119,6 +119,12 @@ goxa x -arc=mybackup.goxa -files=file.txt,dir/ # selective extract
 - [ ] Encrypted archives
 - [ ] Create goxa library
 
+## Testing
+
+`go test ./...` runs the built-in unit and integration tests. The
+`test-goxa.sh` script builds the CLI and performs real-world archive
+creation and extraction checks.
+
 ## Security Notes
 
 - Paths are sanitized during extraction, but `-a` (`absolute paths`) allows the archive to write anywhere. Use with care on unknown files.
