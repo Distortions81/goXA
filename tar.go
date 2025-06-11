@@ -6,6 +6,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
+	"time"
 
 	"github.com/ulikunitz/xz"
 )
@@ -49,6 +51,17 @@ func createTar(paths []string) error {
 				return err
 			}
 
+			name := info.Name()
+			if features.IsNotSet(fIncludeInvis) && strings.HasPrefix(name, ".") {
+				if info.IsDir() {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+			if !info.Mode().IsRegular() && info.Mode()&os.ModeSymlink == 0 && !info.IsDir() && features.IsNotSet(fSpecialFiles) {
+				return nil
+			}
+
 			header, err := tar.FileInfoHeader(info, "")
 			if err != nil {
 				return err
@@ -61,6 +74,12 @@ func createTar(paths []string) error {
 			}
 			if info.IsDir() && header.Name != "." {
 				header.Name += "/"
+			}
+			if features.IsNotSet(fPermissions) {
+				header.Mode = 0
+			}
+			if features.IsNotSet(fModDates) {
+				header.ModTime = time.Time{}
 			}
 			if err := tw.WriteHeader(header); err != nil {
 				return err
@@ -123,17 +142,31 @@ func extractTar(destination string) error {
 		if err != nil {
 			return err
 		}
-		target, err := safeJoin(destination, hdr.Name)
-		if err != nil {
-			return err
+		var target string
+		if features.IsSet(fAbsolutePaths) {
+			target = filepath.Clean(hdr.Name)
+		} else {
+			target, err = safeJoin(destination, hdr.Name)
+			if err != nil {
+				return err
+			}
 		}
 		switch hdr.Typeflag {
 		case tar.TypeDir:
-			if err := os.MkdirAll(target, os.FileMode(hdr.Mode)); err != nil {
+			perm := os.FileMode(0755)
+			if features.IsSet(fPermissions) {
+				perm = os.FileMode(hdr.Mode)
+			}
+			if err := os.MkdirAll(target, perm); err != nil {
 				return err
 			}
-			os.Chtimes(target, hdr.ModTime, hdr.ModTime)
+			if features.IsSet(fModDates) {
+				os.Chtimes(target, hdr.ModTime, hdr.ModTime)
+			}
 		case tar.TypeSymlink:
+			if features.IsNotSet(fSpecialFiles) {
+				continue
+			}
 			if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
 				return err
 			}
@@ -141,6 +174,9 @@ func extractTar(destination string) error {
 				return err
 			}
 		case tar.TypeLink:
+			if features.IsNotSet(fSpecialFiles) {
+				continue
+			}
 			if err := os.Link(hdr.Linkname, target); err != nil {
 				return err
 			}
@@ -148,7 +184,11 @@ func extractTar(destination string) error {
 			if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
 				return err
 			}
-			w, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, os.FileMode(hdr.Mode))
+			perm := os.FileMode(0644)
+			if features.IsSet(fPermissions) {
+				perm = os.FileMode(hdr.Mode)
+			}
+			w, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, perm)
 			if err != nil {
 				return err
 			}
@@ -157,7 +197,9 @@ func extractTar(destination string) error {
 				return err
 			}
 			w.Close()
-			os.Chtimes(target, hdr.ModTime, hdr.ModTime)
+			if features.IsSet(fModDates) {
+				os.Chtimes(target, hdr.ModTime, hdr.ModTime)
+			}
 		}
 	}
 	return nil

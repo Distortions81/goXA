@@ -62,6 +62,19 @@ func main() {
 		}
 	}
 
+	if cmdLetter != 'c' {
+		if fFmt, fNoComp, ok := detectFormatFromHeader(archivePath); ok {
+			format = fFmt
+			if fFmt == "tar" {
+				if fNoComp {
+					features.Set(fNoCompress)
+				} else {
+					features.Clear(fNoCompress)
+				}
+			}
+		}
+	}
+
 	if sel != "" {
 		parts := strings.Split(sel, ",")
 		for _, p := range parts {

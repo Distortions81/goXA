@@ -64,14 +64,14 @@ func TestTarBasic(t *testing.T) {
 			specs := setupTarTree(t, root)
 
 			archivePath = filepath.Join(tempDir, "test.tar")
-			features = 0
+			features = fIncludeInvis
 			tarUseXz = false
 			if tc.name == "xz" {
 				tarUseXz = true
 				archivePath += ".xz"
 			}
 			if tc.noComp {
-				features = fNoCompress
+				features |= fNoCompress
 			}
 			if err := createTar([]string{root}); err != nil {
 				t.Fatalf("createTar failed: %v", err)
@@ -103,7 +103,7 @@ func TestTarModTime(t *testing.T) {
 	os.Chtimes(filePath, modTime, modTime)
 
 	archivePath = filepath.Join(tempDir, "test.tar")
-	features = 0
+	features = fModDates
 	if err := createTar([]string{root}); err != nil {
 		t.Fatalf("createTar: %v", err)
 	}
