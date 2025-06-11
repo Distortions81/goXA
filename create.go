@@ -17,6 +17,7 @@ import (
 	"github.com/klauspost/compress/zstd"
 	gzip "github.com/klauspost/pgzip"
 	lz4 "github.com/pierrec/lz4/v4"
+	"github.com/ulikunitz/xz"
 )
 
 func compressor(w io.Writer) io.WriteCloser {
@@ -75,6 +76,12 @@ func compressor(w io.Writer) io.WriteCloser {
 			level = brotli.BestCompression
 		}
 		return brotli.NewWriterLevel(w, level)
+	case compXZ:
+		xzw, err := xz.NewWriter(w)
+		if err != nil {
+			log.Fatalf("xz init failed: %v", err)
+		}
+		return xzw
 	default:
 		lvl := gzip.BestSpeed
 		switch compSpeed {

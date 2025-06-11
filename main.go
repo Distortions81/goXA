@@ -145,7 +145,7 @@ func main() {
 		if strings.ToLower(format) == "tar" {
 			tarUseXz = true
 		} else {
-			log.Fatalf("Unknown compression: %s", compression)
+			compType = compXZ
 		}
 	case "none":
 		features.Set(fNoCompress)
