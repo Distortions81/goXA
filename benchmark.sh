@@ -8,7 +8,7 @@ fi
 set -euo pipefail
 
 # ---- config ---------------------------------------------------------------
-SIZE_GB=24
+SIZE_GB=32
 MOUNTPOINT="$(pwd)/RamDisk"
 ARCHIVE_SUBDIR="testFiles"
 SOURCE="$HOME/$ARCHIVE_SUBDIR"
