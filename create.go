@@ -5,6 +5,7 @@ import (
 	"encoding/base32"
 	"encoding/base64"
 	"encoding/binary"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -152,7 +153,11 @@ func create(inputPaths []string) error {
 	bf.Write(header)
 	files, trailerOffset := writeEntries(headerLen, bf, files)
 	trailer := writeTrailer(files)
+	start := time.Now()
 	bf.Write(trailer)
+	if time.Since(start) > time.Second {
+		fmt.Printf("writing offset table took %v\n", time.Since(start))
+	}
 	if err := bf.Flush(); err != nil {
 		log.Fatalf("flush: %v", err)
 	}
@@ -169,8 +174,12 @@ func create(inputPaths []string) error {
 	}
 	bf.Write(finalHeader)
 
+	start = time.Now()
 	if err := bf.Close(); err != nil {
 		log.Fatalf("create: close failed: %v", err)
+	}
+	if time.Since(start) > time.Second {
+		fmt.Println("flushing to disk")
 	}
 
 	if encode != "" {
