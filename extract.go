@@ -125,7 +125,7 @@ func extract(destinations []string, listOnly bool, jsonList bool) {
 		pwd = path.Clean(pwd)
 
 		archiveName := path.Base(archivePath)
-		archiveName = strings.TrimRight(archiveName, ".goxa")
+		archiveName = stripArchiveExt(archiveName)
 		destination = path.Clean(pwd + "/" + archiveName + "/")
 	}
 
