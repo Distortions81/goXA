@@ -45,7 +45,9 @@ func main() {
 	flagSet.StringVar(&archivePath, "arc", defaultArchiveName, "archive file name (extension not required)")
 	flagSet.BoolVar(&toStdOut, "stdout", false, "output archive data to stdout")
 	flagSet.BoolVar(&progress, "progress", true, "show progress bar")
+	var speedOpt string
 	flagSet.StringVar(&compression, "comp", "zstd", "compression: gzip|zstd|lz4|s2|snappy|brotli|xz|none")
+	flagSet.StringVar(&speedOpt, "speed", "fastest", "compression speed: fastest|default|better|best")
 	flagSet.StringVar(&format, "format", "goxa", "archive format: tar|goxa")
 	flagSet.StringVar(&sel, "files", "", "comma-separated list of files and directories to extract")
 	flagSet.Parse(os.Args[2:])
@@ -146,6 +148,19 @@ func main() {
 		log.Fatalf("Unknown compression: %s", compression)
 	}
 
+	switch strings.ToLower(speedOpt) {
+	case "fastest":
+		compSpeed = SpeedFastest
+	case "default":
+		compSpeed = SpeedDefault
+	case "better":
+		compSpeed = SpeedBetterCompression
+	case "best":
+		compSpeed = SpeedBestCompression
+	default:
+		log.Fatalf("Unknown speed: %s", speedOpt)
+	}
+
 	if cmdLetter == 'c' && !hasKnownArchiveExt(archivePath) {
 		if strings.ToLower(format) == "tar" {
 			if features.IsNotSet(fNoCompress) {
@@ -225,6 +240,7 @@ func showUsage() {
 	fmt.Println("  v = Verbose logging")
 	fmt.Print("  f = Force (overwrite files and ignore read errors)")
 	fmt.Println("  -comp=gzip|zstd|lz4|s2|snappy|brotli|xz|none")
+	fmt.Println("  -speed=fastest|default|better|best")
 	fmt.Println("  -format=tar|goxa")
 	fmt.Println()
 	fmt.Println("  goxa c -arc=arcFile myStuff		(similar to zip)")
