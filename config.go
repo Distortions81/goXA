@@ -59,3 +59,27 @@ type ArchiveListing struct {
 	Dirs           []ListEntry `json:"dirs"`
 	Files          []ListEntry `json:"files"`
 }
+
+// ListEntryOut is used for JSON output with Unix time.
+type ListEntryOut struct {
+	Path     string      `json:"path"`
+	Type     string      `json:"type"`
+	Size     uint64      `json:"size,omitempty"`
+	Mode     fs.FileMode `json:"mode,omitempty"`
+	ModTime  int64       `json:"modTime,omitempty"`
+	Linkname string      `json:"link,omitempty"`
+}
+
+// ArchiveListingOut mirrors ArchiveListing but uses
+// human-readable flags and Unix time.
+type ArchiveListingOut struct {
+	Version        uint16         `json:"version"`
+	Flags          []string       `json:"flags"`
+	Compression    string         `json:"compression"`
+	Checksum       string         `json:"checksum"`
+	ChecksumLength uint8          `json:"checksumLength"`
+	BlockSize      uint32         `json:"blockSize"`
+	ArchiveSize    uint64         `json:"archiveSize"`
+	Dirs           []ListEntryOut `json:"dirs"`
+	Files          []ListEntryOut `json:"files"`
+}

@@ -318,9 +318,9 @@ func extract(destinations []string, listOnly bool, jsonList bool) {
 	}
 
 	if jsonList {
-		out := ArchiveListing{
+		out := ArchiveListingOut{
 			Version:        readVersion,
-			Flags:          lfeat,
+			Flags:          flagNamesList(lfeat),
 			Compression:    compName(ctype),
 			Checksum:       checksumName(checksumType),
 			ChecksumLength: checksumLength,
@@ -329,11 +329,11 @@ func extract(destinations []string, listOnly bool, jsonList bool) {
 		}
 		for _, item := range dirList {
 			if isSelected(item.Path) {
-				out.Dirs = append(out.Dirs, ListEntry{
+				out.Dirs = append(out.Dirs, ListEntryOut{
 					Path:    item.Path,
 					Type:    "dir",
 					Mode:    item.Mode,
-					ModTime: item.ModTime,
+					ModTime: item.ModTime.Unix(),
 				})
 			}
 		}
@@ -341,12 +341,12 @@ func extract(destinations []string, listOnly bool, jsonList bool) {
 			if !isSelected(item.Path) {
 				continue
 			}
-			out.Files = append(out.Files, ListEntry{
+			out.Files = append(out.Files, ListEntryOut{
 				Path:     item.Path,
 				Type:     entryName(item.Type),
 				Size:     item.Size,
 				Mode:     item.Mode,
-				ModTime:  item.ModTime,
+				ModTime:  item.ModTime.Unix(),
 				Linkname: item.Linkname,
 			})
 		}

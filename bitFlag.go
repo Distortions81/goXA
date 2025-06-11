@@ -70,3 +70,14 @@ func flagLetters(flags BitFlags) string {
 	}
 	return out
 }
+
+// flagNamesList returns a slice of human-readable flag names.
+func flagNamesList(flags BitFlags) []string {
+	var out []string
+	for x := 0; 1<<x < fTop; x++ {
+		if flags.IsSet(1 << x) {
+			out = append(out, flagNames[x])
+		}
+	}
+	return out
+}
