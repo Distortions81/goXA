@@ -1,12 +1,21 @@
+# 🗜️ goXA – Go eXpress Archive
+
+A fast, portable archiving utility written in Go.
+
+> **Pronounced**:  
+> - **Phonetic**: `go-eks-ah`  
+> - **IPA**: `/ˈɡoʊ.ɛks.ɑ/`  
+
 <img src="https://github.com/Distortions81/goXA/blob/main/Xango.png?raw=true" alt="Xango the Archivist" width="300"/>
 
 ### Xango the Pangolin Archivist
 
-"An archive isn’t only storage—it’s a promise to the future."
+> _"An archive isn’t only storage — it’s a promise to the future."_
 
-# GoXA — Go eXpress Archive
+Create, list, and extract `.goxa` format or standard tar files.  
+Compression and checksums are optional, and you can stream archives directly to stdout.
 
-GoXA is a lightweight archiving tool written in Go. It can create, list and extract its own `.goxa` format or standard tar files. Compression and checksums are optional and you can stream archives directly to stdout.
+---
 
 ## Features
 
@@ -17,7 +26,7 @@ GoXA is a lightweight archiving tool written in Go. It can create, list and extr
 - Archives symlinks and special files
 - Automatic format detection
 - Progress bar with transfer speed and current file
-- Base32, Base64 and FEC encoding when the archive name ends with `.b32`, `.b64` or `.goxaf`
+- Base32, Base64 and FEC `error correcting` encoding when the archive name ends with `.b32`, `.b64` or `.goxaf`
 - Fully documented format: see [FILE-FORMAT.md](FILE-FORMAT.md) and [JSON-LIST-FORMAT.md](JSON-LIST-FORMAT.md)
 
 ## Installation
@@ -93,7 +102,7 @@ Progress shows transfer speed and current file. Snappy does not support adjustab
 
 ### Base32 / Base64 / FEC
 
-Appending `.b32` or `.b64` to the archive file encodes the archive in Base32 or Base64. Files ending in `.goxaf` are FEC encoded. FEC archives contain data and parity shards; any missing shards up to the parity count can be reconstructed when extracting. For example, with `-fec-data=10 -fec-parity=3` the archive is split into 13 shards. Any 10 shards are enough to fully recover the data. Presets are:
+Appending `.b32` or `.b64` to the archive file encodes the archive in Base32 or Base64. Files ending in `.goxaf` are FEC `error correcting` encoded. FEC archives contain data and parity shards; any missing shards up to the parity count can be reconstructed when extracting. For example, with `-fec-data=10 -fec-parity=3` the archive is split into 13 shards. Any 10 shards are enough to fully recover the data. Presets are:
 
 ```
 low    -> 10 data / 3 parity
@@ -109,7 +118,7 @@ goxa c -arc=backup.goxaf mydir/       # FEC encoded archive
 goxa c -arc=backup.goxaf -fec-parity=5 mydir/
 ```
 
-## Examples
+## General Use Examples
 
 ```bash
 goxa c -arc=mybackup.goxa myStuff/            # create archive
