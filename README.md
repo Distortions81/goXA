@@ -6,8 +6,6 @@
 ## Xango the Pangolin Archivist
 GoXA is a small archiver written in Go. It's quick and friendly, though still learning new tricks. Let us know if you spot a bug.
 
-### New format coming soon, with data blocks for better multi-threaded compression.
-
 ## Features
 
 - Fast archive creation and extraction
