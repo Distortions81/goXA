@@ -32,6 +32,13 @@ A fast, portable archiving utility written in Go.
 - Base32, Base64 and FEC `forward error correcting` encoding when the archive name ends with `.b32`, `.b64` or `.goxaf`
 - Fully documented format: see [FILE-FORMAT.md](FILE-FORMAT.md) and [JSON-LIST-FORMAT.md](JSON-LIST-FORMAT.md)
 
+## Default Behavior
+
+GoXA is conservative by default. Archives only store relative paths by default and hidden files are skipped unless `i` is specified. Checksums use fast but strong Blake3 hashes. Existing files are never overwritten unless the `f` flag is given. Zip bombs and free space are checked automatically. The
+progress display is enabled for all interactive runs and the program prompts when an archive was created with extra flags so you can confirm them. You always supply the archive name with `-arc` to avoid surprises.
+
+Data is written in large 512KiB blocks for high throughput. Each archive ends with a trailer that records the offset of every block so readers can jump directly to any part of any file. The block system is designed for future multi-threaded readers and writers.
+
 ## Installation
 
 With Go 1.24+ you can install directly:
@@ -64,8 +71,7 @@ goxa MODE[flags] [options] -arc FILE [paths...]
 - Selecting `-stdout` or using `j` suppresses progress and informational output.
 - `x` – extract files
 
-Single letter flags follow the mode, e.g. `goxa cpm -arc=out.goxa dir/`.
-Longer options use the usual `-flag=value` form.
+Single letter flags follow the mode, e.g. `goxa cpm -arc=out.goxa dir/`. Longer options use the usual `-flag=value` form.
 
 ### Common Flags
 
@@ -83,10 +89,7 @@ Longer options use the usual `-flag=value` form.
 | `v` | verbose output |
 | `f` | force overwrite / ignore read errors |
 
-When extracting, the program prompts if the archive was created with
-flags you did not specify. It will ask which missing flags to enable, or
-`u` to enable all. Press Enter to continue without them. Use
-`-interactive=false` to skip prompts.
+When extracting, the program prompts if the archive was created with flags you did not specify. It will ask which missing flags to enable, or `u` to enable all. Press Enter to continue without them. Use `-interactive=false` to skip prompts.
 
 ### Options
 
@@ -115,7 +118,8 @@ Progress shows transfer speed and current file. Snappy does not support adjustab
 
 ### Base32 / Base64 / FEC
 
-Appending `.b32` or `.b64` to the archive file encodes the archive in Base32 or Base64. Files ending in `.goxaf` are FEC `error correcting` encoded. FEC archives contain data and parity shards using Reed-Solomon codes; any missing shards up to the parity count can be reconstructed when extracting. For example, with `-fec-data=10 -fec-parity=3` the archive is split into 13 shards. Any 10 shards are enough to fully recover the data. Presets are:
+Appending `.b32` or `.b64` to the archive file encodes the archive in Base32 or Base64. Files ending in `.goxaf` are FEC `error correcting` encoded. FEC archives contain data and parity shards using Reed-Solomon codes; any missing shards up to the parity count can be reconstructed when extracting.
+For example, with `-fec-data=10 -fec-parity=3` the archive is split into 13 shards. Any 10 shards are enough to fully recover the data. Presets are:
 
 ```
 low    -> 10 data / 3 parity
