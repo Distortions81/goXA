@@ -9,8 +9,8 @@ var (
 	archivePath                              string
 	verboseMode, doForce, toStdOut, progress bool
 	quietMode                                bool
-	interactiveMode                          bool = true
-	features                                 BitFlags
+	interactiveMode                          bool     = true
+	features                                 BitFlags = fChecksums
 	useArchiveFlags                          bool
 	compression                              string
 	encode                                   string

@@ -64,7 +64,7 @@ goxa MODE[flags] [options] -arc FILE [paths...]
 - Selecting `-stdout` or using `j` suppresses progress and informational output.
 - `x` – extract files
 
-Single letter flags follow the mode, e.g. `goxa cpms -arc=out.goxa dir/`.
+Single letter flags follow the mode, e.g. `goxa cpm -arc=out.goxa dir/`.
 Longer options use the usual `-flag=value` form.
 
 ### Common Flags
@@ -74,7 +74,7 @@ Longer options use the usual `-flag=value` form.
 | `a` | store absolute paths |
 | `p` | preserve permissions |
 | `m` | preserve modification times |
-| `s` | no checksums |
+| `s` | disable checksums |
 | `b` | per-block checksums |
 | `n` | disable compression |
 | `i` | include hidden files |

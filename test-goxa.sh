@@ -71,48 +71,48 @@ validate() {
 }
 
 # goxa archive with compression
-"$GOXA" cpmsi -interactive=false -progress=false -arc "$TMPDIR/test.goxa" "$SRC"
-"$GOXA" xpmsi -interactive=false -progress=false -arc "$TMPDIR/test.goxa" "$OUT/comp"
+"$GOXA" cpmi -interactive=false -progress=false -arc "$TMPDIR/test.goxa" "$SRC"
+"$GOXA" xpmi -interactive=false -progress=false -arc "$TMPDIR/test.goxa" "$OUT/comp"
 validate "$SRC" "$OUT/comp/$ORIG_NAME" "compressed"
 
 echo "compressed archive ok"
 
 # no compression
-"$GOXA" cpmsin -interactive=false -progress=false -arc "$TMPDIR/test_nocomp.goxa" "$SRC"
-"$GOXA" xpmsi -interactive=false -progress=false -arc "$TMPDIR/test_nocomp.goxa" "$OUT/nocomp"
+"$GOXA" cpmin -interactive=false -progress=false -arc "$TMPDIR/test_nocomp.goxa" "$SRC"
+"$GOXA" xpmi -interactive=false -progress=false -arc "$TMPDIR/test_nocomp.goxa" "$OUT/nocomp"
 validate "$SRC" "$OUT/nocomp/$ORIG_NAME" "nocomp"
 
 echo "no compression archive ok"
 
 # Base64 and Base32 encoding
-"$GOXA" cpmsi -interactive=false -progress=false -arc "$TMPDIR/test_b64.goxa.b64" "$SRC"
-"$GOXA" xpmsi -interactive=false -progress=false -arc "$TMPDIR/test_b64.goxa.b64" "$OUT/b64"
+"$GOXA" cpmi -interactive=false -progress=false -arc "$TMPDIR/test_b64.goxa.b64" "$SRC"
+"$GOXA" xpmi -interactive=false -progress=false -arc "$TMPDIR/test_b64.goxa.b64" "$OUT/b64"
 validate "$SRC" "$OUT/b64/$ORIG_NAME" "base64"
 
-"$GOXA" cpmsi -interactive=false -progress=false -arc "$TMPDIR/test_b32.goxa.b32" "$SRC"
-"$GOXA" xpmsi -interactive=false -progress=false -arc "$TMPDIR/test_b32.goxa.b32" "$OUT/b32"
+"$GOXA" cpmi -interactive=false -progress=false -arc "$TMPDIR/test_b32.goxa.b32" "$SRC"
+"$GOXA" xpmi -interactive=false -progress=false -arc "$TMPDIR/test_b32.goxa.b32" "$OUT/b32"
 validate "$SRC" "$OUT/b32/$ORIG_NAME" "base32"
 
 echo "encoding tests ok"
 
 # FEC encoding with high redundancy
-"$GOXA" cpmsi -interactive=false -progress=false -fec-level=high -arc "$TMPDIR/test_fec.goxaf" "$SRC"
-"$GOXA" xpmsi -interactive=false -progress=false -arc "$TMPDIR/test_fec.goxaf" "$OUT/fec"
+"$GOXA" cpmi -interactive=false -progress=false -fec-level=high -arc "$TMPDIR/test_fec.goxaf" "$SRC"
+"$GOXA" xpmi -interactive=false -progress=false -arc "$TMPDIR/test_fec.goxaf" "$OUT/fec"
 validate "$SRC" "$OUT/fec/$ORIG_NAME" "fec"
 
 echo "fec archive ok"
 
 # Tar formats
-"$GOXA" cpmsi -interactive=false -progress=false -arc "$TMPDIR/test.tar.gz" "$SRC"
-"$GOXA" xpmsi -interactive=false -progress=false -arc "$TMPDIR/test.tar.gz" "$OUT/targz"
+"$GOXA" cpmi -interactive=false -progress=false -arc "$TMPDIR/test.tar.gz" "$SRC"
+"$GOXA" xpmi -interactive=false -progress=false -arc "$TMPDIR/test.tar.gz" "$OUT/targz"
 validate "$SRC" "$OUT/targz/$ORIG_NAME" "targz"
 
-"$GOXA" cpmsi -interactive=false -progress=false -arc "$TMPDIR/test.tar.xz" "$SRC"
-"$GOXA" xpmsi -interactive=false -progress=false -arc "$TMPDIR/test.tar.xz" "$OUT/tarxz"
+"$GOXA" cpmi -interactive=false -progress=false -arc "$TMPDIR/test.tar.xz" "$SRC"
+"$GOXA" xpmi -interactive=false -progress=false -arc "$TMPDIR/test.tar.xz" "$OUT/tarxz"
 validate "$SRC" "$OUT/tarxz/$ORIG_NAME" "tarxz"
 
-"$GOXA" cpmsin -interactive=false -progress=false -arc "$TMPDIR/test.tar" "$SRC"
-"$GOXA" xpmsi -interactive=false -progress=false -arc "$TMPDIR/test.tar" "$OUT/tar"
+"$GOXA" cpmin -interactive=false -progress=false -arc "$TMPDIR/test.tar" "$SRC"
+"$GOXA" xpmi -interactive=false -progress=false -arc "$TMPDIR/test.tar" "$OUT/tar"
 validate "$SRC" "$OUT/tar/$ORIG_NAME" "tar"
 
 echo "tar format tests ok"
@@ -129,7 +129,7 @@ echo "listing commands ok"
 
 # Extract specific file
 mkdir -p "$OUT/partial"
-"$GOXA" xpmsi -interactive=false -progress=false -arc "$TMPDIR/test.goxa" -files "$ORIG_NAME/file_1.bin" "$OUT/partial"
+"$GOXA" xpmi -interactive=false -progress=false -arc "$TMPDIR/test.goxa" -files "$ORIG_NAME/file_1.bin" "$OUT/partial"
 if [ ! -f "$OUT/partial/$ORIG_NAME/file_1.bin" ]; then
   echo "selected file missing" >&2
   exit 1
@@ -142,8 +142,8 @@ fi
 echo "partial extraction ok"
 
 # Stdout archive
-"$GOXA" cpmsi -interactive=false -progress=false -stdout -arc dummy "$SRC" >"$TMPDIR/stdout.goxa"
-"$GOXA" xpmsi -interactive=false -progress=false -arc "$TMPDIR/stdout.goxa" "$OUT/stdout"
+"$GOXA" cpmi -interactive=false -progress=false -stdout -arc dummy "$SRC" >"$TMPDIR/stdout.goxa"
+"$GOXA" xpmi -interactive=false -progress=false -arc "$TMPDIR/stdout.goxa" "$OUT/stdout"
 validate "$SRC" "$OUT/stdout/$ORIG_NAME" "stdout"
 
 echo "stdout handling ok"

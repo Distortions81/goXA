@@ -14,7 +14,7 @@ func resetGlobals() {
 	toStdOut = false
 	progress = false
 	quietMode = false
-	features = 0
+	features = fChecksums
 	compression = ""
 	extractList = nil
 	tarUseXz = false

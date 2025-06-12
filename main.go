@@ -160,7 +160,7 @@ func main() {
 		case 'm':
 			features.Set(fModDates)
 		case 's':
-			features.Set(fChecksums)
+			features.Clear(fChecksums)
 		case 'b':
 			features.Set(fChecksums)
 			features.Set(fBlockChecksums)
@@ -318,7 +318,7 @@ func showUsage() {
 	fmt.Println()
 	fmt.Println("Flags (append after the mode letter):")
 	fmt.Println("  a  store absolute paths         p  preserve permissions")
-	fmt.Println("  m  preserve modification times  s  include checksums")
+	fmt.Println("  m  preserve modification times  s  disable checksums")
 	fmt.Println("  b  per-block checksums          n  disable compression")
 	fmt.Println("  i  include hidden files         o  allow special files")
 	fmt.Println("  u  use flags from archive       v  verbose output")
