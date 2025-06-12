@@ -234,7 +234,7 @@ func detectFormatFromHeader(name string) (string, bool, bool) {
 }
 
 func doLog(verbose bool, format string, args ...interface{}) {
-	if toStdOut || (!verboseMode && verbose) {
+	if quietMode || toStdOut || (!verboseMode && verbose) {
 		return
 	}
 

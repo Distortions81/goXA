@@ -8,6 +8,7 @@ import (
 var (
 	archivePath                              string
 	verboseMode, doForce, toStdOut, progress bool
+	quietMode                                bool
 	interactiveMode                          bool = true
 	features                                 BitFlags
 	useArchiveFlags                          bool

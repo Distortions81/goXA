@@ -86,6 +86,10 @@ func main() {
 	var showVer bool
 	flagSet.BoolVar(&showVer, "version", false, "print version and exit")
 	flagSet.Parse(os.Args[2:])
+	quietMode = toStdOut || cmdLetter == 'j'
+	if quietMode {
+		progress = false
+	}
 	switch fecLevel {
 	case "low":
 		fecDataShards, fecParityShards = 10, 3
