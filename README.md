@@ -29,6 +29,7 @@ A fast, portable archiving utility written in Go.
 - Optionally include dotfiles (hidden/invis)
 - Automatic format detection
 - Progress bar with transfer speed and current file
+- Final flush to disk so removable drives aren't yanked before data is safe
 - Base32, Base64 and FEC `forward error correcting` encoding when the archive name ends with `.b32`, `.b64` or `.goxaf`
 - Fully documented format: see [FILE-FORMAT.md](FILE-FORMAT.md) and [JSON-LIST-FORMAT.md](JSON-LIST-FORMAT.md)
 
@@ -106,6 +107,7 @@ flags you did not specify. It will ask which missing flags to enable, or
 | `-failonchange` | treat changed files as fatal errors |
 | `-bombcheck=false` | disable zip bomb detection |
 | `-spacecheck=false` | disable free space check |
+| `-noflush` | skip final disk flush |
 | `-version` | print program version |
 | `-fec-data` | number of FEC data shards |
 | `-fec-parity` | number of FEC parity shards |
