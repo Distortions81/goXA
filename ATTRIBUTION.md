@@ -8,12 +8,14 @@ This project uses open-source software. Below is a list of third-party libraries
 
 The following components are licensed under the MIT License:
 
-- github.com/andybalholm/brotli v1.1.1  
-- github.com/dustin/go-humanize v1.0.1  
-- github.com/remeh/sizedwaitgroup v1.0.0  
-- github.com/sigurn/crc16 v0.0.0-20240131213347-83fcde1e29d1  
-- github.com/zeebo/blake3 v0.2.4  
-- github.com/zeebo/xxh3 v1.0.2  
+- github.com/andybalholm/brotli v1.1.1
+- github.com/dustin/go-humanize v1.0.1
+- github.com/klauspost/cpuid/v2 v2.2.8 (indirect)
+- github.com/klauspost/reedsolomon v1.12.4
+- github.com/remeh/sizedwaitgroup v1.0.0
+- github.com/sigurn/crc16 v0.0.0-20240131213347-83fcde1e29d1
+- github.com/zeebo/blake3 v0.2.4
+- github.com/zeebo/xxh3 v1.0.2
 
 ---
 
@@ -24,11 +26,10 @@ The following components are licensed under the BSD 3-Clause "New" or "Revised" 
 - github.com/golang/snappy v1.0.0  
 - github.com/klauspost/compress v1.18.0  
 - github.com/klauspost/pgzip v1.2.6  
-- github.com/pierrec/lz4/v4 v4.1.22  
-- github.com/ulikunitz/xz v0.5.12  
-- github.com/klauspost/cpuid/v2 v2.0.12 (indirect)  
-- golang.org/x/term v0.32.0  
-- golang.org/x/sys v0.33.0 (indirect)  
+- github.com/pierrec/lz4/v4 v4.1.22
+- github.com/ulikunitz/xz v0.5.12
+- golang.org/x/term v0.32.0
+- golang.org/x/sys v0.33.0 (indirect)
 
 ---
 
