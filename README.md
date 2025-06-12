@@ -112,7 +112,7 @@ When extracting, the program prompts if the archive was created with flags you d
 | `-spacecheck=false` | disable free space check |
 | `-noflush` | skip final disk flush |
 | `-version` | print program version |
-| `-pgo` | run built-in PGO training |
+| `-pgo` | run built-in PGO training (10k files \~2GB total, s-curve around 150KB) |
 | `-fec-data` | number of FEC data shards |
 | `-fec-parity` | number of FEC parity shards |
 | `-fec-level` | redundancy preset: low, medium or high |
@@ -144,7 +144,7 @@ goxa c -arc=backup.goxaf -fec-parity=5 mydir/
 goxa c -arc=mybackup.goxa myStuff/            # create archive
 goxa x -arc=mybackup.goxa                     # extract
 goxa l -arc=mybackup.goxa                     # list contents
-goxa -pgo                                     # generate default.pgo profile
+goxa -pgo                                     # generate default.pgo profile using 10k files (~2GB)
 goxa c -arc=mybackup.tar.gz myStuff/          # create tar.gz
 goxa x -arc=mybackup.tar.xz                   # extract tar.xz
 goxa c -arc=mybackup.goxa -stdout myStuff/ | ssh host "cat > backup.goxa"
