@@ -69,5 +69,11 @@ func (bf *BufferedFile) Close() error {
 		bf.file.Close()
 		return err
 	}
+	if !noFlush {
+		if err := bf.file.Sync(); err != nil {
+			bf.file.Close()
+			return err
+		}
+	}
 	return bf.file.Close()
 }

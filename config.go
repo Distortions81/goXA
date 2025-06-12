@@ -29,6 +29,7 @@ var (
 	failOnChange                             bool   = false
 	bombCheck                                bool   = true
 	spaceCheck                               bool   = true
+	noFlush                                  bool   = false
 )
 
 type FileEntry struct {

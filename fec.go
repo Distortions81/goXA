@@ -65,6 +65,11 @@ func encodeWithFEC(inPath, outPath string) error {
 	}
 	close(done)
 	<-finished
+	if !noFlush {
+		if err := out.Sync(); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -137,6 +142,9 @@ func decodeWithFEC(name string) (string, func(), error) {
 		tmp.Close()
 		os.Remove(tmp.Name())
 		return "", nil, err
+	}
+	if !noFlush {
+		tmp.Sync()
 	}
 	tmp.Close()
 	close(done)

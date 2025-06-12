@@ -86,6 +86,7 @@ func main() {
 	flagSet.BoolVar(&failOnChange, "failonchange", false, "treat file change after retries as fatal")
 	flagSet.BoolVar(&bombCheck, "bombcheck", true, "detect extremely compressed files")
 	flagSet.BoolVar(&spaceCheck, "spacecheck", true, "verify free disk space before operations")
+	flagSet.BoolVar(&noFlush, "noflush", false, "skip final disk flush")
 	var showVer bool
 	flagSet.BoolVar(&showVer, "version", false, "print version and exit")
 	flagSet.Parse(os.Args[2:])
@@ -340,6 +341,7 @@ func showUsage() {
 	fmt.Println("  -failonchange   treat changed files as fatal errors")
 	fmt.Println("  -bombcheck=false disable zip bomb detection")
 	fmt.Println("  -spacecheck=false disable free space check")
+	fmt.Println("  -noflush        skip final disk flush")
 	fmt.Println("  -version        print program version")
 	fmt.Println("  -fec-data N     number of FEC data shards (default 10)")
 	fmt.Println("  -fec-parity N   number of FEC parity shards (default 3)")

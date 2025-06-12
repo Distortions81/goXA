@@ -23,6 +23,7 @@ func resetGlobals() {
 	fileRetries = 3
 	fileRetryDelay = 5
 	failOnChange = false
+	noFlush = false
 	bombCheck = true
 }
 
