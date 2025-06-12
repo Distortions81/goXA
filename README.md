@@ -26,6 +26,7 @@ A fast, portable archiving utility written in Go.
 - Default checksums: Blake3 `Other options: CRC32, CRC16, XXHash3, SHA-256`
 - Optionally preserve permissions and modification times
 - Optionally include symlinks and special files
+- Optionally include dotfiles (hidden/invis)
 - Automatic format detection
 - Progress bar with transfer speed and current file
 - Base32, Base64 and FEC `forward error correcting` encoding when the archive name ends with `.b32`, `.b64` or `.goxaf`
