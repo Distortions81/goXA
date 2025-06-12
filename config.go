@@ -28,6 +28,7 @@ var (
 	fileRetryDelay                           int    = 5
 	failOnChange                             bool   = false
 	bombCheck                                bool   = true
+	spaceCheck                               bool   = true
 )
 
 type FileEntry struct {

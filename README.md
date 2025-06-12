@@ -104,6 +104,7 @@ flags you did not specify. It will ask which missing flags to enable, or
 | `-retrydelay` | seconds to wait between retries |
 | `-failonchange` | treat changed files as fatal errors |
 | `-bombcheck=false` | disable zip bomb detection |
+| `-spacecheck=false` | disable free space check |
 | `-version` | print program version |
 | `-fec-data` | number of FEC data shards |
 | `-fec-parity` | number of FEC parity shards |
