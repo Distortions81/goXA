@@ -501,6 +501,32 @@ func extract(destinations []string, listOnly bool, jsonList bool) {
 		totalBytes += int64(entry.Size)
 	}
 
+	if spaceCheck && !listOnly {
+		free, total, err := getDiskSpace(destination)
+		if err != nil {
+			doLog(false, "warning: free space check failed: %v", err)
+		} else {
+			need := uint64(totalBytes)
+			if need > free {
+				log.Fatalf("extract: insufficient disk space: need %v, available %v", humanize.Bytes(need), humanize.Bytes(free))
+			}
+			if free-need < total/100 {
+				msg := fmt.Sprintf("extract would leave %v free", humanize.Bytes(free-need))
+				if interactiveMode {
+					fmt.Printf("%s. Continue? [y/N]: ", msg)
+					reader := bufio.NewReader(os.Stdin)
+					resp, _ := reader.ReadString('\n')
+					resp = strings.TrimSpace(strings.ToLower(resp))
+					if resp != "y" && resp != "yes" {
+						log.Fatalf("aborted: %s", msg)
+					}
+				} else {
+					log.Fatalf("%s", msg)
+				}
+			}
+		}
+	}
+
 	p, done, finished := progressTicker(&progressData{total: totalBytes, speedWindowSize: time.Second * 5})
 	defer func() {
 		close(done)
