@@ -12,6 +12,7 @@ GoXA aims to be a modern replacement for classic archivers such as `tar`. The de
 * **Space check** – before writing or extracting an archive GoXA verifies there is enough free space so operations do not stop midway.
 * **Interactive prompts** – when an archive was created with flags you did not specify, GoXA asks before enabling them. This makes unexpected behaviour explicit.
 * **Progress bar** – a clear progress display is shown for interactive runs so you know the program is working or detect possible issues.
+* **Disk sync** – output files are flushed to disk before closing so removable drives aren't pulled while data is still in kernel buffers. Syncing ensures data is fully written before devices are detached.
 * **`-arc` required** – the archive name is always supplied explicitly which avoids mistakes when scripts are moved between directories.
 
 ## Performance Choices

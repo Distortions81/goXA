@@ -273,6 +273,11 @@ func create(inputPaths []string) error {
 				log.Fatalf("encode copy: %v", err)
 			}
 			encW.Close()
+			if !toStdOut && !noFlush {
+				if f, ok := dst.(*os.File); ok {
+					f.Sync()
+				}
+			}
 			src.Close()
 			close(done)
 			<-finished
