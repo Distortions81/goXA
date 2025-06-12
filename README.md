@@ -22,7 +22,7 @@ A fast, portable archiving utility written in Go.
 ## Features
 
 - Fast archive creation and extraction
-- Compression: gzip, zstd, lz4, s2, snappy, brotli or xz (default `zstd`)
+- Default compression: zstd `Other options gzip, lz4, s2, snappy, brotli or xz1`
 - Default checksums: Blake3 `Other options: CRC32, CRC16, XXHash3, SHA-256`
 - Optionally preserve permissions and modification times
 - Optionally include symlinks and special files
