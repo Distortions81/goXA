@@ -15,7 +15,7 @@ A fast, portable archiving utility written in Go.
 
 > ⚠️ **Warning: goXA is not yet complete.**  
 > This project is under active development — expect **breaking changes**, incomplete features, and **bugs**.  
-> Please report any [issues](https://github.com/Distortions81/goXA/issues).
+> Please report any [issues](https://github.com/Distortions81/goXA/issues) and the [dev-branch](https://github.com/Distortions81/goXA/tree/dev-branch).
 
 ---
 
