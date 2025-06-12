@@ -1,4 +1,4 @@
-module goXA
+module goxa
 
 go 1.24.1
 
