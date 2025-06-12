@@ -121,7 +121,7 @@ echo "tar format tests ok"
 "$GOXA" l -interactive=false -progress=false -arc "$TMPDIR/test.goxa" >"$TMPDIR/list.txt"
 grep -q "file_1.bin" "$TMPDIR/list.txt"
 
-"$GOXA" j -interactive=false -progress=false -arc "$TMPDIR/test.goxa" | sed -n '/^{/,$p' >"$TMPDIR/list.json"
+"$GOXA" j -interactive=false -progress=false -stdout -arc "$TMPDIR/test.goxa" >"$TMPDIR/list.json"
 python3 -m json.tool "$TMPDIR/list.json" >/dev/null
 grep -q "file_1.bin" "$TMPDIR/list.json"
 
