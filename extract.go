@@ -193,7 +193,7 @@ func extract(destinations []string, listOnly bool, jsonList bool) {
 	if err := binary.Read(arc, binary.LittleEndian, &readVersion); err != nil {
 		log.Fatalf("extract: failed to read version: %v", err)
 	}
-	if readVersion != version1 && readVersion != version2 {
+	if readVersion != protoVersion2 {
 		log.Fatalf("extract: Archive is of an unsupported version: %v", readVersion)
 	}
 
@@ -204,7 +204,7 @@ func extract(destinations []string, listOnly bool, jsonList bool) {
 	showFeatures(lfeat)
 
 	ctype := compGzip
-	if readVersion >= version2 {
+	if readVersion >= protoVersion2 {
 		if err := binary.Read(arc, binary.LittleEndian, &ctype); err != nil {
 			log.Fatalf("extract: failed to read compression type: %v", err)
 		}
@@ -276,7 +276,7 @@ func extract(destinations []string, listOnly bool, jsonList bool) {
 	var blkSize uint32 = blockSize
 	var trailerOffset uint64
 	var arcSize uint64
-	if readVersion >= version2 {
+	if readVersion >= protoVersion2 {
 		if err := binary.Read(arc, binary.LittleEndian, &blkSize); err != nil {
 			log.Fatalf("extract: failed to read block size: %v", err)
 		}
@@ -285,7 +285,7 @@ func extract(destinations []string, listOnly bool, jsonList bool) {
 		}
 		blockSize = blkSize
 	}
-	if readVersion >= version2 {
+	if readVersion >= protoVersion2 {
 		if err := binary.Read(arc, binary.LittleEndian, &arcSize); err != nil {
 			log.Fatalf("extract: failed to read archive size: %v", err)
 		}
@@ -367,7 +367,7 @@ func extract(destinations []string, listOnly bool, jsonList bool) {
 			}
 		}
 		var changedFlag uint8
-		if readVersion >= version2 {
+		if readVersion >= protoVersion2 {
 			if err := binary.Read(arc, binary.LittleEndian, &changedFlag); err != nil {
 				log.Fatalf("extract: failed to read changed flag: %v", err)
 			}
@@ -439,7 +439,7 @@ func extract(destinations []string, listOnly bool, jsonList bool) {
 		return
 	}
 
-	if readVersion >= version2 {
+	if readVersion >= protoVersion2 {
 		hdrSum := make([]byte, checksumLength)
 		if _, err := io.ReadFull(arc, hdrSum); err != nil {
 			log.Fatalf("extract: failed to read header checksum: %v", err)

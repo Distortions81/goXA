@@ -259,7 +259,7 @@ func writeHeader(emptyDirs, files []FileEntry, trailerOffset, arcSize uint64, fl
 	var header bytes.Buffer
 
 	binary.Write(&header, binary.LittleEndian, []byte(magic))
-	binary.Write(&header, binary.LittleEndian, uint16(version))
+	binary.Write(&header, binary.LittleEndian, uint16(protoVersion))
 	binary.Write(&header, binary.LittleEndian, flags)
 	binary.Write(&header, binary.LittleEndian, cType)
 	binary.Write(&header, binary.LittleEndian, checksumType)
@@ -299,7 +299,7 @@ func writeHeader(emptyDirs, files []FileEntry, trailerOffset, arcSize uint64, fl
 				log.Fatalf("write string failed: %v", err)
 			}
 		}
-		if version >= version2 {
+		if protoVersion >= protoVersion2 {
 			if file.Changed {
 				header.WriteByte(1)
 			} else {

@@ -19,7 +19,7 @@ var (
 	checksumLength                           uint8 = defaultChecksumLen
 	tarUseXz                                 bool
 	extractList                              []string
-	version                                  uint16 = version2
+	protoVersion                             uint16 = protoVersion2
 	blockSize                                uint32 = defaultBlockSize
 	fecDataShards                            int    = 10
 	fecParityShards                          int    = 3

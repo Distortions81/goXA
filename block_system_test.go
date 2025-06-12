@@ -80,7 +80,7 @@ func parseArchive(t *testing.T, path string) []FileEntry {
 	var blkSize uint32 = blockSize
 	var trailerOff uint64
 	var arcSize uint64
-	if ver >= version2 {
+	if ver >= protoVersion2 {
 		if err := binary.Read(arc, binary.LittleEndian, &ctype); err != nil {
 			t.Fatalf("read compression type: %v", err)
 		}
@@ -92,7 +92,7 @@ func parseArchive(t *testing.T, path string) []FileEntry {
 			t.Fatalf("read checksum length: %v", err)
 		}
 	}
-	if ver >= version2 {
+	if ver >= protoVersion2 {
 		if err := binary.Read(arc, binary.LittleEndian, &blkSize); err != nil {
 			t.Fatalf("read block size: %v", err)
 		}
@@ -100,7 +100,7 @@ func parseArchive(t *testing.T, path string) []FileEntry {
 			t.Fatalf("read trailer offset: %v", err)
 		}
 	}
-	if ver >= version2 {
+	if ver >= protoVersion2 {
 		if err := binary.Read(arc, binary.LittleEndian, &arcSize); err != nil {
 			t.Fatalf("read archive size: %v", err)
 		}
@@ -154,14 +154,14 @@ func parseArchive(t *testing.T, path string) []FileEntry {
 			}
 		}
 		var changed uint8
-		if ver >= version2 {
+		if ver >= protoVersion2 {
 			if err := binary.Read(arc, binary.LittleEndian, &changed); err != nil {
 				t.Fatalf("read changed flag: %v", err)
 			}
 		}
 		files[i] = FileEntry{Path: path, Size: size, Mode: fs.FileMode(mode), ModTime: time.Unix(mt, 0).UTC(), Type: typ, Changed: changed != 0}
 	}
-	if ver >= version2 {
+	if ver >= protoVersion2 {
 		hdrSum := make([]byte, checksumLength)
 		if _, err := io.ReadFull(arc, hdrSum); err != nil {
 			t.Fatalf("read header checksum: %v", err)
@@ -202,7 +202,7 @@ func TestBlockArchiveLargeFiles(t *testing.T) {
 
 	archivePath = filepath.Join(tempDir, "test.goxa")
 	features = fNoCompress
-	version = version2
+	protoVersion = protoVersion2
 	toStdOut = false
 	doForce = false
 

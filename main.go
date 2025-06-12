@@ -43,7 +43,7 @@ func main() {
 		fs.BoolVar(&showHelp, "h", false, "show help")
 		fs.Parse(os.Args[1:])
 		if showVer {
-			fmt.Println(version)
+			fmt.Println("goXA v" + appVersion)
 			return
 		}
 		showUsage()
@@ -100,7 +100,7 @@ func main() {
 		log.Fatalf("invalid fec-level: %s", fecLevel)
 	}
 	if showVer {
-		fmt.Println(version)
+		fmt.Println("goXA v" + appVersion)
 		return
 	}
 

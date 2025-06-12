@@ -38,7 +38,7 @@ func TestAllCompressions(t *testing.T) {
 			archivePath = filepath.Join(tempDir, "test.goxa")
 			features = tc.flag
 			compType = tc.ctype
-			version = version2
+			protoVersion = protoVersion2
 			toStdOut = false
 			doForce = false
 

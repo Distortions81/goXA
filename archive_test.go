@@ -81,7 +81,7 @@ func TestArchiveScenarios(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			features = 0
-			version = version2
+			protoVersion = protoVersion2
 
 			tempDir := t.TempDir()
 			root := filepath.Join(tempDir, "root")
@@ -161,7 +161,7 @@ func TestArchiveParentRelative(t *testing.T) {
 
 	archivePath = filepath.Join(tempDir, "test.goxa")
 	features = 0
-	version = version2
+	protoVersion = protoVersion2
 	toStdOut = false
 	doForce = false
 
@@ -205,7 +205,7 @@ func TestSymlinkAndHardlink(t *testing.T) {
 
 	archivePath = filepath.Join(tempDir, "test.goxa")
 	features = fSpecialFiles
-	version = version2
+	protoVersion = protoVersion2
 	toStdOut = false
 	doForce = false
 
@@ -298,7 +298,7 @@ func TestBaseEncoding(t *testing.T) {
 		}
 		encode = tc.enc
 		features = 0
-		version = version2
+		protoVersion = protoVersion2
 		toStdOut = false
 		doForce = false
 
@@ -335,7 +335,7 @@ func TestFECParityOption(t *testing.T) {
 	fecParityShards = 5
 	fecDataShards = 10
 	features = 0
-	version = version2
+	protoVersion = protoVersion2
 	toStdOut = false
 	doForce = false
 

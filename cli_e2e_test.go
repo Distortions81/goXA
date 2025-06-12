@@ -17,7 +17,7 @@ func resetGlobals() {
 	compression = ""
 	extractList = nil
 	tarUseXz = false
-	version = version2
+	protoVersion = protoVersion2
 	blockSize = defaultBlockSize
 	fileRetries = 3
 	fileRetryDelay = 5

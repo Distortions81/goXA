@@ -1,9 +1,9 @@
 package main
 
 const (
-	magic    = "GOXA"
-	version1 = 1
-	version2 = 2
+	magic         = "GOXA"
+	appVersion    = "0.0.91"
+	protoVersion2 = 2
 
 	readBuffer         = 1000 * 1000 * 1 //MiB
 	writeBuffer        = readBuffer
