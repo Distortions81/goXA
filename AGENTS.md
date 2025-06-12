@@ -15,6 +15,7 @@ These instructions apply to all files in this repository.
 - Update goxa.1 man when you add new flags or change usage examples. The man file should be verbose, detailed and technical.
 - Update FILE-FORMAT.md if the archive format is modified
 - Update JSON-LIST-FORMAT.md if you edit the json file listing output format.
+- Update ATTRIBUTION.md if you add or remove imports (check go.mod)
 
 ## Commits and PRs
 - Use concise commit messages (first line under 72 characters).
