@@ -57,9 +57,9 @@ mkdir -p "$MOUNTPOINT/$ARCHIVE_SUBDIR"
 cp -rv "$SOURCE/." "$MOUNTPOINT/$ARCHIVE_SUBDIR"
 
 # ---- goxa archive + timing ------------------------------------------------
-echo "📆 Archiving with goXA to $GOXA_OUTPUT..."
+echo "📆 Archiving with goxa to $GOXA_OUTPUT..."
 go build
-read -r goxa_real goxa_cpu < <(time_cmd ./goXA ci -arc="$GOXA_OUTPUT" "$MOUNTPOINT/$ARCHIVE_SUBDIR")
+read -r goxa_real goxa_cpu < <(time_cmd ./goxa ci -arc="$GOXA_OUTPUT" "$MOUNTPOINT/$ARCHIVE_SUBDIR")
 
 # ---- tar archive + timing -------------------------------------------------
 echo "📆 Creating tar.gz archive to $TAR_OUTPUT..."
@@ -71,9 +71,9 @@ GOXA_EXTRACT="$MOUNTPOINT/extracted_goxa"
 TAR_EXTRACT="$MOUNTPOINT/extracted_tar"
 mkdir -p "$GOXA_EXTRACT" "$TAR_EXTRACT"
 
-# goXA extract
-echo "📂 Extracting with goXA to $GOXA_EXTRACT..."
-read -r goxa_x_real goxa_x_cpu < <(time_cmd ./goXA xu -arc="$GOXA_OUTPUT" "$GOXA_EXTRACT")
+# goxa extract
+echo "📂 Extracting with goxa to $GOXA_EXTRACT..."
+read -r goxa_x_real goxa_x_cpu < <(time_cmd ./goxa xu -arc="$GOXA_OUTPUT" "$GOXA_EXTRACT")
 
 # tar extract
 echo "📂 Extracting with tar to $TAR_EXTRACT..."
@@ -85,9 +85,9 @@ ls -lh "$GOXA_OUTPUT" "$TAR_OUTPUT"
 
 # ---- results --------------------------------------------------------------
 echo "\n📊 Compression Results:"
-printf 'goXA: real=%ss, cpu=%ss\n' "$goxa_real" "$goxa_cpu"
+printf 'goxa: real=%ss, cpu=%ss\n' "$goxa_real" "$goxa_cpu"
 printf 'tar:  real=%ss, cpu=%ss\n' "$tar_real" "$tar_cpu"
 
 echo "\n📊 Decompression Results:"
-printf 'goXA: real=%ss, cpu=%ss\n' "$goxa_x_real" "$goxa_x_cpu"
+printf 'goxa: real=%ss, cpu=%ss\n' "$goxa_x_real" "$goxa_x_cpu"
 printf 'tar:  real=%ss, cpu=%ss\n' "$tar_x_real" "$tar_x_cpu"

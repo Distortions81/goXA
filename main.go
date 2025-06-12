@@ -43,7 +43,7 @@ func main() {
 		fs.BoolVar(&showHelp, "h", false, "show help")
 		fs.Parse(os.Args[1:])
 		if showVer {
-			fmt.Println("goXA v" + appVersion)
+			fmt.Println("goxa v" + appVersion)
 			return
 		}
 		showUsage()
@@ -106,7 +106,7 @@ func main() {
 		log.Fatalf("invalid fec-level: %s", fecLevel)
 	}
 	if showVer {
-		fmt.Println("goXA v" + appVersion)
+		fmt.Println("goxa v" + appVersion)
 		return
 	}
 
@@ -303,7 +303,7 @@ func main() {
 }
 
 func showUsage() {
-	fmt.Println("GoXA - Go eXpress Archive")
+	fmt.Println("goxa - Go eXpress Archive")
 	fmt.Println()
 	fmt.Println("Usage:")
 	fmt.Println("  goxa MODE[flags] [options] -arc FILE [paths...]")

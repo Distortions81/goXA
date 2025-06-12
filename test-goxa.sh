@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Extensive end-to-end testing of goXA covering many CLI combinations.
+# Extensive end-to-end testing of goxa covering many CLI combinations.
 TMPDIR=$(mktemp -d)
 trap 'rm -rf "$TMPDIR"' EXIT
 
