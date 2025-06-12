@@ -38,12 +38,18 @@ func main() {
 		fs := flag.NewFlagSet("goxa", flag.ExitOnError)
 		var showVer bool
 		var showHelp bool
+		var pgo bool
 		fs.BoolVar(&showVer, "version", false, "print version and exit")
 		fs.BoolVar(&showHelp, "help", false, "show help")
 		fs.BoolVar(&showHelp, "h", false, "show help")
+		fs.BoolVar(&pgo, "pgo", false, "run PGO training and exit")
 		fs.Parse(os.Args[1:])
 		if showVer {
 			fmt.Println("goxa v" + appVersion)
+			return
+		}
+		if pgo {
+			runPGOTraining()
 			return
 		}
 		showUsage()
@@ -343,6 +349,7 @@ func showUsage() {
 	fmt.Println("  -spacecheck=false disable free space check")
 	fmt.Println("  -noflush        skip final disk flush")
 	fmt.Println("  -version        print program version")
+	fmt.Println("  -pgo            run built-in PGO training")
 	fmt.Println("  -fec-data N     number of FEC data shards (default 10)")
 	fmt.Println("  -fec-parity N   number of FEC parity shards (default 3)")
 	fmt.Println("  -fec-level L    FEC redundancy preset (low, medium, high)")
@@ -357,6 +364,7 @@ func showUsage() {
 	fmt.Println()
 	fmt.Println("Examples:")
 	fmt.Println("  goxa -version                                 # print version")
+	fmt.Println("  goxa -pgo                                     # generate default.pgo")
 	fmt.Println("  goxa c -arc=backup.goxa dir/                  # create archive")
 	fmt.Println("  goxa x -arc=backup.goxa                       # extract to folder")
 	fmt.Println("  goxa c -arc=backup.tar.gz dir/                # create tar.gz")
