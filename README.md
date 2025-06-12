@@ -32,6 +32,21 @@ A fast, portable archiving utility written in Go.
 - Base32, Base64 and FEC `forward error correcting` encoding when the archive name ends with `.b32`, `.b64` or `.goxaf`
 - Fully documented format: see [FILE-FORMAT.md](FILE-FORMAT.md) and [JSON-LIST-FORMAT.md](JSON-LIST-FORMAT.md)
 
+## Default Behavior
+
+GoXA is conservative by default. Archives only store relative paths and hidden
+files are skipped unless `i` is specified. Checksums use fast but strong Blake3
+hashes. Existing files are never overwritten unless the `f` flag is given. Zip
+bombs and free space are checked automatically. The progress display is enabled
+for all interactive runs and the program prompts when an archive was created
+with extra flags so you can confirm them. You always supply the archive name with
+`-arc` to avoid surprises.
+
+Data is written in large 512KiB blocks for high throughput. Each archive ends
+with a trailer that records the offset of every block so readers can jump
+directly to any file. The block system is designed for future multi-threaded
+readers and writers.
+
 ## Installation
 
 With Go 1.24+ you can install directly:
