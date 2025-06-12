@@ -31,11 +31,6 @@ func fileExists(filePath string) (bool, error) {
 	return false, err
 }
 
-func removeExtension(filename string) string {
-	extension := filepath.Ext(filename)
-	return filename[:len(filename)-len(extension)]
-}
-
 // detectEncodingFromExt checks for .b32 or .b64 suffixes.
 // It returns the filename without the encoding extension and the encoding type.
 func detectEncodingFromExt(name string) (string, string) {

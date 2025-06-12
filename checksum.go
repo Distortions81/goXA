@@ -32,20 +32,3 @@ func newHasher(t uint8) hash.Hash {
 		return blake3.New()
 	}
 }
-
-func checksumLen(t uint8) int {
-	switch t {
-	case sumCRC32:
-		return 4
-	case sumCRC16:
-		return 2
-	case sumXXHash:
-		return 8
-	case sumSHA256:
-		return 32
-	case sumBlake3:
-		fallthrough
-	default:
-		return 32
-	}
-}
