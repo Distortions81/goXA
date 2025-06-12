@@ -123,6 +123,9 @@ Skip final disk flush.
 .B -version
 Print program version and exit.
 .TP
+.B -pgo
+Run built-in compression/decompression test and write \fBdefault.pgo\fP.
+.TP
 .BI -fec-data " NUM"
 Number of FEC data shards (default 10).
 .TP
@@ -151,6 +154,7 @@ Tar archive compressed with xz.
 .SH EXAMPLES
 .nf
 goxa -version
+goxa -pgo
 goxa c -arc=backup.goxa dir/
 goxa x -arc=backup.goxa
 goxa c -arc=backup.tar.gz dir/
