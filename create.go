@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/base32"
 	"encoding/base64"
@@ -9,6 +10,8 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	brotli "github.com/andybalholm/brotli"
@@ -140,6 +143,37 @@ func create(inputPaths []string) error {
 	emptyDirs, files, err := walkPaths(inputPaths)
 	if err != nil {
 		return err
+	}
+
+	if spaceCheck {
+		var totalBytes int64
+		for _, f := range files {
+			totalBytes += int64(f.Size)
+		}
+		outDir := filepath.Dir(outFile.Name())
+		free, total, err := getDiskSpace(outDir)
+		if err != nil {
+			doLog(false, "warning: free space check failed: %v", err)
+		} else {
+			need := uint64(totalBytes)
+			if need > free {
+				log.Fatalf("create: insufficient disk space: need %v, available %v", humanize.Bytes(need), humanize.Bytes(free))
+			}
+			if free-need < total/100 {
+				msg := fmt.Sprintf("create would leave %v free", humanize.Bytes(free-need))
+				if interactiveMode {
+					fmt.Printf("%s. Continue? [y/N]: ", msg)
+					reader := bufio.NewReader(os.Stdin)
+					resp, _ := reader.ReadString('\n')
+					resp = strings.TrimSpace(strings.ToLower(resp))
+					if resp != "y" && resp != "yes" {
+						log.Fatalf("aborted: %s", msg)
+					}
+				} else {
+					log.Fatalf("%s", msg)
+				}
+			}
+		}
 	}
 
 	if features.IsSet(fNoCompress) {

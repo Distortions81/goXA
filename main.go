@@ -85,6 +85,7 @@ func main() {
 	flagSet.IntVar(&fileRetryDelay, "retrydelay", 5, "delay between retries in seconds")
 	flagSet.BoolVar(&failOnChange, "failonchange", false, "treat file change after retries as fatal")
 	flagSet.BoolVar(&bombCheck, "bombcheck", true, "detect extremely compressed files")
+	flagSet.BoolVar(&spaceCheck, "spacecheck", true, "verify free disk space before operations")
 	var showVer bool
 	flagSet.BoolVar(&showVer, "version", false, "print version and exit")
 	flagSet.Parse(os.Args[2:])
@@ -159,7 +160,7 @@ func main() {
 		case 'm':
 			features.Set(fModDates)
 		case 's':
-			features.Set(fChecksums)
+			features.Clear(fChecksums)
 		case 'b':
 			features.Set(fChecksums)
 			features.Set(fBlockChecksums)
@@ -317,7 +318,7 @@ func showUsage() {
 	fmt.Println()
 	fmt.Println("Flags (append after the mode letter):")
 	fmt.Println("  a  store absolute paths         p  preserve permissions")
-	fmt.Println("  m  preserve modification times  s  include checksums")
+	fmt.Println("  m  preserve modification times  s  disable checksums")
 	fmt.Println("  b  per-block checksums          n  disable compression")
 	fmt.Println("  i  include hidden files         o  allow special files")
 	fmt.Println("  u  use flags from archive       v  verbose output")
@@ -338,6 +339,7 @@ func showUsage() {
 	fmt.Println("  -retrydelay N   delay between retries in seconds")
 	fmt.Println("  -failonchange   treat changed files as fatal errors")
 	fmt.Println("  -bombcheck=false disable zip bomb detection")
+	fmt.Println("  -spacecheck=false disable free space check")
 	fmt.Println("  -version        print program version")
 	fmt.Println("  -fec-data N     number of FEC data shards (default 10)")
 	fmt.Println("  -fec-parity N   number of FEC parity shards (default 3)")

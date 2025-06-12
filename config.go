@@ -9,8 +9,8 @@ var (
 	archivePath                              string
 	verboseMode, doForce, toStdOut, progress bool
 	quietMode                                bool
-	interactiveMode                          bool = true
-	features                                 BitFlags
+	interactiveMode                          bool     = true
+	features                                 BitFlags = fChecksums
 	useArchiveFlags                          bool
 	compression                              string
 	encode                                   string
@@ -28,6 +28,7 @@ var (
 	fileRetryDelay                           int    = 5
 	failOnChange                             bool   = false
 	bombCheck                                bool   = true
+	spaceCheck                               bool   = true
 )
 
 type FileEntry struct {

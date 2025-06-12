@@ -29,7 +29,7 @@ The following components are licensed under the BSD 3-Clause "New" or "Revised" 
 - github.com/pierrec/lz4/v4 v4.1.22
 - github.com/ulikunitz/xz v0.5.12
 - golang.org/x/term v0.32.0
-- golang.org/x/sys v0.33.0 (indirect)
+- golang.org/x/sys v0.33.0
 
 ---
 

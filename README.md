@@ -22,13 +22,14 @@ A fast, portable archiving utility written in Go.
 ## Features
 
 - Fast archive creation and extraction
-- Compression: gzip, zstd, lz4, s2, snappy, brotli or xz (default `zstd`)
-- Optional checksums: CRC32, CRC16, XXHash3, SHA-256 or Blake3
-- Preserve permissions and modification times
-- Archives symlinks and special files
+- Default compression: zstd `Other options gzip, lz4, s2, snappy, brotli or xz1`
+- Default checksums: Blake3 `Other options: CRC32, CRC16, XXHash3, SHA-256`
+- Optionally preserve permissions and modification times
+- Optionally include symlinks and special files
+- Optionally include dotfiles (hidden/invis)
 - Automatic format detection
 - Progress bar with transfer speed and current file
-- Base32, Base64 and FEC `error correcting` encoding when the archive name ends with `.b32`, `.b64` or `.goxaf`
+- Base32, Base64 and FEC `forward error correcting` encoding when the archive name ends with `.b32`, `.b64` or `.goxaf`
 - Fully documented format: see [FILE-FORMAT.md](FILE-FORMAT.md) and [JSON-LIST-FORMAT.md](JSON-LIST-FORMAT.md)
 
 ## Installation
@@ -63,7 +64,7 @@ goxa MODE[flags] [options] -arc FILE [paths...]
 - Selecting `-stdout` or using `j` suppresses progress and informational output.
 - `x` – extract files
 
-Single letter flags follow the mode, e.g. `goxa cpms -arc=out.goxa dir/`.
+Single letter flags follow the mode, e.g. `goxa cpm -arc=out.goxa dir/`.
 Longer options use the usual `-flag=value` form.
 
 ### Common Flags
@@ -73,7 +74,7 @@ Longer options use the usual `-flag=value` form.
 | `a` | store absolute paths |
 | `p` | preserve permissions |
 | `m` | preserve modification times |
-| `s` | include checksums |
+| `s` | disable checksums |
 | `b` | per-block checksums |
 | `n` | disable compression |
 | `i` | include hidden files |
@@ -104,6 +105,7 @@ flags you did not specify. It will ask which missing flags to enable, or
 | `-retrydelay` | seconds to wait between retries |
 | `-failonchange` | treat changed files as fatal errors |
 | `-bombcheck=false` | disable zip bomb detection |
+| `-spacecheck=false` | disable free space check |
 | `-version` | print program version |
 | `-fec-data` | number of FEC data shards |
 | `-fec-parity` | number of FEC parity shards |
@@ -113,7 +115,7 @@ Progress shows transfer speed and current file. Snappy does not support adjustab
 
 ### Base32 / Base64 / FEC
 
-Appending `.b32` or `.b64` to the archive file encodes the archive in Base32 or Base64. Files ending in `.goxaf` are FEC `error correcting` encoded. FEC archives contain data and parity shards; any missing shards up to the parity count can be reconstructed when extracting. For example, with `-fec-data=10 -fec-parity=3` the archive is split into 13 shards. Any 10 shards are enough to fully recover the data. Presets are:
+Appending `.b32` or `.b64` to the archive file encodes the archive in Base32 or Base64. Files ending in `.goxaf` are FEC `error correcting` encoded. FEC archives contain data and parity shards using Reed-Solomon codes; any missing shards up to the parity count can be reconstructed when extracting. For example, with `-fec-data=10 -fec-parity=3` the archive is split into 13 shards. Any 10 shards are enough to fully recover the data. Presets are:
 
 ```
 low    -> 10 data / 3 parity
@@ -145,7 +147,6 @@ goxa c -arc=mybackup.goxa -stdout myStuff/ | ssh host "cat > backup.goxa"
 - `-a` allows the archive to write anywhere when extracting.
 - `-o` stores symlinks as is; malicious archives can use this to escape directories.
 - `-u` applies flags embedded in the archive which may enable the above features.
-- Maximum individual file size is roughly 9&nbsp;223&nbsp;PB (int64 limit).
 
 ## Testing
 

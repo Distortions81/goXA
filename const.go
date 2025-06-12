@@ -2,7 +2,7 @@ package main
 
 const (
 	magic         = "GOXA"
-	appVersion    = "0.0.91"
+	appVersion    = "0.0.92"
 	protoVersion2 = 2
 
 	readBuffer         = 1000 * 1000 * 1 //MiB
