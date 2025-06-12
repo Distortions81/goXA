@@ -98,6 +98,7 @@ flags you did not specify. It will ask which missing flags to enable, or
 | `-interactive=false` | disable prompts for archive flags |
 | `-comp` | compression algorithm |
 | `-speed` | compression speed level |
+| `-sum` | checksum algorithm (crc32, crc16, xxhash, sha256, blake3) |
 | `-format` | force `goxa` or `tar` format |
 | `-retries` | retries when a file changes during read |
 | `-retrydelay` | seconds to wait between retries |
