@@ -18,6 +18,15 @@ goxa \- Go eXpress Archive
 .RI "[flags] -arc FILE [destination]"
 .SH DESCRIPTION
 GoXA is a small archiver written in Go. It understands its own \fB.goxa\fP format and standard tar archives. Compression, checksums and most metadata are optional and controlled by flags. Archives can be streamed to stdout and, when the file name ends in \fB.b32\fP or \fB.b64\fP, encoded using Base32 or Base64. Files ending in \fB.goxaf\fP are encoded with forward error correction (FEC).
+.SH DEFAULTS
+Paths are stored relative to avoid accidental overwrites. Hidden files are
+omitted unless \fBi\fP is specified. Blake3 checksums guard every file. Existing
+files are never overwritten unless \fBf\fP is given. The program checks for zip
+bombs and available space and prompts when extra archive flags are detected.
+Progress output is on by default and the archive name must be provided with
+\fB-arc\fP.
+Data blocks default to 512KiB and each archive ends with a trailer listing block
+offsets for fast seeking.
 .SH MODES
 .TP
 .B c

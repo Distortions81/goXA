@@ -17,6 +17,7 @@ GoXA aims to be a modern replacement for classic archivers such as `tar`. The de
 
 ## Performance Choices
 
-GoXA writes data in large 512KiB blocks by default (see `defaultBlockSize` in `const.go`). A trailer at the end of the file lists all block offsets so readers can jump directly to any part of any file. The layout lends itself to multi-threaded reading and writing, letting GoXA scale with modern hardware. Older utilities like tar only work with 0.5kb blocks, leading to a lot of overhead. Additionally, goxa uses read and write buffers (default 1MiB) to keep the CPU productive and further reduce overhead.
+GoXA writes data in large 512KiB blocks by default (see `defaultBlockSize` in `const.go`). A trailer at the end of the file lists all block offsets so readers can jump directly to any part of any file. The layout lends itself to multi-threaded reading and writing, letting GoXA scale with modern
+hardware. Older utilities like tar only work with 0.5kb blocks, leading to a lot of overhead. Additionally, goxa uses read and write buffers (default 1MiB) to keep the CPU productive and further reduce overhead.
 
 Together these choices make GoXA safer and faster than traditional tools. Checksums catch errors immediately, the block trailer allows random access and parallelism, and sensible prompts keep the user in control.
