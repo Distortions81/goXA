@@ -13,6 +13,7 @@ func resetGlobals() {
 	doForce = false
 	toStdOut = false
 	progress = false
+	quietMode = false
 	features = 0
 	compression = ""
 	extractList = nil

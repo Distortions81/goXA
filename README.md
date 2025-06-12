@@ -60,6 +60,7 @@ goxa MODE[flags] [options] -arc FILE [paths...]
 - `c` – create an archive
 - `l` – list contents
 - `j` – output JSON list
+- Selecting `-stdout` or using `j` suppresses progress and informational output.
 - `x` – extract files
 
 Single letter flags follow the mode, e.g. `goxa cpms -arc=out.goxa dir/`.
@@ -91,7 +92,7 @@ flags you did not specify. It will ask which missing flags to enable, or
 | Option | Description |
 |--------|-------------|
 | `-arc` | archive file name |
-| `-stdout` | write archive to stdout |
+| `-stdout` | write archive to stdout (suppresses other output) |
 | `-files` | comma-separated list to extract |
 | `-progress=false` | disable progress display |
 | `-interactive=false` | disable prompts for archive flags |

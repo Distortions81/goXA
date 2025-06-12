@@ -45,7 +45,7 @@ type progressData struct {
 func progressTicker(p *progressData) (*progressData, chan struct{}, chan struct{}) {
 	done := make(chan struct{})
 	finished := make(chan struct{})
-	if !progress {
+	if !progress || quietMode {
 		close(finished)
 		return p, done, finished
 	}
@@ -73,7 +73,7 @@ func progressTicker(p *progressData) (*progressData, chan struct{}, chan struct{
 }
 
 func printProgress(p *progressData) {
-	if !progress {
+	if !progress || quietMode {
 		return
 	}
 	now := time.Now()
