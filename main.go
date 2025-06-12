@@ -69,8 +69,10 @@ func main() {
 	flagSet.BoolVar(&progress, "progress", true, "show progress bar")
 	flagSet.BoolVar(&interactiveMode, "interactive", true, "prompt when archive uses extra flags")
 	var speedOpt string
+	var sumOpt string
 	flagSet.StringVar(&compression, "comp", "zstd", "compression: gzip|zstd|lz4|s2|snappy|brotli|xz|none")
 	flagSet.StringVar(&speedOpt, "speed", "fastest", "compression speed: fastest|default|better|best")
+	flagSet.StringVar(&sumOpt, "sum", "blake3", "checksum: crc32|crc16|xxhash|sha256|blake3")
 	flagSet.StringVar(&format, "format", "goxa", "archive format: tar|goxa")
 	flagSet.StringVar(&sel, "files", "", "comma-separated list of files and directories to extract")
 	var fecData int
@@ -217,6 +219,26 @@ func main() {
 		log.Fatalf("Unknown speed: %s", speedOpt)
 	}
 
+	switch strings.ToLower(sumOpt) {
+	case "crc32":
+		checksumType = sumCRC32
+		checksumLength = 4
+	case "crc16":
+		checksumType = sumCRC16
+		checksumLength = 2
+	case "xxhash":
+		checksumType = sumXXHash
+		checksumLength = 8
+	case "sha256":
+		checksumType = sumSHA256
+		checksumLength = 32
+	case "blake3":
+		checksumType = sumBlake3
+		checksumLength = 32
+	default:
+		log.Fatalf("Unknown checksum: %s", sumOpt)
+	}
+
 	if cmdLetter == 'c' && !hasKnownArchiveExt(archivePath) {
 		if strings.ToLower(format) == "tar" {
 			if features.IsNotSet(fNoCompress) {
@@ -310,6 +332,7 @@ func showUsage() {
 	fmt.Println("  -interactive=false disable prompts for archive flags")
 	fmt.Println("  -comp ALG       compression algorithm (gzip, zstd, lz4, s2, snappy, brotli, xz, none)")
 	fmt.Println("  -speed LEVEL    compression speed (fastest, default, better, best)")
+	fmt.Println("  -sum ALG        checksum algorithm (crc32, crc16, xxhash, sha256, blake3)")
 	fmt.Println("  -format FORMAT  archive format (goxa or tar)")
 	fmt.Println("  -retries N      retries when file changes during read (0 = never give up)")
 	fmt.Println("  -retrydelay N   delay between retries in seconds")
