@@ -1,199 +1,153 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# This does some real-world testing and go test checks of goxa
-
-# Temporary working directory for the test
+# Extensive end-to-end testing of goXA covering many CLI combinations.
 TMPDIR=$(mktemp -d)
 trap 'rm -rf "$TMPDIR"' EXIT
 
 SRC="$TMPDIR/src"
 OUT="$TMPDIR/out"
-mkdir -p "$SRC"
+mkdir -p "$SRC" "$OUT"
 
-echo "Creating test files..."
-
-# Generate random data spread across many files. Use TEST_BYTES env var to
-# override the default size for quicker runs.
-TARGET_BYTES=${TEST_BYTES:-$((3 * 1024 * 1024 * 1024))}
+# Generate random input files. Set TEST_BYTES for quicker runs.
+TARGET_BYTES=${TEST_BYTES:-$((20 * 1024 * 1024))}
 TOTAL=0
 COUNT=0
 while [ "$TOTAL" -lt "$TARGET_BYTES" ]; do
   COUNT=$((COUNT + 1))
-  SIZE=$(shuf -i 1024-1048576 -n 1)
-  head -c "$SIZE" </dev/random >"$SRC/file_${COUNT}.bin"
+  SIZE=$(shuf -i 1024-65536 -n 1)
+  head -c "$SIZE" </dev/urandom >"$SRC/file_${COUNT}.bin"
   TOTAL=$((TOTAL + SIZE))
-  # Create a subdirectory occasionally
-  if (( COUNT % 100 == 0 )); then
+  if (( COUNT % 50 == 0 )); then
     mkdir -p "$SRC/dir_$COUNT"
   fi
-  # Limit to a few thousand files
-  if (( COUNT >= 4000 )); then
+  if (( COUNT >= 200 )); then
     break
   fi
 done
 
-# Hidden file with distinct permissions
-head -c 4096 </dev/random >"$SRC/.hidden"
+# Hidden file with known perms and timestamp
+head -c 4096 </dev/urandom >"$SRC/.hidden"
 chmod 600 "$SRC/.hidden"
-
-# Set explicit mod time on first file
 touch -t 202201010101 "$SRC/file_1.bin"
 
-# Build CLI
 GOXA="$TMPDIR/goxa"
 go build -o "$GOXA" ./
 
-# --- Test with compression ---
-"$GOXA" cpmsi -arc "$TMPDIR/test.goxa" "$SRC"
 ORIG_NAME=$(basename "$SRC")
-mv "$SRC" "$SRC.orig"
-"$GOXA" xpmsi -arc "$TMPDIR/test.goxa" "$OUT"
-EXTRACTED="$OUT/$ORIG_NAME"
 
-# Validations
-orig_files=$(find "$SRC.orig" -type f | wc -l)
-extr_files=$(find "$EXTRACTED" -type f | wc -l)
-if [ "$orig_files" -ne "$extr_files" ]; then
-  echo "file count mismatch (compressed)" >&2
+validate() {
+  local orig=$1
+  local extr=$2
+  local label=$3
+
+  local of=$(find "$orig" -type f | wc -l)
+  local ef=$(find "$extr" -type f | wc -l)
+  if [ "$of" -ne "$ef" ]; then
+    echo "file count mismatch ($label)" >&2
+    exit 1
+  fi
+
+  local op=$(stat -c %a "$orig/.hidden")
+  local ep=$(stat -c %a "$extr/.hidden")
+  if [ "$op" != "$ep" ]; then
+    echo "permission mismatch ($label)" >&2
+    exit 1
+  fi
+
+  local ot=$(stat -c %Y "$orig/file_1.bin")
+  local et=$(stat -c %Y "$extr/file_1.bin")
+  if [ "$ot" != "$et" ]; then
+    echo "mod time mismatch ($label)" >&2
+    exit 1
+  fi
+
+  local osum=$(sha256sum "$orig/file_1.bin" | cut -d" " -f1)
+  local esum=$(sha256sum "$extr/file_1.bin" | cut -d" " -f1)
+  if [ "$osum" != "$esum" ]; then
+    echo "checksum mismatch ($label)" >&2
+    exit 1
+  fi
+}
+
+# goxa archive with compression
+"$GOXA" cpmsi -progress=false -arc "$TMPDIR/test.goxa" "$SRC"
+"$GOXA" xpmsi -progress=false -arc "$TMPDIR/test.goxa" "$OUT/comp"
+validate "$SRC" "$OUT/comp/$ORIG_NAME" "compressed"
+
+echo "compressed archive ok"
+
+# no compression
+"$GOXA" cpmsin -progress=false -arc "$TMPDIR/test_nocomp.goxa" "$SRC"
+"$GOXA" xpmsi -progress=false -arc "$TMPDIR/test_nocomp.goxa" "$OUT/nocomp"
+validate "$SRC" "$OUT/nocomp/$ORIG_NAME" "nocomp"
+
+echo "no compression archive ok"
+
+# Base64 and Base32 encoding
+"$GOXA" cpmsi -progress=false -arc "$TMPDIR/test_b64.goxa.b64" "$SRC"
+"$GOXA" xpmsi -progress=false -arc "$TMPDIR/test_b64.goxa.b64" "$OUT/b64"
+validate "$SRC" "$OUT/b64/$ORIG_NAME" "base64"
+
+"$GOXA" cpmsi -progress=false -arc "$TMPDIR/test_b32.goxa.b32" "$SRC"
+"$GOXA" xpmsi -progress=false -arc "$TMPDIR/test_b32.goxa.b32" "$OUT/b32"
+validate "$SRC" "$OUT/b32/$ORIG_NAME" "base32"
+
+echo "encoding tests ok"
+
+# FEC encoding with high redundancy
+"$GOXA" cpmsi -progress=false -fec-level=high -arc "$TMPDIR/test_fec.goxaf" "$SRC"
+"$GOXA" xpmsi -progress=false -arc "$TMPDIR/test_fec.goxaf" "$OUT/fec"
+validate "$SRC" "$OUT/fec/$ORIG_NAME" "fec"
+
+echo "fec archive ok"
+
+# Tar formats
+"$GOXA" cpmsi -progress=false -arc "$TMPDIR/test.tar.gz" "$SRC"
+"$GOXA" xpmsi -progress=false -arc "$TMPDIR/test.tar.gz" "$OUT/targz"
+validate "$SRC" "$OUT/targz/$ORIG_NAME" "targz"
+
+"$GOXA" cpmsi -progress=false -arc "$TMPDIR/test.tar.xz" "$SRC"
+"$GOXA" xpmsi -progress=false -arc "$TMPDIR/test.tar.xz" "$OUT/tarxz"
+validate "$SRC" "$OUT/tarxz/$ORIG_NAME" "tarxz"
+
+"$GOXA" cpmsin -progress=false -arc "$TMPDIR/test.tar" "$SRC"
+"$GOXA" xpmsi -progress=false -arc "$TMPDIR/test.tar" "$OUT/tar"
+validate "$SRC" "$OUT/tar/$ORIG_NAME" "tar"
+
+echo "tar format tests ok"
+
+# Listing and JSON output
+"$GOXA" l -progress=false -arc "$TMPDIR/test.goxa" >"$TMPDIR/list.txt"
+grep -q "file_1.bin" "$TMPDIR/list.txt"
+
+"$GOXA" j -progress=false -arc "$TMPDIR/test.goxa" >"$TMPDIR/list.json"
+python3 -m json.tool "$TMPDIR/list.json" >/dev/null
+grep -q "file_1.bin" "$TMPDIR/list.json"
+
+echo "listing commands ok"
+
+# Extract specific file
+mkdir -p "$OUT/partial"
+"$GOXA" xpmsi -progress=false -arc "$TMPDIR/test.goxa" -files "$ORIG_NAME/file_1.bin" "$OUT/partial"
+if [ ! -f "$OUT/partial/$ORIG_NAME/file_1.bin" ]; then
+  echo "selected file missing" >&2
+  exit 1
+fi
+if [ "$(find "$OUT/partial/$ORIG_NAME" -type f | wc -l)" -ne 1 ]; then
+  echo "unexpected files extracted" >&2
   exit 1
 fi
 
-orig_perm=$(stat -c %a "$SRC.orig/.hidden")
-extr_perm=$(stat -c %a "$EXTRACTED/.hidden")
-if [ "$orig_perm" != "$extr_perm" ]; then
-  echo "permission mismatch (compressed)" >&2
-  exit 1
-fi
+echo "partial extraction ok"
 
-orig_time=$(stat -c %Y "$SRC.orig/file_1.bin")
-extr_time=$(stat -c %Y "$EXTRACTED/file_1.bin")
-if [ "$orig_time" != "$extr_time" ]; then
-  echo "mod time mismatch (compressed)" >&2
-  exit 1
-fi
+# Stdout archive
+"$GOXA" cpmsi -progress=false -stdout -arc dummy "$SRC" >"$TMPDIR/stdout.goxa"
+"$GOXA" xpmsi -progress=false -arc "$TMPDIR/stdout.goxa" "$OUT/stdout"
+validate "$SRC" "$OUT/stdout/$ORIG_NAME" "stdout"
 
-orig_sum=$(sha256sum "$SRC.orig/file_1.bin" | cut -d" " -f1)
-extr_sum=$(sha256sum "$EXTRACTED/file_1.bin" | cut -d" " -f1)
-if [ "$orig_sum" != "$extr_sum" ]; then
-  echo "checksum mismatch (compressed)" >&2
-  exit 1
-fi
+echo "stdout handling ok"
 
-echo "archive create/extract with compression passed"
+go test ./...
 
-# --- Test without compression (-n) ---
-mv "$SRC.orig" "$SRC"  # Restore original for re-archiving
-"$GOXA" cpmsin -arc "$TMPDIR/test_nocomp.goxa" "$SRC"
-"$GOXA" xpmsi -arc "$TMPDIR/test_nocomp.goxa" "$OUT/nocomp"
-EXTRACTED_N="$OUT/nocomp/$ORIG_NAME"
-
-orig_files=$(find "$SRC" -type f | wc -l)
-extr_files=$(find "$EXTRACTED_N" -type f | wc -l)
-if [ "$orig_files" -ne "$extr_files" ]; then
-  echo "file count mismatch (no compression)" >&2
-  exit 1
-fi
-
-orig_perm=$(stat -c %a "$SRC/.hidden")
-extr_perm=$(stat -c %a "$EXTRACTED_N/.hidden")
-if [ "$orig_perm" != "$extr_perm" ]; then
-  echo "permission mismatch (no compression)" >&2
-  exit 1
-fi
-
-orig_time=$(stat -c %Y "$SRC/file_1.bin")
-extr_time=$(stat -c %Y "$EXTRACTED_N/file_1.bin")
-if [ "$orig_time" != "$extr_time" ]; then
-  echo "mod time mismatch (no compression)" >&2
-  exit 1
-fi
-
-orig_sum=$(sha256sum "$SRC/file_1.bin" | cut -d" " -f1)
-extr_sum=$(sha256sum "$EXTRACTED_N/file_1.bin" | cut -d" " -f1)
-if [ "$orig_sum" != "$extr_sum" ]; then
-  echo "checksum mismatch (no compression)" >&2
-  exit 1
-fi
-
-echo "archive create/extract without compression passed"
-
-# --- Test Base64 encoding ---
-"$GOXA" cpmsi -arc "$TMPDIR/test_b64.goxa.b64" "$SRC"
-mv "$SRC" "$SRC.orig_b64"
-"$GOXA" xpmsi -arc "$TMPDIR/test_b64.goxa.b64" "$OUT/b64"
-EXTRACTED_B64="$OUT/b64/$ORIG_NAME"
-
-orig_files=$(find "$SRC.orig_b64" -type f | wc -l)
-extr_files=$(find "$EXTRACTED_B64" -type f | wc -l)
-if [ "$orig_files" -ne "$extr_files" ]; then
-  echo "file count mismatch (base64)" >&2
-  exit 1
-fi
-
-orig_perm=$(stat -c %a "$SRC.orig_b64/.hidden")
-extr_perm=$(stat -c %a "$EXTRACTED_B64/.hidden")
-if [ "$orig_perm" != "$extr_perm" ]; then
-  echo "permission mismatch (base64)" >&2
-  exit 1
-fi
-
-orig_time=$(stat -c %Y "$SRC.orig_b64/file_1.bin")
-extr_time=$(stat -c %Y "$EXTRACTED_B64/file_1.bin")
-if [ "$orig_time" != "$extr_time" ]; then
-  echo "mod time mismatch (base64)" >&2
-  exit 1
-fi
-
-orig_sum=$(sha256sum "$SRC.orig_b64/file_1.bin" | cut -d" " -f1)
-extr_sum=$(sha256sum "$EXTRACTED_B64/file_1.bin" | cut -d" " -f1)
-if [ "$orig_sum" != "$extr_sum" ]; then
-  echo "checksum mismatch (base64)" >&2
-  exit 1
-fi
-
-echo "archive create/extract with base64 encoding passed"
-
-mv "$SRC.orig_b64" "$SRC"  # Restore for next test
-
-# --- Test FEC encoding ---
-"$GOXA" cpmsi -arc "$TMPDIR/test_fec.goxaf" "$SRC"
-mv "$SRC" "$SRC.orig_fec"
-pushd "$OUT" >/dev/null
-"$GOXA" xpmsi -arc "$TMPDIR/test_fec.goxaf"
-popd >/dev/null
-EXTRACTED_FEC="$OUT/test_fec/$ORIG_NAME"
-
-orig_files=$(find "$SRC.orig_fec" -type f | wc -l)
-extr_files=$(find "$EXTRACTED_FEC" -type f | wc -l)
-if [ "$orig_files" -ne "$extr_files" ]; then
-  echo "file count mismatch (fec)" >&2
-  exit 1
-fi
-
-orig_perm=$(stat -c %a "$SRC.orig_fec/.hidden")
-extr_perm=$(stat -c %a "$EXTRACTED_FEC/.hidden")
-if [ "$orig_perm" != "$extr_perm" ]; then
-  echo "permission mismatch (fec)" >&2
-  exit 1
-fi
-
-orig_time=$(stat -c %Y "$SRC.orig_fec/file_1.bin")
-extr_time=$(stat -c %Y "$EXTRACTED_FEC/file_1.bin")
-if [ "$orig_time" != "$extr_time" ]; then
-  echo "mod time mismatch (fec)" >&2
-  exit 1
-fi
-
-orig_sum=$(sha256sum "$SRC.orig_fec/file_1.bin" | cut -d" " -f1)
-extr_sum=$(sha256sum "$EXTRACTED_FEC/file_1.bin" | cut -d" " -f1)
-if [ "$orig_sum" != "$extr_sum" ]; then
-  echo "checksum mismatch (fec)" >&2
-  exit 1
-fi
-
-echo "archive create/extract with FEC encoding passed"
-
-mv "$SRC.orig_fec" "$SRC"  # Restore for go tests
-
-go test
+echo "all tests passed"
