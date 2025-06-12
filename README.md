@@ -23,7 +23,7 @@ A fast, portable archiving utility written in Go.
 
 - Fast archive creation and extraction
 - Compression: gzip, zstd, lz4, s2, snappy, brotli or xz (default `zstd`)
-- Optional checksums: CRC32, CRC16, XXHash3, SHA-256 or Blake3
+- Checksums enabled by default: CRC32, CRC16, XXHash3, SHA-256 or Blake3
 - Preserve permissions and modification times
 - Archives symlinks and special files
 - Automatic format detection
@@ -63,7 +63,7 @@ goxa MODE[flags] [options] -arc FILE [paths...]
 - Selecting `-stdout` or using `j` suppresses progress and informational output.
 - `x` – extract files
 
-Single letter flags follow the mode, e.g. `goxa cpms -arc=out.goxa dir/`.
+Single letter flags follow the mode, e.g. `goxa cpm -arc=out.goxa dir/`.
 Longer options use the usual `-flag=value` form.
 
 ### Common Flags
@@ -73,7 +73,7 @@ Longer options use the usual `-flag=value` form.
 | `a` | store absolute paths |
 | `p` | preserve permissions |
 | `m` | preserve modification times |
-| `s` | include checksums |
+| `s` | disable checksums |
 | `b` | per-block checksums |
 | `n` | disable compression |
 | `i` | include hidden files |
