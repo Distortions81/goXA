@@ -61,6 +61,21 @@ func decompressor(r io.Reader, cType uint8) (io.ReadCloser, error) {
 
 var skippedFiles, checksumCount atomic.Int64
 
+func isZipBomb(f *FileEntry) (uint64, float64, bool) {
+	if len(f.Blocks) == 0 {
+		return 0, 0, false
+	}
+	var comp uint64
+	for _, b := range f.Blocks {
+		comp += b.Size
+	}
+	if comp == 0 || f.Size < zipBombMinSize {
+		return comp, 0, false
+	}
+	ratio := float64(f.Size) / float64(comp)
+	return comp, ratio, ratio > zipBombRatio
+}
+
 func compName(t uint8) string {
 	switch t {
 	case compZstd:
@@ -596,6 +611,23 @@ func extractFile(arcPath, destination string, lfeat BitFlags, ctype uint8, item 
 	}
 	if item.Changed {
 		doLog(false, "warning: %v changed during archiving", item.Path)
+	}
+	if bombCheck {
+		compSize, ratio, bomb := isZipBomb(item)
+		if bomb {
+			msg := fmt.Sprintf("potential zip bomb: %s expands from %v to %v (x%.0f)", item.Path, humanize.Bytes(compSize), humanize.Bytes(item.Size), ratio)
+			if interactiveMode {
+				fmt.Printf("%s. Continue? [y/N]: ", msg)
+				reader := bufio.NewReader(os.Stdin)
+				resp, _ := reader.ReadString('\n')
+				resp = strings.TrimSpace(strings.ToLower(resp))
+				if resp != "y" && resp != "yes" {
+					log.Fatalf("aborted: %s", msg)
+				}
+			} else {
+				log.Fatalf("%s", msg)
+			}
+		}
 	}
 	var err error
 	var finalPath string

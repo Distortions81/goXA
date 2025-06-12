@@ -26,6 +26,7 @@ var (
 	fileRetries                              int    = 3
 	fileRetryDelay                           int    = 5
 	failOnChange                             bool   = false
+	bombCheck                                bool   = true
 )
 
 type FileEntry struct {

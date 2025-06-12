@@ -22,6 +22,7 @@ func resetGlobals() {
 	fileRetries = 3
 	fileRetryDelay = 5
 	failOnChange = false
+	bombCheck = true
 }
 
 func TestCLIEndToEnd(t *testing.T) {

@@ -65,3 +65,9 @@ const (
 	SpeedBetterCompression
 	SpeedBestCompression
 )
+
+// Zip bomb detection thresholds
+const (
+	zipBombMinSize = 10 * 1024 * 1024 // 10MiB
+	zipBombRatio   = 100              // uncompressed/compressed ratio
+)

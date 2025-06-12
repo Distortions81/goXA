@@ -101,6 +101,7 @@ flags you did not specify. It will ask which missing flags to enable, or
 | `-retries` | retries when a file changes during read |
 | `-retrydelay` | seconds to wait between retries |
 | `-failonchange` | treat changed files as fatal errors |
+| `-bombcheck=false` | disable zip bomb detection |
 | `-version` | print program version |
 | `-fec-data` | number of FEC data shards |
 | `-fec-parity` | number of FEC parity shards |
