@@ -20,6 +20,7 @@ features.
 ```
 
 The header records every empty directory and file. File data follows, compressed into blocks. A trailer at the end holds a block index and a checksum.
+When the `-span` option is used the archive is written into sequential span files. Each span is named `1-N.archive.goxa`, `2-N.archive.goxa` and so on where `N` is the total number of spans. No extra markers are inserted – the data continues exactly where the previous file ended so readers must concatenate the files logically. The default span size when enabled is 4&nbsp;GiB minus 64&nbsp;KiB (FAT32 safe).
 
 ## Header
 

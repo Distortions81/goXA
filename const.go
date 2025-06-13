@@ -9,6 +9,10 @@ const (
 	writeBuffer        = readBuffer
 	defaultArchiveName = "archive.goxa"
 	defaultBlockSize   = 512 * 1024 // 512KiB
+	// fat32SpanSize is used when -span is specified without a value.
+	fat32SpanSize = 4*1024*1024*1024 - 64*1024 // 4GiB - 64KiB
+	// defaultSpanSize disables spanning by default (max int64).
+	defaultSpanSize = int64(^uint64(0) >> 1)
 )
 
 // Checksum types

@@ -108,7 +108,7 @@ func create(inputPaths []string) error {
 
 	var bf *BufferedFile
 	var tmpPath string
-	var outFile *os.File
+	var outFile fileLike
 	if toStdOut && encode == "" {
 		bf = NewBufferedFile(os.Stdout, writeBuffer, &progressData{})
 		outFile = os.Stdout
@@ -128,13 +128,20 @@ func create(inputPaths []string) error {
 					log.Fatalf("create: Archive %v already exists.", archivePath)
 				}
 			}
-			f, err := os.Create(archivePath)
-			if err != nil {
-				log.Fatalf("create: os.Create: %v", err)
+			if spanSize != defaultSpanSize {
+				sw, err := newSpanWriter(archivePath, spanSize)
+				if err != nil {
+					log.Fatalf("create: %v", err)
+				}
+				outFile = sw
+			} else {
+				f, err := os.Create(archivePath)
+				if err != nil {
+					log.Fatalf("create: os.Create: %v", err)
+				}
+				f.Truncate(0)
+				outFile = f
 			}
-			f.Truncate(0)
-			outFile = f
-			defer outFile.Close()
 		}
 		bf = NewBufferedFile(outFile, writeBuffer, &progressData{})
 	}

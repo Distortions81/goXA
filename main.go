@@ -38,7 +38,8 @@ func main() {
 	}
 
 	flagSet, mflags := initFlags()
-	flagSet.Parse(os.Args[2:])
+	args := preprocessSpan(os.Args[2:])
+	flagSet.Parse(args)
 	blockSize = uint32(flagBlockSize)
 
 	quietMode = toStdOut || cmdLetter == 'j'
@@ -98,6 +99,7 @@ func showUsage() {
 	fmt.Println("  -speed LEVEL    compression speed (fastest, default, better, best)")
 	fmt.Println("  -sum ALG        checksum algorithm (crc32, crc16, xxhash, sha256, blake3)")
 	fmt.Println("  -block N        compression block size in bytes")
+	fmt.Println("  -span[=N]       split archive at FAT32 limit or N bytes")
 	fmt.Println("  -format FORMAT  archive format (goxa or tar)")
 	fmt.Println("  -retries N      retries when file changes during read (0 = never give up)")
 	fmt.Println("  -retrydelay N   delay between retries in seconds")
@@ -196,6 +198,27 @@ func parseCommand(cmd string) (byte, string) {
 	return letter, opts
 }
 
+// preprocessSpan rewrites -span arguments so the flag package
+// can handle "-span" without a value. When no value is provided
+// the FAT32 safe size is used.
+func preprocessSpan(args []string) []string {
+	out := make([]string, 0, len(args))
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		if a == "-span" {
+			if i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
+				out = append(out, a, args[i+1])
+				i++
+			} else {
+				out = append(out, fmt.Sprintf("-span=%d", fat32SpanSize))
+			}
+			continue
+		}
+		out = append(out, a)
+	}
+	return out
+}
+
 func initFlags() (*flag.FlagSet, *flagSettings) {
 	fs := flag.NewFlagSet("goxa", flag.ExitOnError)
 	f := &flagSettings{}
@@ -207,6 +230,7 @@ func initFlags() (*flag.FlagSet, *flagSettings) {
 	fs.StringVar(&f.speedOpt, "speed", "fastest", "compression speed: fastest|default|better|best")
 	fs.StringVar(&f.sumOpt, "sum", "blake3", "checksum: crc32|crc16|xxhash|sha256|blake3")
 	fs.UintVar(&flagBlockSize, "block", defaultBlockSize, "compression block size in bytes")
+	fs.Int64Var(&spanSize, "span", defaultSpanSize, "split size in bytes; use -span alone for FAT32")
 	fs.StringVar(&f.format, "format", "goxa", "archive format: tar|goxa")
 	fs.StringVar(&f.sel, "files", "", "comma-separated list of files and directories to extract")
 	fs.IntVar(&f.fecData, "fec-data", fecDataShards, "FEC data shards")
