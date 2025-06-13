@@ -20,6 +20,15 @@ import (
 	"github.com/ulikunitz/xz"
 )
 
+func updateBuffers() {
+	if blockSize > 0 {
+		readBuffer = int(blockSize) * 4
+	} else {
+		readBuffer = 1000 * 1000 // 1MiB
+	}
+	writeBuffer = readBuffer
+}
+
 func fileExists(filePath string) (bool, error) {
 	_, err := os.Stat(filePath)
 	if err == nil {

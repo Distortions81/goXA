@@ -73,6 +73,26 @@ func (bf *BufferedFile) Seek(offset int64, whence int) (int64, error) {
 	return off, nil
 }
 
+func (bf *BufferedFile) WriteAt(p []byte, off int64) (int, error) {
+	if err := bf.Flush(); err != nil {
+		return 0, err
+	}
+	if w, ok := bf.file.(interface {
+		WriteAt([]byte, int64) (int, error)
+	}); ok {
+		n, err := w.WriteAt(p, off)
+		if bf.doCount {
+			bf.progress.written.Add(int64(n))
+			bf.progress.current.Add(int64(n))
+		}
+		return n, err
+	}
+	if _, err := bf.file.Seek(off, io.SeekStart); err != nil {
+		return 0, err
+	}
+	return bf.Write(p)
+}
+
 func (bf *BufferedFile) Close() error {
 	if err := bf.Flush(); err != nil {
 		bf.file.Close()

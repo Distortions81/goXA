@@ -108,6 +108,13 @@ func compressor(w io.Writer) io.WriteCloser {
 
 func create(inputPaths []string) error {
 
+	if features.IsSet(fNoCompress) {
+		blockSize = 0
+	} else if blockSize == 0 {
+		blockSize = defaultBlockSize
+	}
+	updateBuffers()
+
 	var bf *BufferedFile
 	var tmpPath string
 	var outFile fileLike

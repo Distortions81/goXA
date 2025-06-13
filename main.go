@@ -41,6 +41,7 @@ func main() {
 	args := preprocessSpan(os.Args[2:])
 	flagSet.Parse(args)
 	blockSize = uint32(flagBlockSize)
+	updateBuffers()
 
 	quietMode = toStdOut || cmdLetter == 'j'
 	if quietMode {

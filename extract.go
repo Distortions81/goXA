@@ -288,6 +288,7 @@ func extract(destinations []string, listOnly bool, jsonList bool) {
 			log.Fatalf("extract: failed to read trailer offset: %v", err)
 		}
 		blockSize = blkSize
+		updateBuffers()
 	}
 	if readVersion >= protoVersion2 {
 		if err := binary.Read(arc, binary.LittleEndian, &arcSize); err != nil {
@@ -834,7 +835,6 @@ func extractFile(arcPath, destination string, lfeat BitFlags, ctype uint8, item 
 		if hasBlocks {
 			sem := make(chan struct{}, runtime.NumCPU())
 			var wg sync.WaitGroup
-			res := make([][]byte, len(item.Blocks))
 			for i, b := range item.Blocks {
 				if _, err := arcB.Seek(int64(b.Offset), io.SeekStart); err != nil {
 					log.Fatalf("seek block: %v", err)
@@ -843,33 +843,22 @@ func extractFile(arcPath, destination string, lfeat BitFlags, ctype uint8, item 
 				if _, err := io.ReadFull(arcB, data); err != nil {
 					log.Fatalf("read block: %v", err)
 				}
-				if len(sem) < cap(sem) && bf.writer.Buffered() < writeBuffer && arcB.reader.Buffered() > 0 {
-					wg.Add(1)
-					sem <- struct{}{}
-					go func(idx int, d []byte) {
-						defer wg.Done()
-						defer func() { <-sem }()
-						out, err := decompressBlock(d, lfeat, ctype)
-						if err != nil {
-							log.Fatalf("decompress block: %v", err)
-						}
-						res[idx] = out
-					}(i, data)
-				} else {
-					out, err := decompressBlock(data, lfeat, ctype)
+				wg.Add(1)
+				sem <- struct{}{}
+				go func(idx int, d []byte) {
+					defer wg.Done()
+					defer func() { <-sem }()
+					out, err := decompressBlock(d, lfeat, ctype)
 					if err != nil {
 						log.Fatalf("decompress block: %v", err)
 					}
-					res[i] = out
-				}
+					off := int64(idx) * int64(blockSize)
+					if _, err := bf.WriteAt(out, off); err != nil {
+						log.Fatalf("write block: %v", err)
+					}
+				}(i, data)
 			}
 			wg.Wait()
-			for i := 0; i < len(item.Blocks); i++ {
-				_, err := io.Copy(writer, progressReader{r: bytes.NewReader(res[i]), p: p})
-				if err != nil {
-					log.Fatalf("copy block: %v", err)
-				}
-			}
 		} else {
 			var src io.Reader = arcB
 			if lfeat.IsNotSet(fNoCompress) {
@@ -881,7 +870,7 @@ func extractFile(arcPath, destination string, lfeat BitFlags, ctype uint8, item 
 				src = dec
 			}
 			src = progressReader{r: src, p: p}
-			_, err = io.CopyN(writer, src, int64(item.Size))
+			_, err = io.CopyN(bf, src, int64(item.Size))
 			if err != nil {
 				if doForce {
 					doLog(false, "Unable to write data: %v :: %v", item.Path, err)
