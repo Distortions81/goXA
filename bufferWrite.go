@@ -2,18 +2,27 @@ package main
 
 import (
 	"bufio"
+	"io"
 	"os"
 )
 
+type fileLike interface {
+	io.ReadWriteSeeker
+	Sync() error
+	Close() error
+	Name() string
+	Stat() (os.FileInfo, error)
+}
+
 type BufferedFile struct {
 	doCount  bool
-	file     *os.File
+	file     fileLike
 	writer   *bufio.Writer
 	reader   *bufio.Reader
 	progress *progressData
 }
 
-func NewBufferedFile(file *os.File, bufSize int, p *progressData) *BufferedFile {
+func NewBufferedFile(file fileLike, bufSize int, p *progressData) *BufferedFile {
 	return &BufferedFile{
 		file:     file,
 		writer:   bufio.NewWriterSize(file, bufSize),
