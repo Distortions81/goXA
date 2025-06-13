@@ -14,6 +14,7 @@ GoXA aims to be a modern replacement for classic archivers such as `tar`. The de
 * **Progress bar** – a clear progress display is shown for interactive runs so you know the program is working or detect possible issues.
 * **Disk sync** – output files are flushed to disk before closing so removable drives aren't pulled while data is still in kernel buffers. Syncing ensures data is fully written before devices are detached.
 * **`-arc` required** – the archive name is always supplied explicitly which avoids mistakes when scripts are moved between directories.
+* **Optional encodings** – appending `.b32` or `.b64` encodes the archive in Base32 or Base64. `.goxaf` uses FEC with Reed–Solomon parity so missing shards can be rebuilt.
 
 ## Performance Choices
 
