@@ -1,5 +1,7 @@
 package main
 
+import "runtime"
+
 const (
 	magic         = "GOXA"
 	appVersion    = "0.0.92"
@@ -14,7 +16,7 @@ const (
 )
 
 var (
-	readBuffer  = int(defaultBlockSize) * 4
+	readBuffer  = int(defaultBlockSize) * 4 * runtime.NumCPU()
 	writeBuffer = readBuffer
 )
 

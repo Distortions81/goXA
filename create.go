@@ -488,7 +488,7 @@ func writeEntries(headerLen int, bf *BufferedFile, files []FileEntry) ([]FileEnt
 				var wg sync.WaitGroup
 				var mu sync.Mutex
 				idx := 0
-				resMap := make(map[int][]byte)
+				var offset = cOffset
 
 				for {
 					n, err := io.ReadFull(br, buf)
@@ -497,28 +497,26 @@ func writeEntries(headerLen int, bf *BufferedFile, files []FileEntry) ([]FileEnt
 						copy(data, buf[:n])
 						i := idx
 						idx++
-						if len(sem) < cap(sem) && bf.writer.Buffered() < writeBuffer && br.reader.Buffered() > 0 {
-							wg.Add(1)
-							sem <- struct{}{}
-							go func(idx int, d []byte) {
-								defer wg.Done()
-								defer func() { <-sem }()
-								out, err := compressBlock(d)
-								if err != nil {
-									log.Fatalf("compress block: %v", err)
-								}
-								mu.Lock()
-								resMap[idx] = out
-								mu.Unlock()
-							}(i, data)
-						} else {
-							out, err := compressBlock(data)
+						blocks = append(blocks, Block{})
+						wg.Add(1)
+						sem <- struct{}{}
+						go func(idx int, d []byte) {
+							defer wg.Done()
+							defer func() { <-sem }()
+							out, err := compressBlock(d)
 							if err != nil {
-								f.Close()
 								log.Fatalf("compress block: %v", err)
 							}
-							resMap[i] = out
-						}
+							mu.Lock()
+							off := offset
+							if _, err := bf.WriteAt(out, int64(off)); err != nil {
+								mu.Unlock()
+								log.Fatalf("write block: %v", err)
+							}
+							offset += uint64(len(out))
+							blocks[idx] = Block{Offset: off, Size: uint64(len(out))}
+							mu.Unlock()
+						}(i, data)
 					}
 					if err == io.EOF || err == io.ErrUnexpectedEOF {
 						break
@@ -528,18 +526,10 @@ func writeEntries(headerLen int, bf *BufferedFile, files []FileEntry) ([]FileEnt
 						log.Fatalf("read block failed: %v", err)
 					}
 				}
-
 				wg.Wait()
-
-				for i := 0; i < idx; i++ {
-					bOff := cOffset
-					out := resMap[i]
-					if _, err := bf.Write(out); err != nil {
-						f.Close()
-						log.Fatalf("write block: %v", err)
-					}
-					cOffset += uint64(len(out))
-					blocks = append(blocks, Block{Offset: bOff, Size: uint64(len(out))})
+				cOffset = offset
+				if _, err := bf.Seek(int64(cOffset), io.SeekStart); err != nil {
+					log.Fatalf("seek after blocks: %v", err)
 				}
 			}
 			br.Close()

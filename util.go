@@ -21,8 +21,9 @@ import (
 )
 
 func updateBuffers() {
+	workers := runtime.NumCPU()
 	if blockSize > 0 {
-		readBuffer = int(blockSize) * 4
+		readBuffer = int(blockSize) * 4 * workers
 	} else {
 		readBuffer = 1000 * 1000 // 1MiB
 	}

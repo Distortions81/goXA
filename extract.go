@@ -835,6 +835,7 @@ func extractFile(arcPath, destination string, lfeat BitFlags, ctype uint8, item 
 		if hasBlocks {
 			sem := make(chan struct{}, runtime.NumCPU())
 			var wg sync.WaitGroup
+			var mu sync.Mutex
 			for i, b := range item.Blocks {
 				if _, err := arcB.Seek(int64(b.Offset), io.SeekStart); err != nil {
 					log.Fatalf("seek block: %v", err)
@@ -853,9 +854,12 @@ func extractFile(arcPath, destination string, lfeat BitFlags, ctype uint8, item 
 						log.Fatalf("decompress block: %v", err)
 					}
 					off := int64(idx) * int64(blockSize)
+					mu.Lock()
 					if _, err := bf.WriteAt(out, off); err != nil {
+						mu.Unlock()
 						log.Fatalf("write block: %v", err)
 					}
+					mu.Unlock()
 				}(i, data)
 			}
 			wg.Wait()
