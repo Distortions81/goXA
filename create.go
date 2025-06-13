@@ -38,7 +38,10 @@ func compressor(w io.Writer) io.WriteCloser {
 		case SpeedBestCompression:
 			level = zstd.SpeedBestCompression
 		}
-		zw, err := zstd.NewWriter(w, zstd.WithEncoderLevel(level))
+		if threads < 1 {
+			threads = 1
+		}
+		zw, err := zstd.NewWriter(w, zstd.WithEncoderLevel(level), zstd.WithEncoderConcurrency(threads))
 		if err != nil {
 			log.Fatalf("zstd init failed: %v", err)
 		}
@@ -100,6 +103,10 @@ func compressor(w io.Writer) io.WriteCloser {
 		if err != nil {
 			log.Fatalf("gzip init: %v", err)
 		}
+		if threads < 1 {
+			threads = 1
+		}
+		_ = zw.SetConcurrency(1<<20, threads)
 		return zw
 	}
 }

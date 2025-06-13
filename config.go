@@ -2,6 +2,7 @@ package main
 
 import (
 	"io/fs"
+	"runtime"
 	"time"
 )
 
@@ -22,6 +23,7 @@ var (
 	extractList                              []string
 	protoVersion                             uint16 = protoVersion2
 	blockSize                                uint32 = defaultBlockSize
+	threads                                  int    = runtime.NumCPU()
 	fecDataShards                            int    = 10
 	fecParityShards                          int    = 3
 	fileRetries                              int    = 3
