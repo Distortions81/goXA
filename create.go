@@ -11,6 +11,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -38,7 +39,7 @@ func compressor(w io.Writer) io.WriteCloser {
 		case SpeedBestCompression:
 			level = zstd.SpeedBestCompression
 		}
-		zw, err := zstd.NewWriter(w, zstd.WithEncoderLevel(level))
+		zw, err := zstd.NewWriter(w, zstd.WithEncoderLevel(level), zstd.WithEncoderConcurrency(runtime.NumCPU()))
 		if err != nil {
 			log.Fatalf("zstd init failed: %v", err)
 		}
