@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# Re-run this script with bash if not already using bash
+if [ -z "${BASH_VERSION:-}" ]; then
+    exec bash "$0" "$@"
+fi
+
 set -euo pipefail
 
 # Extensive end-to-end testing of goxa covering many CLI combinations.
