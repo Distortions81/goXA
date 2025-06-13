@@ -143,6 +143,9 @@ func extract(destinations []string, listOnly bool, jsonList bool) {
 		archiveName := path.Base(archivePath)
 		archiveName = stripArchiveExt(archiveName)
 		destination = path.Clean(pwd + "/" + archiveName + "/")
+		if destination != "" {
+			os.Mkdir(destination, os.ModePerm)
+		}
 	}
 
 	//Create reader
