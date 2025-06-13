@@ -128,7 +128,7 @@ func create(inputPaths []string) error {
 					log.Fatalf("create: Archive %v already exists.", archivePath)
 				}
 			}
-			if spanSize > 0 {
+			if spanSize != defaultSpanSize {
 				sw, err := newSpanWriter(archivePath, spanSize)
 				if err != nil {
 					log.Fatalf("create: %v", err)

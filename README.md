@@ -30,7 +30,8 @@ A fast, portable archiving utility written in Go.
 - Automatic format detection
 - Progress bar with transfer speed and current file
 - Final flush to disk so removable drives aren't yanked before data is safe
-- Spanned archives to fit FAT32 limits with `-span`
+- Optional spanned archives with `-span` (FAT32 limit by default)
+
 - Base32, Base64 and FEC `forward error correcting` encoding when the archive name ends with `.b32`, `.b64` or `.goxaf`
 - Fully documented format: see [FILE-FORMAT.md](FILE-FORMAT.md) and [JSON-LIST-FORMAT.md](JSON-LIST-FORMAT.md)
 - Also see [PURPOSE.md](PURPOSE.md)
@@ -41,7 +42,7 @@ GoXA is conservative by default. Archives only store relative paths by default a
 progress display is enabled for all interactive runs and the program prompts when an archive was created with extra flags so you can confirm them. You always supply the archive name with `-arc` to avoid surprises.
 
 Data is written in large 512KiB blocks for high throughput (adjustable with `-block`). Each archive ends with a trailer that records the offset of every block so readers can jump directly to any part of any file. The block system is designed for future multi-threaded readers and writers. Work on threading will begin once goxa is feature-complete and reasonably tested.
-Archives can automatically span multiple files; the default limit is sized for FAT32 filesystems and adjustable with `-span`.
+Archives normally write to a single file. Use `-span` to split at the FAT32 safe size or `-span N` for a custom limit.
 
 ## Installation
 
@@ -108,7 +109,7 @@ When extracting, the program prompts if the archive was created with flags you d
 | `-speed` | compression speed level |
 | `-sum` | checksum algorithm (crc32, crc16, xxhash, sha256, blake3) |
 | `-block` | compression block size in bytes |
-| `-span` | split archive when a file exceeds N bytes (0 disables) |
+| `-span[=N]` | enable spanning at FAT32 size or N bytes |
 | `-format` | force `goxa` or `tar` format |
 | `-retries` | retries when a file changes during read |
 | `-retrydelay` | seconds to wait between retries |
