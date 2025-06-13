@@ -7,7 +7,7 @@ fi
 set -euo pipefail
 
 # ---- config ---------------------------------------------------------------
-SIZE_GB=${SIZE_GB:-32}
+SIZE_GB=${SIZE_GB:-64}
 ARCHIVE_SUBDIR="testFiles"
 SOURCE=${SOURCE:-"$HOME/$ARCHIVE_SUBDIR"}
 MOUNTPOINT=${MOUNTPOINT:-$(mktemp -d)}

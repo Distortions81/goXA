@@ -38,7 +38,10 @@ func compressor(w io.Writer) io.WriteCloser {
 		case SpeedBestCompression:
 			level = zstd.SpeedBestCompression
 		}
-		zw, err := zstd.NewWriter(w, zstd.WithEncoderLevel(level))
+		if threads < 1 {
+			threads = 1
+		}
+		zw, err := zstd.NewWriter(w, zstd.WithEncoderLevel(level), zstd.WithEncoderConcurrency(threads))
 		if err != nil {
 			log.Fatalf("zstd init failed: %v", err)
 		}
@@ -100,6 +103,10 @@ func compressor(w io.Writer) io.WriteCloser {
 		if err != nil {
 			log.Fatalf("gzip init: %v", err)
 		}
+		if threads < 1 {
+			threads = 1
+		}
+		_ = zw.SetConcurrency(1<<20, threads)
 		return zw
 	}
 }
@@ -417,37 +424,32 @@ func writeEntries(headerLen int, bf *BufferedFile, files []FileEntry) ([]FileEnt
 				log.Fatalf("stat failed: %v", err)
 			}
 
-			var checksum []byte
-			if features.IsSet(fChecksums) {
-				h.Reset()
-				if _, err := io.Copy(h, f); err != nil {
-					f.Close()
-					log.Fatalf("checksum compute failed: %v", err)
-				}
-				checksum = h.Sum(nil)
-				if _, err := f.Seek(0, io.SeekStart); err != nil {
-					f.Close()
-					log.Fatalf("seek reset failed: %v", err)
-				}
-				if _, err := bf.Write(checksum); err != nil {
-					f.Close()
-					log.Fatalf("writing checksum failed: %v", err)
-				}
-			}
-
 			entry.Offset = cOffset
+
+			var checksumOffset uint64
 			if features.IsSet(fChecksums) {
+				checksumOffset = cOffset
+				zero := make([]byte, checksumLength)
+				if _, err := bf.Write(zero); err != nil {
+					f.Close()
+					log.Fatalf("reserve checksum failed: %v", err)
+				}
 				cOffset += uint64(checksumLength)
+				h.Reset()
 			}
 
 			br := NewBufferedFile(f, writeBuffer, p)
+			var src io.Reader = br
+			if features.IsSet(fChecksums) {
+				src = io.TeeReader(br, h)
+			}
 			var blocks []Block
 
 			if blockSize == 0 {
 				bOff := cOffset
 				var written uint64
 				if features.IsSet(fNoCompress) {
-					if _, err := io.Copy(bf, br); err != nil {
+					if _, err := io.Copy(bf, src); err != nil {
 						f.Close()
 						log.Fatalf("copy failed: %v", err)
 					}
@@ -455,7 +457,7 @@ func writeEntries(headerLen int, bf *BufferedFile, files []FileEntry) ([]FileEnt
 				} else {
 					cw := &countingWriter{w: bf}
 					zw := compressor(cw)
-					if _, err := io.Copy(zw, br); err != nil {
+					if _, err := io.Copy(zw, src); err != nil {
 						f.Close()
 						log.Fatalf("compress copy failed: %v", err)
 					}
@@ -469,7 +471,7 @@ func writeEntries(headerLen int, bf *BufferedFile, files []FileEntry) ([]FileEnt
 				blocks = append(blocks, Block{Offset: bOff, Size: written})
 			} else {
 				for {
-					n, err := io.ReadFull(br, buf)
+					n, err := io.ReadFull(src, buf)
 					if n > 0 {
 						bOff := cOffset
 						if features.IsSet(fNoCompress) {
@@ -535,6 +537,22 @@ func writeEntries(headerLen int, bf *BufferedFile, files []FileEntry) ([]FileEnt
 			entry.Size = uint64(statEnd.Size())
 			entry.ModTime = statEnd.ModTime()
 			entry.Blocks = blocks
+			if features.IsSet(fChecksums) {
+				sum := h.Sum(nil)
+				if len(sum) < int(checksumLength) {
+					pad := make([]byte, int(checksumLength)-len(sum))
+					sum = append(sum, pad...)
+				}
+				if _, err := bf.Seek(int64(checksumOffset), io.SeekStart); err != nil {
+					log.Fatalf("seek checksum: %v", err)
+				}
+				if _, err := bf.Write(sum[:checksumLength]); err != nil {
+					log.Fatalf("write checksum: %v", err)
+				}
+				if _, err := bf.Seek(int64(cOffset), io.SeekStart); err != nil {
+					log.Fatalf("seek end: %v", err)
+				}
+			}
 			if hadChange {
 				entry.Changed = true
 			}

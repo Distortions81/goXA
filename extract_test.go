@@ -25,7 +25,9 @@ func TestExtractFileDirCreationFailure(t *testing.T) {
 
 	item := FileEntry{Path: filepath.Join("sub", "file.txt"), Offset: 1}
 
-	_ = extractFile(archivePath, destFile+string(os.PathSeparator), 0, compGzip, &item, &progressData{})
+	f, _ := os.Open(archivePath)
+	defer f.Close()
+	_ = extractFile(f, destFile+string(os.PathSeparator), 0, compGzip, &item, &progressData{})
 
 	if _, err := os.Stat(filepath.Join(tmp, "destfile", "sub")); err == nil {
 		t.Fatalf("directory should not be created")

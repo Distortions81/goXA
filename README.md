@@ -32,13 +32,14 @@ A fast, portable archiving utility written in Go.
 - Final flush to disk so removable drives aren't yanked before data is safe
 - Base32, Base64 and FEC `forward error correcting` encoding when the archive name ends with `.b32`, `.b64` or `.goxaf`
 - Fully documented format: see [FILE-FORMAT.md](FILE-FORMAT.md) and [JSON-LIST-FORMAT.md](JSON-LIST-FORMAT.md)
+- Also see [PURPOSE.md](PURPOSE.md)
 
 ## Default Behavior
 
 GoXA is conservative by default. Archives only store relative paths by default and hidden files are skipped unless `i` is specified. Checksums use fast but strong Blake3 hashes. Existing files are never overwritten unless the `f` flag is given. Zip bombs and free space are checked automatically. The
 progress display is enabled for all interactive runs and the program prompts when an archive was created with extra flags so you can confirm them. You always supply the archive name with `-arc` to avoid surprises.
 
-Data is written in large 512KiB blocks for high throughput. Each archive ends with a trailer that records the offset of every block so readers can jump directly to any part of any file. The block system is designed for future multi-threaded readers and writers. Work on threading will begin once goxa is feature-complete and reasonably tested.
+Data is written in large 512KiB blocks for high throughput (adjustable with `-block`). Each archive ends with a trailer that records the offset of every block so readers can jump directly to any part of any file. The block system supports multi-threaded readers and writers; set the desired concurrency with `-threads`.
 
 ## Installation
 
@@ -104,6 +105,8 @@ When extracting, the program prompts if the archive was created with flags you d
 | `-comp` | compression algorithm |
 | `-speed` | compression speed level |
 | `-sum` | checksum algorithm (crc32, crc16, xxhash, sha256, blake3) |
+| `-block` | compression block size in bytes |
+| `-threads` | number of threads to use |
 | `-format` | force `goxa` or `tar` format |
 | `-retries` | retries when a file changes during read |
 | `-retrydelay` | seconds to wait between retries |
