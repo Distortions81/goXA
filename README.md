@@ -32,6 +32,7 @@ A fast, portable archiving utility written in Go.
 - Final flush to disk so removable drives aren't yanked before data is safe
 - Base32, Base64 and FEC `forward error correcting` encoding when the archive name ends with `.b32`, `.b64` or `.goxaf`
 - Fully documented format: see [FILE-FORMAT.md](FILE-FORMAT.md) and [JSON-LIST-FORMAT.md](JSON-LIST-FORMAT.md)
+- Also see [PURPOSE.md](PURPOSE.md)
 
 ## Default Behavior
 
