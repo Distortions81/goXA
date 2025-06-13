@@ -27,6 +27,7 @@ Progress output is on by default and the archive name must be provided with
 \fB-arc\fP.
 Data blocks default to 512KiB (set with \fB-block\fP) and each archive ends with a trailer listing block
 offsets for fast seeking.
+Archives automatically span multiple files when a span exceeds the limit set by \fB-span\fP.
 .SH MODES
 .TP
 .B c
@@ -101,6 +102,9 @@ Checksum algorithm: crc32, crc16, xxhash, sha256 or blake3.
 .TP
 .BI -block " N"
 Compression block size in bytes.
+.TP
+.BI -span " N"
+Split archive when a span reaches N bytes (0 disables).
 .TP
 .BI -format " TYPE"
 Force archive format: goxa or tar.

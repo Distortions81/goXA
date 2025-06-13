@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"os"
 	"unicode/utf8"
 )
 
@@ -26,12 +25,12 @@ func ReadLPString(r io.Reader) (string, error) {
 }
 
 type BinReader struct {
-	file   *os.File
+	file   fileLike
 	reader *bufio.Reader
 }
 
 func NewBinReader(path string) (*BinReader, error) {
-	f, err := os.Open(path)
+	f, err := newSpanReader(path)
 	if err != nil {
 		return nil, err
 	}
