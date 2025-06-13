@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -763,27 +764,42 @@ func extractFile(arcPath, destination string, lfeat BitFlags, ctype uint8, item 
 		hasher := newHasher(checksumType)
 		writer = io.MultiWriter(bf, hasher)
 		if hasBlocks {
-			for _, b := range item.Blocks {
+			sem := make(chan struct{}, runtime.NumCPU())
+			var wg sync.WaitGroup
+			res := make([][]byte, len(item.Blocks))
+			for i, b := range item.Blocks {
 				if _, err := arcB.Seek(int64(b.Offset), io.SeekStart); err != nil {
 					log.Fatalf("seek block: %v", err)
 				}
-				r := io.LimitReader(arcB, int64(b.Size))
-				if lfeat.IsNotSet(fNoCompress) {
-					dec, err := decompressor(r, ctype)
-					if err != nil {
-						log.Fatalf("decompress setup: %v", err)
-					}
-					r = dec
-					_, err = io.Copy(writer, progressReader{r: r, p: p})
-					if err != nil {
-						log.Fatalf("copy block: %v", err)
-					}
-					dec.Close()
+				data := make([]byte, b.Size)
+				if _, err := io.ReadFull(arcB, data); err != nil {
+					log.Fatalf("read block: %v", err)
+				}
+				if len(sem) < cap(sem) && bf.writer.Buffered() < writeBuffer && arcB.reader.Buffered() > 0 {
+					wg.Add(1)
+					sem <- struct{}{}
+					go func(idx int, d []byte) {
+						defer wg.Done()
+						defer func() { <-sem }()
+						out, err := decompressBlock(d, lfeat, ctype)
+						if err != nil {
+							log.Fatalf("decompress block: %v", err)
+						}
+						res[idx] = out
+					}(i, data)
 				} else {
-					_, err = io.Copy(writer, progressReader{r: r, p: p})
+					out, err := decompressBlock(data, lfeat, ctype)
 					if err != nil {
-						log.Fatalf("copy block: %v", err)
+						log.Fatalf("decompress block: %v", err)
 					}
+					res[i] = out
+				}
+			}
+			wg.Wait()
+			for i := 0; i < len(item.Blocks); i++ {
+				_, err := io.Copy(writer, progressReader{r: bytes.NewReader(res[i]), p: p})
+				if err != nil {
+					log.Fatalf("copy block: %v", err)
 				}
 			}
 		} else {
@@ -813,24 +829,40 @@ func extractFile(arcPath, destination string, lfeat BitFlags, ctype uint8, item 
 		}
 	} else {
 		if hasBlocks {
-			for _, b := range item.Blocks {
+			sem := make(chan struct{}, runtime.NumCPU())
+			var wg sync.WaitGroup
+			res := make([][]byte, len(item.Blocks))
+			for i, b := range item.Blocks {
 				if _, err := arcB.Seek(int64(b.Offset), io.SeekStart); err != nil {
 					log.Fatalf("seek block: %v", err)
 				}
-				r := io.LimitReader(arcB, int64(b.Size))
-				if lfeat.IsNotSet(fNoCompress) {
-					dec, err := decompressor(r, ctype)
-					if err != nil {
-						log.Fatalf("decompress setup: %v", err)
-					}
-					_, err = io.Copy(writer, progressReader{r: dec, p: p})
-					if err != nil {
-						log.Fatalf("copy block: %v", err)
-					}
-					dec.Close()
-				} else {
-					_, err = io.Copy(writer, progressReader{r: r, p: p})
+				data := make([]byte, b.Size)
+				if _, err := io.ReadFull(arcB, data); err != nil {
+					log.Fatalf("read block: %v", err)
 				}
+				if len(sem) < cap(sem) && bf.writer.Buffered() < writeBuffer && arcB.reader.Buffered() > 0 {
+					wg.Add(1)
+					sem <- struct{}{}
+					go func(idx int, d []byte) {
+						defer wg.Done()
+						defer func() { <-sem }()
+						out, err := decompressBlock(d, lfeat, ctype)
+						if err != nil {
+							log.Fatalf("decompress block: %v", err)
+						}
+						res[idx] = out
+					}(i, data)
+				} else {
+					out, err := decompressBlock(data, lfeat, ctype)
+					if err != nil {
+						log.Fatalf("decompress block: %v", err)
+					}
+					res[i] = out
+				}
+			}
+			wg.Wait()
+			for i := 0; i < len(item.Blocks); i++ {
+				_, err := io.Copy(writer, progressReader{r: bytes.NewReader(res[i]), p: p})
 				if err != nil {
 					log.Fatalf("copy block: %v", err)
 				}
@@ -875,4 +907,19 @@ func extractFile(arcPath, destination string, lfeat BitFlags, ctype uint8, item 
 		}
 	}
 	return nil
+}
+
+func decompressBlock(data []byte, lfeat BitFlags, ctype uint8) ([]byte, error) {
+	r := bytes.NewReader(data)
+	if lfeat.IsNotSet(fNoCompress) {
+		dec, err := decompressor(r, ctype)
+		if err != nil {
+			return nil, err
+		}
+		defer dec.Close()
+		return io.ReadAll(dec)
+	}
+	out := make([]byte, len(data))
+	copy(out, data)
+	return out, nil
 }

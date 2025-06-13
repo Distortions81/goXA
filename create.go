@@ -11,7 +11,9 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	brotli "github.com/andybalholm/brotli"
@@ -475,42 +477,62 @@ func writeEntries(headerLen int, bf *BufferedFile, files []FileEntry) ([]FileEnt
 				cOffset += written
 				blocks = append(blocks, Block{Offset: bOff, Size: written})
 			} else {
+				sem := make(chan struct{}, runtime.NumCPU())
+				var wg sync.WaitGroup
+				var mu sync.Mutex
+				idx := 0
+				resMap := make(map[int][]byte)
+
 				for {
 					n, err := io.ReadFull(br, buf)
 					if n > 0 {
-						bOff := cOffset
-						if features.IsSet(fNoCompress) {
-							if _, err := bf.Write(buf[:n]); err != nil {
-								f.Close()
-								log.Fatalf("copy failed: %v", err)
-							}
-							cOffset += uint64(n)
-							blocks = append(blocks, Block{Offset: bOff, Size: uint64(n)})
+						data := make([]byte, n)
+						copy(data, buf[:n])
+						i := idx
+						idx++
+						if len(sem) < cap(sem) && bf.writer.Buffered() < writeBuffer && br.reader.Buffered() > 0 {
+							wg.Add(1)
+							sem <- struct{}{}
+							go func(idx int, d []byte) {
+								defer wg.Done()
+								defer func() { <-sem }()
+								out, err := compressBlock(d)
+								if err != nil {
+									log.Fatalf("compress block: %v", err)
+								}
+								mu.Lock()
+								resMap[idx] = out
+								mu.Unlock()
+							}(i, data)
 						} else {
-							cw := &countingWriter{w: bf}
-							zw := compressor(cw)
-							if _, err := zw.Write(buf[:n]); err != nil {
+							out, err := compressBlock(data)
+							if err != nil {
 								f.Close()
-								log.Fatalf("compress copy failed: %v", err)
+								log.Fatalf("compress block: %v", err)
 							}
-							if err := zw.Close(); err != nil {
-								f.Close()
-								log.Fatalf("compress close failed: %v", err)
-							}
-							cOffset += uint64(cw.Count())
-							blocks = append(blocks, Block{Offset: bOff, Size: uint64(cw.Count())})
+							resMap[i] = out
 						}
 					}
-					if err == io.EOF {
-						break
-					}
-					if err == io.ErrUnexpectedEOF {
+					if err == io.EOF || err == io.ErrUnexpectedEOF {
 						break
 					}
 					if err != nil {
 						f.Close()
 						log.Fatalf("read block failed: %v", err)
 					}
+				}
+
+				wg.Wait()
+
+				for i := 0; i < idx; i++ {
+					bOff := cOffset
+					out := resMap[i]
+					if _, err := bf.Write(out); err != nil {
+						f.Close()
+						log.Fatalf("write block: %v", err)
+					}
+					cOffset += uint64(len(out))
+					blocks = append(blocks, Block{Offset: bOff, Size: uint64(len(out))})
 				}
 			}
 			br.Close()
@@ -570,4 +592,22 @@ func writeTrailer(files []FileEntry) []byte {
 	}
 	trailer.Write(sum[:checksumLength])
 	return trailer.Bytes()
+}
+
+func compressBlock(data []byte) ([]byte, error) {
+	if features.IsSet(fNoCompress) {
+		out := make([]byte, len(data))
+		copy(out, data)
+		return out, nil
+	}
+	var buf bytes.Buffer
+	cw := &countingWriter{w: &buf}
+	zw := compressor(cw)
+	if _, err := zw.Write(data); err != nil {
+		return nil, err
+	}
+	if err := zw.Close(); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
