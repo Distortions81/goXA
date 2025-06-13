@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -763,27 +764,44 @@ func extractFile(arcPath, destination string, lfeat BitFlags, ctype uint8, item 
 		hasher := newHasher(checksumType)
 		writer = io.MultiWriter(bf, hasher)
 		if hasBlocks {
-			for _, b := range item.Blocks {
-				if _, err := arcB.Seek(int64(b.Offset), io.SeekStart); err != nil {
-					log.Fatalf("seek block: %v", err)
-				}
-				r := io.LimitReader(arcB, int64(b.Size))
-				if lfeat.IsNotSet(fNoCompress) {
-					dec, err := decompressor(r, ctype)
-					if err != nil {
-						log.Fatalf("decompress setup: %v", err)
-					}
-					r = dec
-					_, err = io.Copy(writer, progressReader{r: r, p: p})
-					if err != nil {
-						log.Fatalf("copy block: %v", err)
-					}
-					dec.Close()
+			type blkRes struct {
+				idx  int
+				data []byte
+			}
+			resCh := make(chan blkRes, runtime.NumCPU())
+			sem := make(chan struct{}, runtime.NumCPU())
+			var wg sync.WaitGroup
+			for i, b := range item.Blocks {
+				if len(sem) < cap(sem) && bf.writer.Buffered() < writeBuffer {
+					wg.Add(1)
+					sem <- struct{}{}
+					go func(idx int, bl Block) {
+						defer wg.Done()
+						defer func() { <-sem }()
+						out, err := decompressBlock(arcPath, bl, lfeat, ctype)
+						if err != nil {
+							log.Fatalf("decompress block: %v", err)
+						}
+						resCh <- blkRes{idx: idx, data: out}
+					}(i, b)
 				} else {
-					_, err = io.Copy(writer, progressReader{r: r, p: p})
+					out, err := decompressBlock(arcPath, b, lfeat, ctype)
 					if err != nil {
-						log.Fatalf("copy block: %v", err)
+						log.Fatalf("decompress block: %v", err)
 					}
+					resCh <- blkRes{idx: i, data: out}
+				}
+			}
+			wg.Wait()
+			close(resCh)
+			resMap := make(map[int][]byte)
+			for r := range resCh {
+				resMap[r.idx] = r.data
+			}
+			for i := 0; i < len(item.Blocks); i++ {
+				_, err := io.Copy(writer, progressReader{r: bytes.NewReader(resMap[i]), p: p})
+				if err != nil {
+					log.Fatalf("copy block: %v", err)
 				}
 			}
 		} else {
@@ -813,24 +831,42 @@ func extractFile(arcPath, destination string, lfeat BitFlags, ctype uint8, item 
 		}
 	} else {
 		if hasBlocks {
-			for _, b := range item.Blocks {
-				if _, err := arcB.Seek(int64(b.Offset), io.SeekStart); err != nil {
-					log.Fatalf("seek block: %v", err)
-				}
-				r := io.LimitReader(arcB, int64(b.Size))
-				if lfeat.IsNotSet(fNoCompress) {
-					dec, err := decompressor(r, ctype)
-					if err != nil {
-						log.Fatalf("decompress setup: %v", err)
-					}
-					_, err = io.Copy(writer, progressReader{r: dec, p: p})
-					if err != nil {
-						log.Fatalf("copy block: %v", err)
-					}
-					dec.Close()
+			type blkRes struct {
+				idx  int
+				data []byte
+			}
+			resCh := make(chan blkRes, runtime.NumCPU())
+			sem := make(chan struct{}, runtime.NumCPU())
+			var wg sync.WaitGroup
+			for i, b := range item.Blocks {
+				if len(sem) < cap(sem) && bf.writer.Buffered() < writeBuffer {
+					wg.Add(1)
+					sem <- struct{}{}
+					go func(idx int, bl Block) {
+						defer wg.Done()
+						defer func() { <-sem }()
+						out, err := decompressBlock(arcPath, bl, lfeat, ctype)
+						if err != nil {
+							log.Fatalf("decompress block: %v", err)
+						}
+						resCh <- blkRes{idx: idx, data: out}
+					}(i, b)
 				} else {
-					_, err = io.Copy(writer, progressReader{r: r, p: p})
+					out, err := decompressBlock(arcPath, b, lfeat, ctype)
+					if err != nil {
+						log.Fatalf("decompress block: %v", err)
+					}
+					resCh <- blkRes{idx: i, data: out}
 				}
+			}
+			wg.Wait()
+			close(resCh)
+			resMap := make(map[int][]byte)
+			for r := range resCh {
+				resMap[r.idx] = r.data
+			}
+			for i := 0; i < len(item.Blocks); i++ {
+				_, err := io.Copy(writer, progressReader{r: bytes.NewReader(resMap[i]), p: p})
 				if err != nil {
 					log.Fatalf("copy block: %v", err)
 				}
@@ -875,4 +911,25 @@ func extractFile(arcPath, destination string, lfeat BitFlags, ctype uint8, item 
 		}
 	}
 	return nil
+}
+
+func decompressBlock(path string, b Block, lfeat BitFlags, ctype uint8) ([]byte, error) {
+	arcB, err := NewBinReader(path)
+	if err != nil {
+		return nil, err
+	}
+	defer arcB.Close()
+	if _, err := arcB.Seek(int64(b.Offset), io.SeekStart); err != nil {
+		return nil, err
+	}
+	r := io.LimitReader(arcB, int64(b.Size))
+	if lfeat.IsNotSet(fNoCompress) {
+		dec, err := decompressor(r, ctype)
+		if err != nil {
+			return nil, err
+		}
+		defer dec.Close()
+		return io.ReadAll(dec)
+	}
+	return io.ReadAll(r)
 }
