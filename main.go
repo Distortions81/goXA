@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"runtime"
 	"runtime/pprof"
 
 	"path/filepath"
@@ -98,6 +99,7 @@ func showUsage() {
 	fmt.Println("  -speed LEVEL    compression speed (fastest, default, better, best)")
 	fmt.Println("  -sum ALG        checksum algorithm (crc32, crc16, xxhash, sha256, blake3)")
 	fmt.Println("  -block N        compression block size in bytes")
+	fmt.Println("  -threads N      number of threads to use")
 	fmt.Println("  -format FORMAT  archive format (goxa or tar)")
 	fmt.Println("  -retries N      retries when file changes during read (0 = never give up)")
 	fmt.Println("  -retrydelay N   delay between retries in seconds")
@@ -207,6 +209,7 @@ func initFlags() (*flag.FlagSet, *flagSettings) {
 	fs.StringVar(&f.speedOpt, "speed", "fastest", "compression speed: fastest|default|better|best")
 	fs.StringVar(&f.sumOpt, "sum", "blake3", "checksum: crc32|crc16|xxhash|sha256|blake3")
 	fs.UintVar(&flagBlockSize, "block", defaultBlockSize, "compression block size in bytes")
+	fs.IntVar(&threads, "threads", runtime.NumCPU(), "number of threads to use")
 	fs.StringVar(&f.format, "format", "goxa", "archive format: tar|goxa")
 	fs.StringVar(&f.sel, "files", "", "comma-separated list of files and directories to extract")
 	fs.IntVar(&f.fecData, "fec-data", fecDataShards, "FEC data shards")

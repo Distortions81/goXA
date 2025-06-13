@@ -34,7 +34,10 @@ func createTar(paths []string) error {
 			defer xzw.Close()
 		} else {
 			gw := gzip.NewWriter(f)
-			gw.SetConcurrency(1<<20, runtime.NumCPU())
+			if threads < 1 {
+				threads = 1
+			}
+			_ = gw.SetConcurrency(1<<20, threads)
 			w = gw
 			defer f.Close()
 			defer gw.Close()
@@ -123,7 +126,10 @@ func extractTar(destination string) error {
 			}
 			src = xr
 		} else {
-			gr, err := gzip.NewReaderN(r, 1<<20, runtime.NumCPU())
+			if threads < 1 {
+				threads = 1
+			}
+			gr, err := gzip.NewReaderN(r, 0, threads)
 			if err != nil {
 				r.Close()
 				return err

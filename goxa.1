@@ -27,6 +27,8 @@ Progress output is on by default and the archive name must be provided with
 \fB-arc\fP.
 Data blocks default to 512KiB (set with \fB-block\fP) and each archive ends with a trailer listing block
 offsets for fast seeking.
+The \fB-threads\fP option controls how many goroutines are used for
+compression and extraction.
 .SH MODES
 .TP
 .B c
@@ -101,6 +103,9 @@ Checksum algorithm: crc32, crc16, xxhash, sha256 or blake3.
 .TP
 .BI -block " N"
 Compression block size in bytes.
+.TP
+.BI -threads " N"
+Number of threads to use.
 .TP
 .BI -format " TYPE"
 Force archive format: goxa or tar.

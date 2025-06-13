@@ -13,7 +13,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -31,7 +30,10 @@ import (
 func decompressor(r io.Reader, cType uint8) (io.ReadCloser, error) {
 	switch cType {
 	case compZstd:
-		zr, err := zstd.NewReader(r, zstd.WithDecoderConcurrency(runtime.NumCPU()))
+		if threads < 1 {
+			threads = 1
+		}
+		zr, err := zstd.NewReader(r, zstd.WithDecoderConcurrency(threads))
 		if err != nil {
 			return nil, err
 		}
@@ -51,7 +53,10 @@ func decompressor(r io.Reader, cType uint8) (io.ReadCloser, error) {
 		}
 		return io.NopCloser(xr), nil
 	default:
-		gr, err := gzip.NewReaderN(r, 1<<20, runtime.NumCPU())
+		if threads < 1 {
+			threads = 1
+		}
+		gr, err := gzip.NewReaderN(r, 0, threads)
 		if err != nil {
 			return nil, err
 		}
@@ -569,7 +574,10 @@ func extract(destinations []string, listOnly bool, jsonList bool) {
 	arc.Close()
 
 	if lfeat.IsNotSet(fNoCompress) {
-		wg := sizedwaitgroup.New(runtime.NumCPU())
+		if threads < 1 {
+			threads = 1
+		}
+		wg := sizedwaitgroup.New(threads)
 		for f := range fileList {
 			if !isSelected(fileList[f].Path) {
 				continue
