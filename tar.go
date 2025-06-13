@@ -2,13 +2,13 @@ package main
 
 import (
 	"archive/tar"
-	gzip "github.com/klauspost/pgzip"
 	"io"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
+
+	gzip "github.com/klauspost/pgzip"
 
 	"github.com/ulikunitz/xz"
 )
