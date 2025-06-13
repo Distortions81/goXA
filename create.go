@@ -491,7 +491,7 @@ func writeEntries(headerLen int, bf *BufferedFile, files []FileEntry) ([]FileEnt
 					if n > 0 {
 						data := make([]byte, n)
 						copy(data, buf[:n])
-						if len(sem) < cap(sem) && bf.writer.Buffered() < writeBuffer {
+						if len(sem) < cap(sem) && bf.writer.Buffered() < writeBuffer && br.reader.Buffered() > 0 {
 							wg.Add(1)
 							sem <- struct{}{}
 							go func(i int, d []byte) {
