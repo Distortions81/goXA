@@ -101,6 +101,7 @@ func compressor(w io.Writer) io.WriteCloser {
 		if err != nil {
 			log.Fatalf("gzip init: %v", err)
 		}
+		zw.SetConcurrency(1<<20, runtime.NumCPU())
 		return zw
 	}
 }

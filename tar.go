@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -33,6 +34,7 @@ func createTar(paths []string) error {
 			defer xzw.Close()
 		} else {
 			gw := gzip.NewWriter(f)
+			gw.SetConcurrency(1<<20, runtime.NumCPU())
 			w = gw
 			defer f.Close()
 			defer gw.Close()
@@ -121,7 +123,7 @@ func extractTar(destination string) error {
 			}
 			src = xr
 		} else {
-			gr, err := gzip.NewReader(r)
+			gr, err := gzip.NewReaderN(r, 1<<20, runtime.NumCPU())
 			if err != nil {
 				r.Close()
 				return err

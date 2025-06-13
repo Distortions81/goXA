@@ -51,7 +51,7 @@ func decompressor(r io.Reader, cType uint8) (io.ReadCloser, error) {
 		}
 		return io.NopCloser(xr), nil
 	default:
-		gr, err := gzip.NewReader(r)
+		gr, err := gzip.NewReaderN(r, 1<<20, runtime.NumCPU())
 		if err != nil {
 			return nil, err
 		}
