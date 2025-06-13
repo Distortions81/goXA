@@ -477,41 +477,41 @@ func writeEntries(headerLen int, bf *BufferedFile, files []FileEntry) ([]FileEnt
 				cOffset += written
 				blocks = append(blocks, Block{Offset: bOff, Size: written})
 			} else {
-				type blkRes struct {
-					idx  int
-					data []byte
-				}
-				resCh := make(chan blkRes, runtime.NumCPU())
 				sem := make(chan struct{}, runtime.NumCPU())
 				var wg sync.WaitGroup
+				var mu sync.Mutex
 				idx := 0
+				resMap := make(map[int][]byte)
 
 				for {
 					n, err := io.ReadFull(br, buf)
 					if n > 0 {
 						data := make([]byte, n)
 						copy(data, buf[:n])
+						i := idx
+						idx++
 						if len(sem) < cap(sem) && bf.writer.Buffered() < writeBuffer && br.reader.Buffered() > 0 {
 							wg.Add(1)
 							sem <- struct{}{}
-							go func(i int, d []byte) {
+							go func(idx int, d []byte) {
 								defer wg.Done()
 								defer func() { <-sem }()
 								out, err := compressBlock(d)
 								if err != nil {
 									log.Fatalf("compress block: %v", err)
 								}
-								resCh <- blkRes{idx: i, data: out}
-							}(idx, data)
+								mu.Lock()
+								resMap[idx] = out
+								mu.Unlock()
+							}(i, data)
 						} else {
 							out, err := compressBlock(data)
 							if err != nil {
 								f.Close()
 								log.Fatalf("compress block: %v", err)
 							}
-							resCh <- blkRes{idx: idx, data: out}
+							resMap[i] = out
 						}
-						idx++
 					}
 					if err == io.EOF || err == io.ErrUnexpectedEOF {
 						break
@@ -523,12 +523,7 @@ func writeEntries(headerLen int, bf *BufferedFile, files []FileEntry) ([]FileEnt
 				}
 
 				wg.Wait()
-				close(resCh)
 
-				resMap := make(map[int][]byte)
-				for r := range resCh {
-					resMap[r.idx] = r.data
-				}
 				for i := 0; i < idx; i++ {
 					bOff := cOffset
 					out := resMap[i]

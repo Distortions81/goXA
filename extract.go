@@ -764,13 +764,9 @@ func extractFile(arcPath, destination string, lfeat BitFlags, ctype uint8, item 
 		hasher := newHasher(checksumType)
 		writer = io.MultiWriter(bf, hasher)
 		if hasBlocks {
-			type blkRes struct {
-				idx  int
-				data []byte
-			}
-			resCh := make(chan blkRes, runtime.NumCPU())
 			sem := make(chan struct{}, runtime.NumCPU())
 			var wg sync.WaitGroup
+			res := make([][]byte, len(item.Blocks))
 			for i, b := range item.Blocks {
 				if _, err := arcB.Seek(int64(b.Offset), io.SeekStart); err != nil {
 					log.Fatalf("seek block: %v", err)
@@ -789,24 +785,19 @@ func extractFile(arcPath, destination string, lfeat BitFlags, ctype uint8, item 
 						if err != nil {
 							log.Fatalf("decompress block: %v", err)
 						}
-						resCh <- blkRes{idx: idx, data: out}
+						res[idx] = out
 					}(i, data)
 				} else {
 					out, err := decompressBlock(data, lfeat, ctype)
 					if err != nil {
 						log.Fatalf("decompress block: %v", err)
 					}
-					resCh <- blkRes{idx: i, data: out}
+					res[i] = out
 				}
 			}
 			wg.Wait()
-			close(resCh)
-			resMap := make(map[int][]byte)
-			for r := range resCh {
-				resMap[r.idx] = r.data
-			}
 			for i := 0; i < len(item.Blocks); i++ {
-				_, err := io.Copy(writer, progressReader{r: bytes.NewReader(resMap[i]), p: p})
+				_, err := io.Copy(writer, progressReader{r: bytes.NewReader(res[i]), p: p})
 				if err != nil {
 					log.Fatalf("copy block: %v", err)
 				}
@@ -838,13 +829,9 @@ func extractFile(arcPath, destination string, lfeat BitFlags, ctype uint8, item 
 		}
 	} else {
 		if hasBlocks {
-			type blkRes struct {
-				idx  int
-				data []byte
-			}
-			resCh := make(chan blkRes, runtime.NumCPU())
 			sem := make(chan struct{}, runtime.NumCPU())
 			var wg sync.WaitGroup
+			res := make([][]byte, len(item.Blocks))
 			for i, b := range item.Blocks {
 				if _, err := arcB.Seek(int64(b.Offset), io.SeekStart); err != nil {
 					log.Fatalf("seek block: %v", err)
@@ -863,24 +850,19 @@ func extractFile(arcPath, destination string, lfeat BitFlags, ctype uint8, item 
 						if err != nil {
 							log.Fatalf("decompress block: %v", err)
 						}
-						resCh <- blkRes{idx: idx, data: out}
+						res[idx] = out
 					}(i, data)
 				} else {
 					out, err := decompressBlock(data, lfeat, ctype)
 					if err != nil {
 						log.Fatalf("decompress block: %v", err)
 					}
-					resCh <- blkRes{idx: i, data: out}
+					res[i] = out
 				}
 			}
 			wg.Wait()
-			close(resCh)
-			resMap := make(map[int][]byte)
-			for r := range resCh {
-				resMap[r.idx] = r.data
-			}
 			for i := 0; i < len(item.Blocks); i++ {
-				_, err := io.Copy(writer, progressReader{r: bytes.NewReader(resMap[i]), p: p})
+				_, err := io.Copy(writer, progressReader{r: bytes.NewReader(res[i]), p: p})
 				if err != nil {
 					log.Fatalf("copy block: %v", err)
 				}
