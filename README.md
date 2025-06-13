@@ -116,6 +116,7 @@ When extracting, the program prompts if the archive was created with flags you d
 | `-bombcheck=false` | disable zip bomb detection |
 | `-spacecheck=false` | disable free space check |
 | `-noflush` | skip final disk flush |
+| `-threads` | number of threads to use |
 | `-version` | print program version |
 | `-pgo` | run built-in PGO training (10k files \~2GB total, s-curve around 150KB) |
 | `-fec-data` | number of FEC data shards |

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"runtime"
 	"runtime/pprof"
 
 	"path/filepath"
@@ -106,6 +107,7 @@ func showUsage() {
 	fmt.Println("  -bombcheck=false disable zip bomb detection")
 	fmt.Println("  -spacecheck=false disable free space check")
 	fmt.Println("  -noflush        skip final disk flush")
+	fmt.Println("  -threads N      number of threads to use")
 	fmt.Println("  -version        print program version")
 	fmt.Println("  -pgo            run built-in PGO training (10k files ~2GB, s-curve around 150KB)")
 	fmt.Println("  -fec-data N     number of FEC data shards (default 10)")
@@ -220,6 +222,7 @@ func initFlags() (*flag.FlagSet, *flagSettings) {
 	fs.BoolVar(&bombCheck, "bombcheck", true, "detect extremely compressed files")
 	fs.BoolVar(&spaceCheck, "spacecheck", true, "verify free disk space before operations")
 	fs.BoolVar(&noFlush, "noflush", false, "skip final disk flush")
+	fs.IntVar(&threads, "threads", runtime.NumCPU(), "number of threads to use")
 	fs.BoolVar(&f.showVer, "version", false, "print version and exit")
 	return fs, f
 }

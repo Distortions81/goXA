@@ -2,6 +2,7 @@ package main
 
 import (
 	"io/fs"
+	"runtime"
 	"time"
 )
 
@@ -31,6 +32,7 @@ var (
 	bombCheck                                bool   = true
 	spaceCheck                               bool   = true
 	noFlush                                  bool   = false
+	threads                                  int    = runtime.NumCPU()
 )
 
 type FileEntry struct {
