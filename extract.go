@@ -3,10 +3,10 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"compress/gzip"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	gzip "github.com/klauspost/pgzip"
 	"io"
 	"io/fs"
 	"log"
@@ -31,7 +31,7 @@ import (
 func decompressor(r io.Reader, cType uint8) (io.ReadCloser, error) {
 	switch cType {
 	case compZstd:
-		zr, err := zstd.NewReader(r)
+		zr, err := zstd.NewReader(r, zstd.WithDecoderConcurrency(runtime.NumCPU()))
 		if err != nil {
 			return nil, err
 		}
