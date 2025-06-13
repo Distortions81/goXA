@@ -110,7 +110,7 @@ func showUsage() {
 	fmt.Println("  -pgo            run built-in PGO training (10k files ~2GB, s-curve around 150KB)")
 	fmt.Println("  -fec-data N     number of FEC data shards (default 10)")
 	fmt.Println("  -fec-parity N   number of FEC parity shards (default 3)")
-	fmt.Println("  -fec-level L    FEC redundancy preset (low, medium, high)")
+	fmt.Println("  -fec-level L    FEC redundancy preset: low (~30%), medium (~50%), high (~100%)")
 
 	fmt.Println()
 	fmt.Println("Extensions:")
@@ -213,7 +213,7 @@ func initFlags() (*flag.FlagSet, *flagSettings) {
 	fs.StringVar(&f.sel, "files", "", "comma-separated list of files and directories to extract")
 	fs.IntVar(&f.fecData, "fec-data", fecDataShards, "FEC data shards")
 	fs.IntVar(&f.fecParity, "fec-parity", fecParityShards, "FEC parity shards")
-	fs.StringVar(&f.fecLevel, "fec-level", "", "FEC redundancy preset: low|medium|high")
+	fs.StringVar(&f.fecLevel, "fec-level", "", "FEC redundancy preset: low(~30%)|medium(~50%)|high(~100%)")
 	fs.IntVar(&fileRetries, "retries", 3, "retries when file changes during read (0=never give up)")
 	fs.IntVar(&fileRetryDelay, "retrydelay", 5, "delay between retries in seconds")
 	fs.BoolVar(&failOnChange, "failonchange", false, "treat file change after retries as fatal")
