@@ -131,7 +131,7 @@ For example, with `-fec-data=10 -fec-parity=3` the archive is split into 13 shar
 
 ```
 low    -> 10 data / 3 parity  (~30% redundancy)
-medium -> 8 data / 4 parity   (50% redundancy)
+medium -> 8 data / 4 parity   (50% redundancy, similar to optical media)
 high   -> 5 data / 5 parity   (100% redundancy)
 ```
 

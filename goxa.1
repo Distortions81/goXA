@@ -140,7 +140,7 @@ Number of FEC data shards (default 10).
 Number of FEC parity shards (default 3).
 .TP
 .BI -fec-level " LEVEL"
-FEC redundancy preset: \fBlow\fP (10 data / 3 parity \(ap30% redundancy\)), \fBmedium\fP (8 data / 4 parity \(50% redundancy\)) or \fBhigh\fP (5 data / 5 parity \(100% redundancy\)). Use of \fB-fec-data\fP and \fB-fec-parity\fP overrides these presets.
+FEC redundancy preset: \fBlow\fP (10 data / 3 parity \(ap30% redundancy\)), \fBmedium\fP (8 data / 4 parity \(50% redundancy\) similar to optical media) or \fBhigh\fP (5 data / 5 parity \(100% redundancy\)).  Use of \fB-fec-data\fP and \fB-fec-parity\fP overrides these presets.
 .SS FEC ENCODING
 FEC archives use Reed-Solomon coding to provide redundancy. Data shards contain the original bytes while parity shards allow recovery from missing or corrupted shards. For example, \fB-fec-data=10\fP and \fB-fec-parity=3\fP create 13 shards; any 10 shards are sufficient to reconstruct the archive. The \fB.goxaf\fP extension triggers automatic decoding during extraction or listing.
 .SS BASE32 AND BASE64
