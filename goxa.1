@@ -25,7 +25,7 @@ files are never overwritten unless \fBf\fP is given. The program checks for zip
 bombs and available space and prompts when extra archive flags are detected.
 Progress output is on by default and the archive name must be provided with
 \fB-arc\fP.
-Data blocks default to 512KiB and each archive ends with a trailer listing block
+Data blocks default to 512KiB (set with \fB-block\fP) and each archive ends with a trailer listing block
 offsets for fast seeking.
 .SH MODES
 .TP
@@ -98,6 +98,9 @@ Compression speed: fastest, default, better or best.
 .TP
 .BI -sum " ALG"
 Checksum algorithm: crc32, crc16, xxhash, sha256 or blake3.
+.TP
+.BI -block " N"
+Compression block size in bytes.
 .TP
 .BI -format " TYPE"
 Force archive format: goxa or tar.

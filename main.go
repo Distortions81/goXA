@@ -13,6 +13,8 @@ import (
 
 const makeProfile = false
 
+var flagBlockSize uint = defaultBlockSize
+
 func main() {
 	defer startProfile()()
 
@@ -37,6 +39,7 @@ func main() {
 
 	flagSet, mflags := initFlags()
 	flagSet.Parse(os.Args[2:])
+	blockSize = uint32(flagBlockSize)
 
 	quietMode = toStdOut || cmdLetter == 'j'
 	if quietMode {
@@ -94,6 +97,7 @@ func showUsage() {
 	fmt.Println("  -comp ALG       compression algorithm (gzip, zstd, lz4, s2, snappy, brotli, xz, none)")
 	fmt.Println("  -speed LEVEL    compression speed (fastest, default, better, best)")
 	fmt.Println("  -sum ALG        checksum algorithm (crc32, crc16, xxhash, sha256, blake3)")
+	fmt.Println("  -block N        compression block size in bytes")
 	fmt.Println("  -format FORMAT  archive format (goxa or tar)")
 	fmt.Println("  -retries N      retries when file changes during read (0 = never give up)")
 	fmt.Println("  -retrydelay N   delay between retries in seconds")
@@ -202,6 +206,7 @@ func initFlags() (*flag.FlagSet, *flagSettings) {
 	fs.StringVar(&compression, "comp", "zstd", "compression: gzip|zstd|lz4|s2|snappy|brotli|xz|none")
 	fs.StringVar(&f.speedOpt, "speed", "fastest", "compression speed: fastest|default|better|best")
 	fs.StringVar(&f.sumOpt, "sum", "blake3", "checksum: crc32|crc16|xxhash|sha256|blake3")
+	fs.UintVar(&flagBlockSize, "block", defaultBlockSize, "compression block size in bytes")
 	fs.StringVar(&f.format, "format", "goxa", "archive format: tar|goxa")
 	fs.StringVar(&f.sel, "files", "", "comma-separated list of files and directories to extract")
 	fs.IntVar(&f.fecData, "fec-data", fecDataShards, "FEC data shards")
