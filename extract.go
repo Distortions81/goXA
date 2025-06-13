@@ -168,6 +168,8 @@ func extract(destinations []string, listOnly bool, jsonList bool) {
 	if err != nil {
 		log.Fatalf("extract: Could not open the archive file: %v", err)
 	}
+	defer arc.Close()
+	arcFile := arc.file
 	doLog(false, "Opening archive: %v", archivePath)
 	if !listOnly {
 		doLog(false, "Destination: %v", path.Clean(destination))
@@ -571,7 +573,6 @@ func extract(destinations []string, listOnly bool, jsonList bool) {
 			os.Chtimes(dirPath, item.ModTime, item.ModTime)
 		}
 	}
-	arc.Close()
 
 	if lfeat.IsNotSet(fNoCompress) {
 		if threads < 1 {
@@ -585,7 +586,7 @@ func extract(destinations []string, listOnly bool, jsonList bool) {
 			wg.Add()
 			go func(item *FileEntry) {
 				defer wg.Done()
-				_ = extractFile(arcPath, destination, lfeat, ctype, item, p)
+				_ = extractFile(arcFile, destination, lfeat, ctype, item, p)
 			}(&fileList[f])
 		}
 		wg.Wait()
@@ -594,7 +595,7 @@ func extract(destinations []string, listOnly bool, jsonList bool) {
 			if !isSelected(fileList[f].Path) {
 				continue
 			}
-			_ = extractFile(arcPath, destination, lfeat, ctype, &fileList[f], p)
+			_ = extractFile(arcFile, destination, lfeat, ctype, &fileList[f], p)
 		}
 	}
 
@@ -603,7 +604,7 @@ func extract(destinations []string, listOnly bool, jsonList bool) {
 	}
 }
 
-func extractFile(arcPath, destination string, lfeat BitFlags, ctype uint8, item *FileEntry, p *progressData) error {
+func extractFile(arc io.ReaderAt, destination string, lfeat BitFlags, ctype uint8, item *FileEntry, p *progressData) error {
 	if item.Type == entryOther {
 		return nil
 	}
@@ -721,27 +722,8 @@ func extractFile(arcPath, destination string, lfeat BitFlags, ctype uint8, item 
 		}
 	}
 
-	//Seek to data in archive
-	arcB, err := NewBinReader(arcPath)
-	if err != nil {
-		if doForce {
-			doLog(false, "unable to open archive reader: %v", err)
-			skippedFiles.Add(1)
-			closeFile()
-			return nil
-		}
-		closeFile()
-		log.Fatalf("unable to open archive reader: %v", err)
-	}
-	defer arcB.Close()
-	_, err = arcB.Seek(int64(item.Offset), io.SeekStart)
-	if err != nil {
-		if doForce {
-			doLog(false, "Unable to seek archive: %v :: %v", arcPath, err)
-		} else {
-			log.Fatalf("Unable to seek archive: %v :: %v", arcPath, err)
-		}
-	}
+	//Prepare archive reader
+	off := int64(item.Offset)
 
 	p.file.Store(item.Path)
 
@@ -752,7 +734,8 @@ func extractFile(arcPath, destination string, lfeat BitFlags, ctype uint8, item 
 	//Read checksum
 	expectedChecksum := make([]byte, checksumLength)
 	if lfeat.IsSet(fChecksums) {
-		if _, err := io.ReadFull(arcB, expectedChecksum); err != nil {
+		r := io.NewSectionReader(arc, off, int64(checksumLength))
+		if _, err := io.ReadFull(r, expectedChecksum); err != nil {
 			if doForce {
 				doLog(false, "unable to read checksum for %v: %v", item.Path, err)
 				skippedFiles.Add(1)
@@ -762,6 +745,7 @@ func extractFile(arcPath, destination string, lfeat BitFlags, ctype uint8, item 
 			closeFile()
 			log.Fatalf("unable to read checksum for %v: %v", item.Path, err)
 		}
+		off += int64(checksumLength)
 	}
 
 	var writer io.Writer = bf
@@ -772,32 +756,29 @@ func extractFile(arcPath, destination string, lfeat BitFlags, ctype uint8, item 
 		writer = io.MultiWriter(bf, hasher)
 		if hasBlocks {
 			for _, b := range item.Blocks {
-				if _, err := arcB.Seek(int64(b.Offset), io.SeekStart); err != nil {
-					log.Fatalf("seek block: %v", err)
-				}
-				r := io.LimitReader(arcB, int64(b.Size))
+				r := io.NewSectionReader(arc, int64(b.Offset), int64(b.Size))
 				if lfeat.IsNotSet(fNoCompress) {
 					dec, err := decompressor(r, ctype)
 					if err != nil {
 						log.Fatalf("decompress setup: %v", err)
 					}
-					r = dec
-					_, err = io.Copy(writer, progressReader{r: r, p: p})
+					_, err = io.Copy(writer, progressReader{r: dec, p: p})
 					if err != nil {
 						log.Fatalf("copy block: %v", err)
 					}
 					dec.Close()
 				} else {
-					_, err = io.Copy(writer, progressReader{r: r, p: p})
+					_, err := io.Copy(writer, progressReader{r: r, p: p})
 					if err != nil {
 						log.Fatalf("copy block: %v", err)
 					}
 				}
 			}
 		} else {
-			var src io.Reader = arcB
+			r := io.NewSectionReader(arc, off, 1<<63-1)
+			var src io.Reader = r
 			if lfeat.IsNotSet(fNoCompress) {
-				dec, err := decompressor(arcB, ctype)
+				dec, err := decompressor(r, ctype)
 				if err != nil {
 					log.Fatalf("decompress error: Unable to create reader: %v :: %v", item.Path, err)
 				}
@@ -822,10 +803,7 @@ func extractFile(arcPath, destination string, lfeat BitFlags, ctype uint8, item 
 	} else {
 		if hasBlocks {
 			for _, b := range item.Blocks {
-				if _, err := arcB.Seek(int64(b.Offset), io.SeekStart); err != nil {
-					log.Fatalf("seek block: %v", err)
-				}
-				r := io.LimitReader(arcB, int64(b.Size))
+				r := io.NewSectionReader(arc, int64(b.Offset), int64(b.Size))
 				if lfeat.IsNotSet(fNoCompress) {
 					dec, err := decompressor(r, ctype)
 					if err != nil {
@@ -837,16 +815,17 @@ func extractFile(arcPath, destination string, lfeat BitFlags, ctype uint8, item 
 					}
 					dec.Close()
 				} else {
-					_, err = io.Copy(writer, progressReader{r: r, p: p})
-				}
-				if err != nil {
-					log.Fatalf("copy block: %v", err)
+					_, err := io.Copy(writer, progressReader{r: r, p: p})
+					if err != nil {
+						log.Fatalf("copy block: %v", err)
+					}
 				}
 			}
 		} else {
-			var src io.Reader = arcB
+			r := io.NewSectionReader(arc, off, 1<<63-1)
+			var src io.Reader = r
 			if lfeat.IsNotSet(fNoCompress) {
-				dec, err := decompressor(arcB, ctype)
+				dec, err := decompressor(r, ctype)
 				if err != nil {
 					log.Fatalf("decompress error: Unable to create reader: %v :: %v", item.Path, err)
 				}
