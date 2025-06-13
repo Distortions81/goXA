@@ -16,6 +16,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/remeh/sizedwaitgroup"
+
 	brotli "github.com/andybalholm/brotli"
 	"github.com/dustin/go-humanize"
 	"github.com/golang/snappy"
@@ -484,8 +486,7 @@ func writeEntries(headerLen int, bf *BufferedFile, files []FileEntry) ([]FileEnt
 				cOffset += written
 				blocks = append(blocks, Block{Offset: bOff, Size: written})
 			} else {
-				sem := make(chan struct{}, runtime.NumCPU())
-				var wg sync.WaitGroup
+				wg := sizedwaitgroup.New(runtime.NumCPU())
 				var mu sync.Mutex
 				idx := 0
 				var offset = cOffset
@@ -498,11 +499,9 @@ func writeEntries(headerLen int, bf *BufferedFile, files []FileEntry) ([]FileEnt
 						i := idx
 						idx++
 						blocks = append(blocks, Block{})
-						wg.Add(1)
-						sem <- struct{}{}
+						wg.Add()
 						go func(idx int, d []byte) {
 							defer wg.Done()
-							defer func() { <-sem }()
 							out, err := compressBlock(d)
 							if err != nil {
 								log.Fatalf("compress block: %v", err)

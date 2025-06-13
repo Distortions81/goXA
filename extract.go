@@ -768,8 +768,7 @@ func extractFile(arcPath, destination string, lfeat BitFlags, ctype uint8, item 
 		hasher := newHasher(checksumType)
 		writer = io.MultiWriter(bf, hasher)
 		if hasBlocks {
-			sem := make(chan struct{}, runtime.NumCPU())
-			var wg sync.WaitGroup
+			wg := sizedwaitgroup.New(runtime.NumCPU())
 			res := make([][]byte, len(item.Blocks))
 			for i, b := range item.Blocks {
 				if _, err := arcB.Seek(int64(b.Offset), io.SeekStart); err != nil {
@@ -779,25 +778,15 @@ func extractFile(arcPath, destination string, lfeat BitFlags, ctype uint8, item 
 				if _, err := io.ReadFull(arcB, data); err != nil {
 					log.Fatalf("read block: %v", err)
 				}
-				if len(sem) < cap(sem) && bf.writer.Buffered() < writeBuffer && arcB.reader.Buffered() > 0 {
-					wg.Add(1)
-					sem <- struct{}{}
-					go func(idx int, d []byte) {
-						defer wg.Done()
-						defer func() { <-sem }()
-						out, err := decompressBlock(d, lfeat, ctype)
-						if err != nil {
-							log.Fatalf("decompress block: %v", err)
-						}
-						res[idx] = out
-					}(i, data)
-				} else {
-					out, err := decompressBlock(data, lfeat, ctype)
+				wg.Add()
+				go func(idx int, d []byte) {
+					defer wg.Done()
+					out, err := decompressBlock(d, lfeat, ctype)
 					if err != nil {
 						log.Fatalf("decompress block: %v", err)
 					}
-					res[i] = out
-				}
+					res[idx] = out
+				}(i, data)
 			}
 			wg.Wait()
 			for i := 0; i < len(item.Blocks); i++ {
@@ -833,8 +822,7 @@ func extractFile(arcPath, destination string, lfeat BitFlags, ctype uint8, item 
 		}
 	} else {
 		if hasBlocks {
-			sem := make(chan struct{}, runtime.NumCPU())
-			var wg sync.WaitGroup
+			wg := sizedwaitgroup.New(runtime.NumCPU())
 			var mu sync.Mutex
 			for i, b := range item.Blocks {
 				if _, err := arcB.Seek(int64(b.Offset), io.SeekStart); err != nil {
@@ -844,11 +832,9 @@ func extractFile(arcPath, destination string, lfeat BitFlags, ctype uint8, item 
 				if _, err := io.ReadFull(arcB, data); err != nil {
 					log.Fatalf("read block: %v", err)
 				}
-				wg.Add(1)
-				sem <- struct{}{}
+				wg.Add()
 				go func(idx int, d []byte) {
 					defer wg.Done()
-					defer func() { <-sem }()
 					out, err := decompressBlock(d, lfeat, ctype)
 					if err != nil {
 						log.Fatalf("decompress block: %v", err)
