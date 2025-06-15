@@ -41,6 +41,12 @@ go build -o "$GOXA" ./
 
 ORIG_NAME=$(basename "$SRC")
 
+"$GOXA" -version >"$TMPDIR/version.txt"
+grep -q "goxa v" "$TMPDIR/version.txt"
+
+"$GOXA" -h >"$TMPDIR/help.txt"
+grep -q "Usage" "$TMPDIR/help.txt"
+
 validate() {
   local orig=$1
   local extr=$2
@@ -152,6 +158,32 @@ echo "partial extraction ok"
 validate "$SRC" "$OUT/stdout/$ORIG_NAME" "stdout"
 
 echo "stdout handling ok"
+
+# Advanced options
+"$GOXA" cpmi -interactive=false -progress=false -sum=crc32 -comp=gzip -speed=better -threads=2 -block=65536 -bombcheck=false -spacecheck=false -noflush -arc "$TMPDIR/test_opts.goxa" "$SRC"
+"$GOXA" xpmi -interactive=false -progress=false -arc "$TMPDIR/test_opts.goxa" "$OUT/opts"
+validate "$SRC" "$OUT/opts/$ORIG_NAME" "opts"
+
+echo "option flags ok"
+
+# Force tar format and ensure extension
+"$GOXA" cpmi -interactive=false -progress=false -format=tar -arc "$TMPDIR/force" "$SRC"
+if [ ! -f "$TMPDIR/force.tar.gz" ]; then
+  echo "forced tar file missing" >&2
+  exit 1
+fi
+"$GOXA" xpmi -interactive=false -progress=false -arc "$TMPDIR/force.tar.gz" "$OUT/force"
+validate "$SRC" "$OUT/force/$ORIG_NAME" "force"
+
+echo "forced format ok"
+
+# Expect failure on missing archive
+if "$GOXA" x -interactive=false -progress=false -arc "$TMPDIR/missing.goxa" "$OUT/miss" 2>/dev/null; then
+  echo "missing archive unexpectedly succeeded" >&2
+  exit 1
+fi
+
+echo "failure case ok"
 
 go test ./...
 
