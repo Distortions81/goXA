@@ -46,7 +46,7 @@ Data is written in large 512KiB blocks for high throughput (adjustable with `-bl
 With Go 1.24+ you can install directly:
 
 ```bash
-go install github.com/Distortions81/goXA@latest
+go install github.com/Distortions81/goXA/cmd/goxa@latest
 ```
 
 To build from source:
@@ -54,7 +54,7 @@ To build from source:
 ```bash
 git clone https://github.com/Distortions81/goXA.git
 cd goXA
-go build
+go build ./cmd/goxa
 ```
 
 The script `install.sh` builds the binary and installs the man page.

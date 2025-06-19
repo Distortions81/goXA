@@ -5,26 +5,12 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	gx "goxa"
 )
 
 func resetGlobals() {
-	archivePath = ""
-	verboseMode = false
-	doForce = false
-	toStdOut = false
-	progress = false
-	quietMode = false
-	features = fChecksums
-	compression = ""
-	extractList = nil
-	tarUseXz = false
-	protoVersion = protoVersion2
-	blockSize = defaultBlockSize
-	fileRetries = 3
-	fileRetryDelay = 5
-	failOnChange = false
-	noFlush = false
-	bombCheck = true
+	gx.ResetDefaults()
 }
 
 func TestCLIEndToEnd(t *testing.T) {

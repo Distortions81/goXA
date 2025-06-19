@@ -1,4 +1,4 @@
-package main
+package goxa
 
 const (
 	magic         = "GOXA"

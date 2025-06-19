@@ -1,6 +1,6 @@
 //go:build windows
 
-package main
+package goxa
 
 import "golang.org/x/sys/windows"
 

@@ -1,4 +1,4 @@
-package main
+package goxa
 
 import (
 	"bytes"
@@ -13,7 +13,7 @@ import (
 
 // runPGOTraining performs a simple compression and decompression
 // using default settings and writes a CPU profile to default.pgo.
-func runPGOTraining() {
+func RunPGOTraining() {
 	fmt.Println("Generating default.pgo profile...")
 	f, err := os.Create("default.pgo")
 	if err != nil {

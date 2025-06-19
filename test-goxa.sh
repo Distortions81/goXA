@@ -37,7 +37,7 @@ chmod 600 "$SRC/.hidden"
 touch -t 202201010101 "$SRC/file_1.bin"
 
 GOXA="$TMPDIR/goxa"
-go build -o "$GOXA" ./
+go build -o "$GOXA" ./cmd/goxa
 
 ORIG_NAME=$(basename "$SRC")
 

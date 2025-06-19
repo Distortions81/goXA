@@ -1,4 +1,4 @@
-package main
+package goxa
 
 import (
 	"flag"
@@ -16,7 +16,7 @@ const makeProfile = false
 
 var flagBlockSize uint = defaultBlockSize
 
-func main() {
+func Main() {
 	defer startProfile()()
 
 	if len(os.Args) < 2 {
@@ -174,7 +174,7 @@ func handleTopLevel(args []string) bool {
 		return true
 	}
 	if pgo {
-		runPGOTraining()
+		RunPGOTraining()
 		return true
 	}
 	if showHelp {

@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	gx "goxa"
 )
 
 func TestCLIJSONList(t *testing.T) {
@@ -44,7 +46,7 @@ func TestCLIJSONList(t *testing.T) {
 	var buf bytes.Buffer
 	io.Copy(&buf, r)
 
-	var listing ArchiveListingOut
+	var listing gx.ArchiveListingOut
 	if err := json.Unmarshal(buf.Bytes(), &listing); err != nil {
 		t.Fatalf("json decode: %v", err)
 	}

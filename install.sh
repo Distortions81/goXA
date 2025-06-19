@@ -5,7 +5,7 @@ BINDIR="$PREFIX/bin"
 MANDIR="$PREFIX/share/man/man1"
 
 echo "Building goxa..."
-go build -o goxa .
+go build -o goxa ./cmd/goxa
 
 echo "Installing binary to $BINDIR"
 install -d "$BINDIR"
