@@ -1,4 +1,4 @@
-package main
+package goxa
 
 import (
 	"bufio"
@@ -6,7 +6,6 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	gzip "github.com/klauspost/pgzip"
 	"io"
 	"io/fs"
 	"log"
@@ -16,6 +15,8 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
+
+	gzip "github.com/klauspost/pgzip"
 
 	brotli "github.com/andybalholm/brotli"
 	"github.com/dustin/go-humanize"

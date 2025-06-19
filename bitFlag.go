@@ -1,4 +1,4 @@
-package main
+package goxa
 
 type BitFlags uint64
 
