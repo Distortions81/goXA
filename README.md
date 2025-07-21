@@ -123,7 +123,8 @@ When extracting, the program prompts if the archive was created with flags you d
 Progress shows transfer speed and current file. Snappy does not support adjustable levels; `-speed` is ignored when using it.
 
 ### Base32 / Base64 / FEC
-**Currently planning to replace the FEC implementation**
+**Currently planning to replace the FEC implementation.**
+
 Appending `.b32` or `.b64` to the archive file encodes the archive in Base32 or Base64. Files ending in `.goxaf` are FEC `error correcting` encoded. FEC archives contain data and parity shards using Reed-Solomon codes; any missing shards up to the parity count can be reconstructed when extracting. 
 For example, with `-fec-data=10 -fec-parity=3` the archive is split into 13 shards. Any 10 shards are enough to fully recover the data. Presets are:
 
