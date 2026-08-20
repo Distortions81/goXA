@@ -1,7 +1,6 @@
 module goxa
 
 go 1.26.6
-toolchain go1.26.6
 
 require (
 	github.com/andybalholm/brotli v1.1.1
@@ -9,7 +8,7 @@ require (
 	github.com/golang/snappy v1.0.0
 	github.com/klauspost/compress v1.18.0
 	github.com/klauspost/pgzip v1.2.6
-	github.com/klauspost/reedsolomon v1.12.4
+	github.com/klauspost/reedsolomon v1.14.2
 	github.com/pierrec/lz4/v4 v4.1.22
 	github.com/remeh/sizedwaitgroup v1.0.0
 	github.com/sigurn/crc16 v0.0.0-20240131213347-83fcde1e29d1
@@ -20,4 +19,4 @@ require (
 	golang.org/x/term v0.32.0
 )
 
-require github.com/klauspost/cpuid/v2 v2.2.8 // indirect
+require github.com/klauspost/cpuid/v2 v2.3.0 // indirect
