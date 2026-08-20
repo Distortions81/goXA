@@ -1,7 +1,6 @@
 module goxa
 
 go 1.26.6
-toolchain go1.26.6
 
 require (
 	github.com/andybalholm/brotli v1.1.1
@@ -16,8 +15,8 @@ require (
 	github.com/ulikunitz/xz v0.5.12
 	github.com/zeebo/blake3 v0.2.4
 	github.com/zeebo/xxh3 v1.0.2
-	golang.org/x/sys v0.33.0
-	golang.org/x/term v0.32.0
+	golang.org/x/sys v0.47.0
+	golang.org/x/term v0.45.0
 )
 
 require github.com/klauspost/cpuid/v2 v2.2.8 // indirect
