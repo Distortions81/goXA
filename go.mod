@@ -1,6 +1,7 @@
 module goxa
 
-go 1.24.1
+go 1.26.6
+toolchain go1.26.6
 
 require (
 	github.com/andybalholm/brotli v1.1.1
