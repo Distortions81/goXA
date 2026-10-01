@@ -3,7 +3,7 @@ module goxa
 go 1.26.6
 
 require (
-	github.com/andybalholm/brotli v1.1.1
+	github.com/andybalholm/brotli v1.2.2
 	github.com/dustin/go-humanize v1.0.1
 	github.com/golang/snappy v1.0.0
 	github.com/klauspost/compress v1.18.0
