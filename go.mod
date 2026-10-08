@@ -15,8 +15,8 @@ require (
 	github.com/ulikunitz/xz v0.5.17
 	github.com/zeebo/blake3 v0.2.4
 	github.com/zeebo/xxh3 v1.1.0
-	golang.org/x/sys v0.47.0
-	golang.org/x/term v0.45.0
+	golang.org/x/sys v0.48.0
+	golang.org/x/term v0.46.0
 )
 
 require github.com/klauspost/cpuid/v2 v2.3.0 // indirect
