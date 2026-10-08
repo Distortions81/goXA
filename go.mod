@@ -6,7 +6,7 @@ require (
 	github.com/andybalholm/brotli v1.2.2
 	github.com/dustin/go-humanize v1.0.1
 	github.com/golang/snappy v1.0.0
-	github.com/klauspost/compress v1.18.0
+	github.com/klauspost/compress v1.20.1
 	github.com/klauspost/pgzip v1.2.6
 	github.com/klauspost/reedsolomon v1.14.2
 	github.com/pierrec/lz4/v4 v4.1.28
